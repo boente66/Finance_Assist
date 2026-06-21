@@ -453,17 +453,6 @@ class AgendamentoView(QWidget):
 
         self.apply_filter()
 
-    def load_cartoes(self):
-
-        self.cartao_filter.clear()
-
-        for cartao in self.fatura_controller.listar_cartoes():
-
-            self.cartao_filter.addItem(
-                cartao["Nome"],
-                cartao["ID_Cartao"]
-            )
-
     def load_favorecidos(self):
 
         self.combo_favorecido.clear()

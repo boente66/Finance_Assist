@@ -407,3 +407,41 @@ class FaturaService:
             id_usuario=id_usuario,
             id_categoria_pai=None
         )
+
+
+    # ============================================
+    # LISTA FATURAS PROJETADAS 
+    # ============================================
+    def lista_fatura_projetadas(self,id_usuario: int, quantidade_meses: int=6):
+        hoje = date.today()
+        cartoes = self.listar_cartoes(id_usuario)
+        projecoes = []
+        for cartao in cartoes:
+            id_cartao = cartao["ID_Cartao"]
+            nome_cartao = cartao["Nome", "Cartão"]
+            dia_fechamento = cartao["Dia_Fechamento"]
+
+            for offset in range(quantidade_meses):
+                mes_ref = hoje + relativedelta(months=offset)
+                mes = mes_ref.month
+                ano = mes_ref.year
+
+                valor = self.calcular_fatura(id_cartao, mes, ano, id_usuario)
+
+                if valor <= 0:
+                    continue
+
+                vencimento = date(ano, mes, min(dia_fechamento,28))
+
+                projecoes.append({
+                    "ID_Cartao": id_cartao,
+                    "Cartao": nome_cartao,
+                    "Descricao": f"Pgto Fatura {nome_cartao}",
+                    "Data": vencimento.isoformat(),
+                    "Mes": mes,
+                    "Ano": ano,
+                    "Valor": valor,
+                    "Status": "ABERTA",
+                })
+
+        return projecoes
