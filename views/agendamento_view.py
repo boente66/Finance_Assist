@@ -64,7 +64,7 @@ class AgendamentoView(QWidget):
         self._atualizar_textos()
 
         self.load_favorecidos()
-        self.load_cartoes()
+        self.load_cartao()
         self.load_data()
 
     # ==================================================
