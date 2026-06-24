@@ -224,6 +224,27 @@ class UserService:
             logger.exception("Erro ao excluir usuário")
             return False
 
+            
+
+    def delete_own_account(self, id_usuario: int, usuario_logado: dict) -> bool:
+        """
+        Permite que um usuário exclua sua própria conta a qualquer momento.
+        """
+        try:
+            if not usuario_logado or usuario_logado.get("ID_Usuario") != id_usuario:
+                raise PermissionError("Somente o próprio usuário pode excluir sua conta.")
+
+            usuario_alvo = self.get_user_by_id(id_usuario)
+            if not usuario_alvo:
+                return False
+
+            self.user_model.delete_user(id_usuario)
+            return True
+
+        except (DatabaseError, PermissionError):
+            logger.exception("Erro ao excluir conta do usuário")
+            return False
+
     # ======================================================
     # SENHA
     # ======================================================
@@ -340,4 +361,30 @@ Se você não solicitou, ignore este e-mail.
 
         except Exception:
             logger.exception("Erro ao solicitar recuperação de senha")
+            return False
+
+    
+
+    def encerrar_usuario(self, id_usuario: int, usuario_logado: dict) -> bool:
+        """
+        Marca um usuário como inativo (encerrado).
+        Apenas administradores podem encerrar usuários.
+        """
+        try:
+            self._ensure_admin_permission(usuario_logado)
+
+            usuario_alvo = self.get_user_by_id(id_usuario)
+            if not usuario_alvo:
+                return False
+
+            total_admins = self._count_admins()
+
+            if usuario_alvo.get("Nivel_Acesso", "").lower() == "admin" and total_admins <= 1:
+                raise ValueError("Não é possível encerrar o único administrador.")
+
+            self.user_model.delete_user(id_usuario)
+            return True
+
+        except (DatabaseError, PermissionError, ValueError):
+            logger.exception("Erro ao encerrar usuário")
             return False

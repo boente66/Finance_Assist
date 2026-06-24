@@ -89,3 +89,11 @@ class UserController:
         return self.service.update_preferences(id_usuario, tema, idioma)
     def request_password_reset(self, login_ou_email):
         return self.service.request_password_reset(login_ou_email)
+
+
+   # =============================
+   # EXCLUIR USUÁRIO (AUTODESTRUIÇÃO)
+   # =============================
+    def delete_own_account(self, senha) -> bool:
+        id_usuario = self._get_usuario_id()
+        return self.service.delete_own_account(id_usuario, senha)
