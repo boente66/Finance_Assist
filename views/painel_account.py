@@ -575,8 +575,8 @@ class PainelAccount(QWidget):
             self.progress_bar.show()
 
             self.ia_import_controller.importar_arquivo(
-                conta=self.conta,
-                caminho=arquivo,
+                caminho_arquivo=arquivo,
+                id_conta=self.conta["ID_Conta"],
                 progress_callback=self._mostrar_progresso_importacao,
             )
 
@@ -664,8 +664,11 @@ class PainelAccount(QWidget):
     # ==================================================
     # PROGRESSO
     # ==================================================
-    def _mostrar_progresso_importacao(self, progresso):
+    def _mostrar_progresso_importacao(self, progresso, mensagem=None):
         self.progress_bar.setValue(progresso)
+
+        if mensagem:
+            self.progress_bar.setLabelText(mensagem)
 
         if progresso >= 100:
             self.progress_bar.close()
