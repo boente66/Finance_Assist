@@ -571,31 +571,96 @@ class PainelAccount(QWidget):
             return
 
         try:
+            from workers.import_worker import ImportWorker
+
             self.progress_bar.setValue(0)
             self.progress_bar.show()
 
-            self.ia_import_controller.importar_arquivo(
+            self.import_worker = ImportWorker(
+                controller=self.ia_import_controller,
                 caminho_arquivo=arquivo,
                 id_conta=self.conta["ID_Conta"],
-                progress_callback=self._mostrar_progresso_importacao,
+                parent=self
             )
 
-            QMessageBox.information(
-                self,
-                TranslatorApp.get("Sucesso"),
-                TranslatorApp.get("Importação concluída"),
+            self.import_worker.progress.connect(
+                self._mostrar_progresso_importacao
             )
 
-            self.carregar_historico()
+            self.import_worker.finished.connect(
+                self._on_importacao_finalizada
+            )
+
+            self.import_worker.error.connect(
+                self._on_importacao_erro
+            )
+
+            self.import_worker.start()
 
         except Exception as e:
-            logger.exception("Erro ao importar")
+            logger.exception("Erro ao iniciar importação")
+            self.progress_bar.close()
 
             QMessageBox.critical(
                 self,
                 TranslatorApp.get("Erro"),
                 str(e)
             )
+
+    def _on_importacao_finalizada(self, lancamentos):
+        self.progress_bar.close()
+
+        if not lancamentos:
+            QMessageBox.warning(
+                self,
+                TranslatorApp.get("Aviso"),
+                TranslatorApp.get("Nenhum lançamento reconhecido no arquivo."),
+            )
+            return
+
+        try:
+            from views.importacaoTempeorariaDialog import ImportacaoTemporariaDialog
+
+            dialog = ImportacaoTemporariaDialog(
+                lancamentos=lancamentos,
+                parent=self
+            )
+
+            if dialog.exec_() != dialog.Accepted:
+                return
+
+            confirmados = dialog.get_lancamentos_confirmados()
+
+            total_salvo = self.ia_import_controller.salvar_lancamentos_confirmados(
+                confirmados
+            )
+
+            QMessageBox.information(
+                self,
+                TranslatorApp.get("Sucesso"),
+                f"{TranslatorApp.get('Importação concluída')}: "
+                f"{total_salvo} {TranslatorApp.get('lançamento(s) salvo(s).')}"
+            )
+
+            self.carregar_historico()
+
+        except Exception as e:
+            logger.exception("Erro ao finalizar importação")
+
+            QMessageBox.critical(
+                self,
+                TranslatorApp.get("Erro"),
+                str(e)
+            )
+
+    def _on_importacao_erro(self, mensagem):
+        self.progress_bar.close()
+
+        QMessageBox.critical(
+            self,
+            TranslatorApp.get("Erro"),
+            mensagem
+        )
 
     # ==================================================
     # EXPORTAÇÃO
