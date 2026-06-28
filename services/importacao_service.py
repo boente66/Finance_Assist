@@ -194,34 +194,8 @@ class ImportacaoService:
             id_categoria = None
             confianca = 0.0
 
-            # ==================================================
-            # EXTRATO BANCÁRIO → IA SEMÂNTICA
-            # ==================================================
-            if tipo_documento == "extrato_bancario":
-
-                id_categoria, confianca = self.categorizacao_service.categorizar(
-                    descricao,
-                    valor,
-                    id_usuario
-                )
-
-            # ==================================================
-            # EXPORTAÇÃO DO SISTEMA
-            # ==================================================
-            else:
-
-                categoria_pai = item.get("CategoriaPai")
-                subcategoria = item.get("Subcategoria")
-
-                if categoria_pai:
-                    id_categoria = self.category_service.resolver_categoria_importacao(
-                        categoria_pai_nome=categoria_pai,
-                        subcategoria_nome=subcategoria,
-                        valor=valor,
-                        id_usuario=id_usuario
-                    )
-                    confianca = 1.0
-                else:
+            match tipo_documento:
+                case "extrato_bancario":
                     try:
                         id_categoria, confianca = self.categorizacao_service.categorizar(
                             descricao,
@@ -229,8 +203,32 @@ class ImportacaoService:
                             id_usuario
                         )
                     except Exception:
+                        logger.exception("Erro ao categorizar extrato bancário")
                         id_categoria = None
                         confianca = 0.0
+
+                case "exportacao_sistema" | "migracao_sistema":
+                    categoria_pai = (
+                        item.get("CategoriaPai")
+                        or item.get("Categoria")
+                    )
+
+                    subcategoria = item.get("Subcategoria")
+
+                    if categoria_pai:
+                        id_categoria = self.category_service.resolver_categoria_importacao(
+                            categoria_pai_nome=categoria_pai,
+                            subcategoria_nome=subcategoria,
+                            valor=valor,
+                            id_usuario=id_usuario
+                        )
+                        confianca = 1.0
+
+                case _:
+                    logger.warning(
+                        "Tipo de documento desconhecido na importação: %s",
+                        tipo_documento
+                    )
 
             dados_final.append({
                 "Data": data,
@@ -238,9 +236,11 @@ class ImportacaoService:
                 "Valor": valor,
                 "Tipo": tipo,
                 "ID_Categoria": id_categoria,
+                "ID_Favorecido": item.get("ID_Favorecido"),
+                "Favorecido": item.get("Favorecido"),
                 "ID_Usuario": id_usuario,
                 "ID_Conta": id_conta,
-                "ConfiancaIA": round(confianca, 2)
+                "ConfiancaIA": round(float(confianca or 0), 2)
             })
 
         return dados_final
