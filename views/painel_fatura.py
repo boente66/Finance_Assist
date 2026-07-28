@@ -478,17 +478,32 @@ class PainelFatura(QWidget):
             return
 
         try:
-            self.controller.pagar_fatura(
+            resultado = self.controller.pagar_fatura(
                 self.cartao["ID_Cartao"],
                 conta["ID_Conta"],
                 mes,
                 ano
             )
 
+            if not resultado.get("sucesso"):
+                QMessageBox.warning(
+                    self,
+                    TranslatorApp.get("Aviso"),
+                    TranslatorApp.get(
+                        resultado.get(
+                            "mensagem",
+                            "Não foi possível pagar a fatura."
+                        )
+                    )
+                )
+                return
+
             QMessageBox.information(
                 self,
                 TranslatorApp.get("Sucesso"),
-                TranslatorApp.get("Fatura paga")
+                TranslatorApp.get(
+                    resultado.get("mensagem", "Fatura paga")
+                )
             )
 
             self._carregar()

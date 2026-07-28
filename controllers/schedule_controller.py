@@ -131,7 +131,7 @@ class ScheduleController:
         # ============================================================
     # BAIXAR / EXECUTAR AGENDAMENTO
     # ============================================================
-    def execute_schedule(self, dados_execucao: dict) -> bool:
+    def execute_schedule(self, dados_execucao: dict) -> dict:
         """
         Executa a baixa de um agendamento.
 

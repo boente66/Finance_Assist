@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 class CategoryModel(Database):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_name=None):
+        super().__init__(db_name) if db_name else super().__init__()
 
     # ==================================================
     # CREATE

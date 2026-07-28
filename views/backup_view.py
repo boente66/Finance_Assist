@@ -44,6 +44,14 @@ class BackupView(QWidget):
         self._init_ui()
         self._connect_events()
 
+        autorizado = (
+            str(self.usuario.get("Nivel_Acesso", "")).lower()
+            == "admin"
+        )
+        self.btn_backup.setVisible(autorizado)
+        self.btn_restaurar.setVisible(autorizado)
+        self.senha_input.setEnabled(autorizado)
+
         TranslatorApp.bind(self._atualizar_textos, self)
         self._atualizar_textos()
 
@@ -157,10 +165,20 @@ class BackupView(QWidget):
         self._bloquear_ui(True)
 
         try:
-            arquivo = self.controller.criar_backup(
+            resultado = self.controller.criar_backup(
                 destino,
                 senha
             )
+
+            if not resultado.get("sucesso"):
+                QMessageBox.warning(
+                    self,
+                    TranslatorApp.get("Aviso"),
+                    TranslatorApp.get(resultado.get("mensagem", "Operação recusada."))
+                )
+                return
+
+            arquivo = (resultado.get("dados") or {}).get("arquivo", "")
 
             QMessageBox.information(
                 self,
@@ -226,10 +244,18 @@ class BackupView(QWidget):
         self._bloquear_ui(True)
 
         try:
-            self.controller.restaurar_backup(
+            resultado = self.controller.restaurar_backup(
                 arquivo,
                 senha
             )
+
+            if not resultado.get("sucesso"):
+                QMessageBox.warning(
+                    self,
+                    TranslatorApp.get("Aviso"),
+                    TranslatorApp.get(resultado.get("mensagem", "Operação recusada."))
+                )
+                return
 
             QMessageBox.information(
                 self,

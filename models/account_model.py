@@ -11,8 +11,8 @@ class AccountModel(Database):
     NÃO contém regra de negócio.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_name=None):
+        super().__init__(db_name) if db_name else super().__init__()
 
     # --------------------------------------------------
     # CREATE
@@ -156,4 +156,3 @@ class AccountModel(Database):
         except Exception as e:
             logger.exception(f"Erro ao atualizar saldo da conta {id_conta} para o usuário {id_usuario}")
             raise DatabaseError(str(e))
-

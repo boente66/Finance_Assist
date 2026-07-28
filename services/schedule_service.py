@@ -41,10 +41,10 @@ class ScheduleService:
     STATUS_EXECUTAVEIS = ("AGENDADO", "ATRASADO")
     STATUS_CANCELAVEIS = ("AGENDADO", "ATRASADO")
 
-    def __init__(self):
-        self.schedule_model = ScheduleModel()
-        self.account_model = AccountModel()
-        self.fatura_service = FaturaService()
+    def __init__(self, db_name=None):
+        self.schedule_model = ScheduleModel(db_name)
+        self.account_model = AccountModel(db_name)
+        self.fatura_service = FaturaService(db_name)
 
     # ============================================================
     # CRIAÇÃO
@@ -143,7 +143,7 @@ class ScheduleService:
 
         novo.pop("ID_Agendamento", None)
 
-        self.schedule_model.add_schedule(novo)
+        novo["ID_Agendamento"] = self.schedule_model.add_schedule(novo)
 
         return novo
 

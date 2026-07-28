@@ -1,3 +1,5 @@
+import hashlib
+import logging
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
@@ -6,16 +8,27 @@ from models.credito_model import CreditoModel
 from models.transaction_model import TransactionModel
 from models.category_model import CategoryModel
 from models.account_model import AccountModel
+from models.pagamento_fatura_model import PagamentoFaturaModel
+from core.operation_result import operation_result
+from database.database import DatabaseError
+
+
+logger = logging.getLogger(__name__)
+
+
+class FaturaSaldoInsuficiente(ValueError):
+    pass
 
 
 class FaturaService:
 
-    def __init__(self):
-        self.lancamento_model = LancamentoModel()
-        self.credito_model = CreditoModel()
-        self.transaction_model = TransactionModel()
-        self.category_model = CategoryModel()
-        self.account_model = AccountModel()
+    def __init__(self, db_name=None):
+        self.lancamento_model = LancamentoModel(db_name)
+        self.credito_model = CreditoModel(db_name)
+        self.transaction_model = TransactionModel(db_name)
+        self.category_model = CategoryModel(db_name)
+        self.account_model = AccountModel(db_name)
+        self.pagamento_model = PagamentoFaturaModel(db_name)
 
         self._cache_fatura = {}
 
@@ -228,55 +241,192 @@ class FaturaService:
     # PAGAMENTO
     # ============================================================
     def pagar_fatura(self, id_cartao, mes, ano, id_conta, id_usuario):
-
-        fatura = self.obter_fatura(id_cartao, mes, ano, id_usuario)
-
-        total = sum(float(l["Valor"]) for l in fatura if not l.get("Paga"))
-
-        if total <= 0:
-            raise ValueError("Nenhum valor em aberto.")
-
-        conta = self.account_model.get_account_by_id(id_conta, id_usuario)
-
-        if not conta:
-            raise ValueError("Conta inválida.")
-
-        if float(conta["Saldo_Atual"]) < total:
-            raise ValueError("Saldo insuficiente.")
-
-        cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
-
-        categoria_id = self._get_categoria_pagamento_fatura(id_usuario)
-
-        transacao_id = self.transaction_model.add_transaction({
-            "Descricao": f"Pagamento Fatura {mes:02d}/{ano} - {cartao.get('Nome', '')}",
-            "Valor": -abs(total),
-            "Data": date.today().isoformat(),
-            "Tipo": "Despesa",
-            "ID_Conta": id_conta,
-            "ID_Usuario": id_usuario,
-            "ID_Categoria": categoria_id
-        })
-
-        self.account_model.update_saldo(id_conta, -abs(total), id_usuario)
-
-        self.lancamento_model.begin()
-
         try:
-            for l in fatura:
-                if not l.get("Paga"):
-                    self.lancamento_model.marcar_como_pago(
-                        l["ID_Lancamento"],
-                        transacao_id
+            if not id_usuario:
+                raise PermissionError("Usuário não autenticado.")
+
+            with self.transaction_model.unit_of_work(
+                self.account_model,
+                self.credito_model,
+                self.category_model,
+                self.lancamento_model,
+                self.pagamento_model,
+                immediate=True
+            ):
+                cartao = self.credito_model.get_cartao_by_id(
+                    id_cartao,
+                    id_usuario
+                )
+                if not cartao:
+                    raise PermissionError(
+                        "Cartão não pertence ao usuário."
                     )
 
-            self.lancamento_model.commit()
+                conta = self.account_model.get_account_by_id(
+                    id_conta,
+                    id_usuario
+                )
+                if not conta:
+                    raise PermissionError(
+                        "Conta de pagamento não pertence ao usuário."
+                    )
+
+                fatura = self.lancamento_model.get_lancamentos_por_fatura(
+                    id_cartao,
+                    mes,
+                    ano,
+                    id_usuario
+                )
+                abertos = [item for item in fatura if not item.get("Paga")]
+
+                if not abertos:
+                    pagamento = self.pagamento_model.get_last_by_invoice(
+                        id_cartao,
+                        mes,
+                        ano,
+                        id_usuario
+                    )
+                    if pagamento:
+                        return operation_result(
+                            False,
+                            "JA_PROCESSADO",
+                            "Esta fatura já foi paga.",
+                            {"ID_Transacao": pagamento["ID_Transacao"]}
+                        )
+                    raise ValueError("Nenhum valor em aberto.")
+
+                total = sum(float(item["Valor"]) for item in abertos)
+                if total <= 0:
+                    raise ValueError(
+                        "O valor da fatura deve ser maior que zero."
+                    )
+
+                if float(conta["Saldo_Atual"]) < total:
+                    raise FaturaSaldoInsuficiente("Saldo insuficiente.")
+
+                chave = self._chave_idempotencia_fatura(
+                    id_cartao,
+                    mes,
+                    ano,
+                    id_usuario,
+                    abertos,
+                    total
+                )
+
+                existente = self.pagamento_model.get_by_key(
+                    chave,
+                    id_usuario
+                )
+                if existente:
+                    return operation_result(
+                        False,
+                        "JA_PROCESSADO",
+                        "Este pagamento já foi processado.",
+                        {"ID_Transacao": existente["ID_Transacao"]}
+                    )
+
+                categoria_id = self._get_categoria_pagamento_fatura(
+                    id_usuario
+                )
+
+                transacao_id = self.transaction_model.add_transaction({
+                    "Descricao": (
+                        f"Pagamento Fatura {int(mes):02d}/{ano} - "
+                        f"{cartao.get('Nome', '')}"
+                    ),
+                    "Valor": -abs(total),
+                    "Data": date.today().isoformat(),
+                    "Tipo": "Despesa",
+                    "ID_Conta": id_conta,
+                    "ID_Usuario": id_usuario,
+                    "ID_Categoria": categoria_id
+                })
+
+                self.account_model.update_saldo(
+                    id_conta,
+                    -abs(total),
+                    id_usuario
+                )
+
+                for lancamento in abertos:
+                    self.lancamento_model.marcar_como_pago(
+                        lancamento["ID_Lancamento"],
+                        transacao_id,
+                        id_usuario
+                    )
+
+                self.pagamento_model.add_payment(
+                    chave,
+                    id_cartao,
+                    mes,
+                    ano,
+                    id_conta,
+                    transacao_id,
+                    id_usuario,
+                    total
+                )
+
             self._clear_cache()
-            return True
+            return operation_result(
+                True,
+                "OK",
+                "Fatura paga com sucesso.",
+                {
+                    "ID_Transacao": transacao_id,
+                    "Valor": total,
+                    "Lancamentos_Pagos": len(abertos),
+                }
+            )
+
+        except FaturaSaldoInsuficiente as exc:
+            logger.warning("Pagamento recusado por saldo: %s", exc)
+            return operation_result(False, "SALDO_INSUFICIENTE", str(exc))
+
+        except PermissionError as exc:
+            logger.warning("Pagamento de fatura não autorizado: %s", exc)
+            return operation_result(False, "NAO_AUTORIZADO", str(exc))
+
+        except (TypeError, ValueError) as exc:
+            logger.warning("Pagamento de fatura recusado: %s", exc)
+            return operation_result(False, "DADOS_INVALIDOS", str(exc))
+
+        except DatabaseError:
+            logger.exception("Erro de banco no pagamento da fatura")
+            return operation_result(
+                False,
+                "ERRO_BANCO",
+                "Não foi possível concluir o pagamento da fatura."
+            )
 
         except Exception:
-            self.lancamento_model.rollback()
-            raise
+            logger.exception("Erro no pagamento da fatura")
+            return operation_result(
+                False,
+                "ERRO_INTERNO",
+                "Não foi possível concluir o pagamento da fatura."
+            )
+
+    def _chave_idempotencia_fatura(
+        self,
+        id_cartao,
+        mes,
+        ano,
+        id_usuario,
+        lancamentos,
+        total
+    ):
+        ids = ",".join(
+            str(item["ID_Lancamento"])
+            for item in sorted(
+                lancamentos,
+                key=lambda item: item["ID_Lancamento"]
+            )
+        )
+        base = (
+            f"{id_usuario}:{id_cartao}:{int(mes)}:{int(ano)}:"
+            f"{ids}:{total:.2f}"
+        )
+        return hashlib.sha256(base.encode("utf-8")).hexdigest()
 
     # ============================================================
     # CICLOS

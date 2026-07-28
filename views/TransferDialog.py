@@ -148,14 +148,32 @@ class TransferDialog(QDialog):
             return
 
         try:
-            self.transaction_controller.transferir_saldo(
+            resultado = self.transaction_controller.transferir_saldo(
                 id_origem=id_origem, id_destino=id_destino, valor=valor, data=data
             )
+
+            if not resultado.get("sucesso"):
+                QMessageBox.warning(
+                    self,
+                    TranslatorApp.get("Atenção"),
+                    TranslatorApp.get(
+                        resultado.get(
+                            "mensagem",
+                            "Não foi possível realizar a transferência."
+                        )
+                    )
+                )
+                return
 
             QMessageBox.information(
                 self,
                 TranslatorApp.get("Sucesso"),
-                TranslatorApp.get("Transferência realizada com sucesso."),
+                TranslatorApp.get(
+                    resultado.get(
+                        "mensagem",
+                        "Transferência realizada com sucesso."
+                    )
+                ),
             )
 
             self.accept()

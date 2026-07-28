@@ -286,12 +286,13 @@ class MainView(QMainWindow):
             "configuracoes"
         )
 
-        add_user_btn(
-            "btn_backup",
-            "Backup e Restauração",
-            ("views.backup_view", "BackupView"),
-            "backup"
-        )
+        if self._is_admin():
+            add_user_btn(
+                "btn_backup",
+                "Backup e Restauração",
+                ("views.backup_view", "BackupView"),
+                "backup"
+            )
 
     # ==================================================
     # TRADUÇÃO

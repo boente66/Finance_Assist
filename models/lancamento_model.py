@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 class LancamentoModel(Database):
 
-    def __init__(self):
-        super().__init__()
-        self.credito = CreditoModel()
+    def __init__(self, db_name=None):
+        super().__init__(db_name) if db_name else super().__init__()
+        self.credito = CreditoModel(db_name)
 
     # ============================================================
     # CRIAR LANÇAMENTO
@@ -250,7 +250,12 @@ class LancamentoModel(Database):
     # ============================================================
     # MARCAR COMO PAGO
     # ============================================================
-    def marcar_como_pago(self, id_lancamento, id_transacao):
+    def marcar_como_pago(
+        self,
+        id_lancamento,
+        id_transacao,
+        id_usuario=None
+    ):
 
         sql = """
             UPDATE lancamentos
@@ -258,9 +263,25 @@ class LancamentoModel(Database):
                 ID_Transacao = ?,
                 Previsto = 0
             WHERE ID_Lancamento = ?
+              AND (? IS NULL OR ID_Usuario = ?)
+              AND Paga = 0
         """
 
-        self.execute_query(sql, (id_transacao, id_lancamento))
+        cursor = self.execute_query(
+            sql,
+            (
+                id_transacao,
+                id_lancamento,
+                id_usuario,
+                id_usuario,
+            )
+        )
+
+        if cursor.rowcount != 1:
+            raise ValueError(
+                "Lançamento não encontrado ou já estava pago."
+            )
+
         return True
 
     # ============================================================

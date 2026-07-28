@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from core.operation_result import operation_result
+from database.database import DatabaseError
 from models.transaction_model import TransactionModel
 from models.account_model import AccountModel
 
 logger = logging.getLogger(__name__)
+
+
+class InsufficientFundsError(ValueError):
+    pass
 
 
 class TransactionService:
@@ -17,10 +23,10 @@ class TransactionService:
     - operações atômicas entre transação e conta
     """
 
-    def __init__(self):
-        self.transaction_model = TransactionModel()
-        self.account_model = AccountModel()
-        self._share_connection()
+    def __init__(self, db_name=None):
+        self.transaction_model = TransactionModel(db_name)
+        self.account_model = AccountModel(db_name)
+        self._legacy_account_state = None
 
     # ============================================================
     # CONEXÃO / TRANSAÇÃO
@@ -30,21 +36,38 @@ class TransactionService:
         Faz TransactionModel e AccountModel usarem a mesma conexão SQLite.
         Nunca chamar connect() aqui, senão cria outra conexão.
         """
-        self.account_model.connection = self.transaction_model.connection
+        return self.account_model._bind_connection(
+            self.transaction_model.connection
+        )
 
     def _begin(self):
-        self._share_connection()
-
+        if self._legacy_account_state is not None:
+            raise RuntimeError("Já existe uma transação ativa no serviço.")
         self.transaction_model.begin()
-        self.account_model._manual_transaction = True
+        try:
+            self._legacy_account_state = self._share_connection()
+        except Exception:
+            self.transaction_model.rollback()
+            raise
+
+    def _restore_legacy_connection(self):
+        if self._legacy_account_state is not None:
+            self.account_model._restore_connection_state(
+                self._legacy_account_state
+            )
+            self._legacy_account_state = None
 
     def _commit(self):
-        self.transaction_model.commit()
-        self.account_model._manual_transaction = False
+        try:
+            self.transaction_model.commit()
+        finally:
+            self._restore_legacy_connection()
 
     def _rollback(self):
-        self.transaction_model.rollback()
-        self.account_model._manual_transaction = False
+        try:
+            self.transaction_model.rollback()
+        finally:
+            self._restore_legacy_connection()
 
     # ============================================================
     # HELPERS
@@ -302,45 +325,88 @@ class TransactionService:
     # TRANSFERÊNCIA
     # ============================================================
     def transferir(self, id_origem, id_destino, valor, data, id_usuario):
-        if id_origem == id_destino:
-            raise ValueError("Contas devem ser diferentes.")
-
-        valor = abs(float(valor))
-
-        origem = self.account_model.get_account_by_id(
-            id_origem,
-            id_usuario
-        )
-
-        destino = self.account_model.get_account_by_id(
-            id_destino,
-            id_usuario
-        )
-
-        if not origem or not destino:
-            raise PermissionError("Conta inválida.")
-
-        if float(origem.get("Saldo_Atual", 0)) < valor:
-            raise ValueError("Saldo insuficiente.")
-
-        self._begin()
-
         try:
-            self._registrar_transferencia(
-                id_origem,
-                id_destino,
-                valor,
-                data,
-                id_usuario
+            if not id_usuario:
+                raise PermissionError("Usuário não autenticado.")
+
+            if id_origem == id_destino:
+                raise ValueError("Contas devem ser diferentes.")
+
+            valor = float(valor)
+            if valor <= 0:
+                raise ValueError("O valor deve ser maior que zero.")
+
+            with self.transaction_model.unit_of_work(
+                self.account_model,
+                immediate=True
+            ):
+                origem = self.account_model.get_account_by_id(
+                    id_origem,
+                    id_usuario
+                )
+
+                destino = self.account_model.get_account_by_id(
+                    id_destino,
+                    id_usuario
+                )
+
+                if not origem or not destino:
+                    raise PermissionError(
+                        "Uma das contas não pertence ao usuário."
+                    )
+
+                if float(origem.get("Saldo_Atual", 0)) < valor:
+                    raise InsufficientFundsError("Saldo insuficiente.")
+
+                self._registrar_transferencia(
+                    id_origem,
+                    id_destino,
+                    valor,
+                    data,
+                    id_usuario
+                )
+
+            return operation_result(
+                True,
+                "OK",
+                "Transferência realizada com sucesso.",
+                {
+                    "ID_Conta_Origem": id_origem,
+                    "ID_Conta_Destino": id_destino,
+                    "Valor": valor,
+                }
             )
 
-            self._commit()
-            return True
+        except InsufficientFundsError as exc:
+            logger.warning(
+                "Transferência recusada por saldo insuficiente: %s",
+                exc
+            )
+            return operation_result(False, "SALDO_INSUFICIENTE", str(exc))
+
+        except PermissionError as exc:
+            logger.warning("Transferência não autorizada: %s", exc)
+            return operation_result(False, "NAO_AUTORIZADO", str(exc))
+
+        except (TypeError, ValueError) as exc:
+            logger.warning("Dados inválidos para transferência: %s", exc)
+            return operation_result(False, "DADOS_INVALIDOS", str(exc))
+
+        except DatabaseError:
+            logger.exception("Erro de banco ao realizar transferência")
+            return operation_result(
+                False,
+                "ERRO_BANCO",
+                "Não foi possível concluir a transferência."
+            )
 
         except Exception:
-            self._rollback()
             logger.exception("Erro ao realizar transferência")
-            raise
+            return operation_result(
+                False,
+                "ERRO_INTERNO",
+                "Não foi possível concluir a transferência."
+            )
 
     # ============================================================
     # CONVERTER EM TRANSFERÊNCIA
@@ -470,7 +536,6 @@ class TransactionService:
             },
             validar_saldo=False
         )
-
     # ============================================================
     # CONSULTAS
     # ============================================================

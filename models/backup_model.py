@@ -2,6 +2,7 @@
 
 import os
 import json
+import uuid
 from datetime import datetime
 
 from database.database import Database
@@ -17,6 +18,39 @@ class BackupModel:
     - restaura via INSERT
     """
 
+    BACKUP_TABLES = (
+        "usuarios",
+        "categorias",
+        "contas",
+        "credito",
+        "favorecido",
+        "pessoa_fisica",
+        "pessoa_juridica",
+        "metas",
+        "agendamentos",
+        "transacoes",
+        "lancamentos",
+        "pagamentos_fatura",
+    )
+
+    RESTORE_ORDER = (
+        "usuarios",
+        "recuperacao_senha",
+        "categorias",
+        "contas",
+        "credito",
+        "favorecido",
+        "pessoa_fisica",
+        "pessoa_juridica",
+        "metas",
+        "agendamentos",
+        "transacoes",
+        "lancamentos",
+        "pagamentos_fatura",
+    )
+
+    DELETE_ORDER = tuple(reversed(RESTORE_ORDER))
+
     def __init__(self, database_path: str):
         self.database_path = database_path
         self.db = Database(database_path)
@@ -26,24 +60,9 @@ class BackupModel:
     # =====================================================
     def _extrair_dados(self):
 
-        tabelas = [
-            "usuarios",
-            "categorias",
-            "contas",
-            "credito",
-            "favorecido",
-            "pessoa_fisica",
-            "pessoa_juridica",
-            "transacoes",
-            "agendamentos",
-            "lancamentos",
-            "metas",
-            "recuperacao_senha"
-        ]
-
         dados = {}
 
-        for tabela in tabelas:
+        for tabela in self.BACKUP_TABLES:
             dados[tabela] = self.db.fetch_all(f"SELECT * FROM {tabela}")
 
         return dados
@@ -51,7 +70,12 @@ class BackupModel:
     # =====================================================
     # BACKUP (.kp)
     # =====================================================
-    def criar_backup(self, destino: str, senha: str) -> str:
+    def criar_backup(
+        self,
+        destino: str,
+        senha: str,
+        prefixo: str = "backup"
+    ) -> str:
 
         if not os.path.isdir(destino):
             raise FileNotFoundError("Pasta de destino inválida.")
@@ -79,10 +103,12 @@ class BackupModel:
         }
 
         # 5️⃣ salvar arquivo
-        nome = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.kp"
+        instante = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        sufixo = uuid.uuid4().hex[:12]
+        nome = f"{prefixo}_{instante}_{sufixo}.kp"
         caminho = os.path.join(destino, nome)
 
-        with open(caminho, "w", encoding="utf-8") as f:
+        with open(caminho, "x", encoding="utf-8") as f:
             json.dump(estrutura, f)
 
         return caminho
@@ -112,33 +138,35 @@ class BackupModel:
         # 2️⃣ carregar dados
         dados = json.loads(json_bytes.decode("utf-8"))
 
-        # 3️⃣ restaurar no banco
-        with self.db.connect() as conn:
+        if not isinstance(dados, dict):
+            raise ValueError("Conteúdo do backup inválido.")
+
+        desconhecidas = set(dados) - set(self.RESTORE_ORDER)
+        if desconhecidas:
+            raise ValueError(
+                "Backup contém tabelas não reconhecidas: "
+                f"{sorted(desconhecidas)}"
+            )
+
+        # A ordem explícita respeita as dependências. FKs permanecem ativas;
+        # o adiamento cobre referências próprias e permite validação integral
+        # antes do único commit.
+        conn = self.db.connect()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("PRAGMA defer_foreign_keys = ON")
             cursor = conn.cursor()
 
-            # ⚠️ ordem IMPORTANTE (FK)
-            ordem_delete = [
-                "lancamentos",
-                "transacoes",
-                "agendamentos",
-                "metas",
-                "recuperacao_senha",
-                "pessoa_fisica",
-                "pessoa_juridica",
-                "favorecido",
-                "credito",
-                "contas",
-                "categorias",
-                "usuarios"
-            ]
-
-            for tabela in ordem_delete:
+            for tabela in self.DELETE_ORDER:
                 cursor.execute(f"DELETE FROM {tabela}")
 
-            # inserir dados
-            for tabela, registros in dados.items():
-
+            for tabela in self.RESTORE_ORDER:
+                registros = dados.get(tabela, [])
                 for row in registros:
+                    if not isinstance(row, dict) or not row:
+                        raise ValueError(
+                            f"Registro inválido na tabela {tabela}."
+                        )
                     colunas = ", ".join(row.keys())
                     placeholders = ", ".join(["?"] * len(row))
 
@@ -147,7 +175,21 @@ class BackupModel:
                         tuple(row.values())
                     )
 
+            violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if violations:
+                raise ValueError(
+                    "Backup produziria violações de integridade: "
+                    f"{[tuple(row) for row in violations]}"
+                )
+
             conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
+
+        finally:
+            conn.close()
 
         return True
 

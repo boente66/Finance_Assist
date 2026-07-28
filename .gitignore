@@ -7,6 +7,7 @@ venv/
 env/
 ENV/
 build-env/
+financeiro1/
 source/
 financeiro/
 
@@ -63,6 +64,11 @@ Thumbs.db
 output/
 dist/
 build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+vendor/
+third_party/
 *.egg-info/
 
 # Python

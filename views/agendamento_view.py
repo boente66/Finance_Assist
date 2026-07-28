@@ -825,9 +825,22 @@ class AgendamentoView(QWidget):
 
             dados_execucao = dialog.get_dados_execucao()
 
-            self.schedule_controller.execute_schedule(
+            resultado = self.schedule_controller.execute_schedule(
                 dados_execucao
             )
+
+            if not resultado.get("sucesso"):
+                QMessageBox.warning(
+                    self,
+                    TranslatorApp.get("Aviso"),
+                    TranslatorApp.get(
+                        resultado.get(
+                            "mensagem",
+                            "Não foi possível executar o agendamento."
+                        )
+                    ),
+                )
+                return
 
             self.load_data()
 
@@ -835,7 +848,10 @@ class AgendamentoView(QWidget):
                 self,
                 TranslatorApp.get("Sucesso"),
                 TranslatorApp.get(
-                    "Agendamento executado com sucesso."
+                    resultado.get(
+                        "mensagem",
+                        "Agendamento executado com sucesso."
+                    )
                 ),
             )
 

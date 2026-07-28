@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class TransactionModel(Database):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_name=None):
+        super().__init__(db_name) if db_name else super().__init__()
 
     # ============================================================
     # CREATE
@@ -25,9 +25,10 @@ class TransactionModel(Database):
                 ID_Categoria,
                 ID_Favorecido,
                 Notas,
-                ID_Usuario
+                ID_Usuario,
+                ID_Agendamento
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
         cur = self.execute_query(sql, (
@@ -39,9 +40,18 @@ class TransactionModel(Database):
             dados.get("ID_Categoria"),
             dados.get("ID_Favorecido"),
             dados.get("Notas"),
-            dados.get("ID_Usuario")
+            dados.get("ID_Usuario"),
+            dados.get("ID_Agendamento")
         ))
         return cur.lastrowid
+
+    def get_transaction_by_schedule(self, id_agendamento, id_usuario):
+        return self.fetch_one("""
+            SELECT *
+            FROM transacoes
+            WHERE ID_Agendamento = ?
+              AND ID_Usuario = ?
+        """, (id_agendamento, id_usuario))
 
     # ============================================================
     # READ

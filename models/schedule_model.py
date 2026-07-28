@@ -6,13 +6,13 @@ logger = logging.getLogger(__name__)
 
 class ScheduleModel(Database):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_name=None):
+        super().__init__(db_name) if db_name else super().__init__()
 
     # ------------------------------------------------------------------
     # ADD
     # ------------------------------------------------------------------
-    def add_schedule(self, schedule_data: dict) -> None:
+    def add_schedule(self, schedule_data: dict) -> int:
         query = """
         INSERT INTO agendamentos (
             Tipo, Data, Valor, Descricao, Status,
@@ -22,7 +22,7 @@ class ScheduleModel(Database):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
-        self.execute_query(
+        return self.execute_insert(
             query,
             (
                 schedule_data["Tipo"],
@@ -42,6 +42,14 @@ class ScheduleModel(Database):
                 int(schedule_data.get("Parcelas", 1)),
             ),
         )
+
+    def get_schedule_transaction(self, schedule_id: int, id_usuario: int):
+        return self.fetch_one("""
+            SELECT ID_Transacao, ID_Agendamento, ID_Usuario
+            FROM transacoes
+            WHERE ID_Agendamento = ?
+              AND ID_Usuario = ?
+        """, (schedule_id, id_usuario))
 
     # ------------------------------------------------------------------
     # SELECT TODOS
@@ -144,6 +152,13 @@ class ScheduleModel(Database):
             )
             return None
 
+    def get_schedule_owner(self, schedule_id: int):
+        return self.fetch_one("""
+            SELECT ID_Usuario
+            FROM agendamentos
+            WHERE ID_Agendamento = ?
+        """, (schedule_id,))
+
     # ------------------------------------------------------------------
     # UPDATE
     # ------------------------------------------------------------------
@@ -202,7 +217,22 @@ class ScheduleModel(Database):
           AND ID_Usuario = ?
         """
 
-        self.execute_query(query, (status, schedule_id, id_usuario))
+        cursor = self.execute_query(query, (status, schedule_id, id_usuario))
+        return cursor.rowcount
+
+    def mark_executed(self, schedule_id: int, id_usuario: int) -> None:
+        cursor = self.execute_query("""
+            UPDATE agendamentos
+            SET Status = 'EXECUTADO'
+            WHERE ID_Agendamento = ?
+              AND ID_Usuario = ?
+              AND Status IN ('AGENDADO', 'ATRASADO')
+        """, (schedule_id, id_usuario))
+
+        if cursor.rowcount != 1:
+            raise ValueError(
+                "Agendamento não está disponível para execução."
+            )
 
     # ------------------------------------------------------------------
     # CANCELAR
