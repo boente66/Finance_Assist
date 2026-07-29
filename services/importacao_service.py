@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import logging
 import re
@@ -17,14 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class ImportacaoService:
-    """
-    Serviço principal de importação.
-    Responsável por:
-    - Ler arquivo
-    - Reconhecer layout
-    - Normalizar dados
-    - Classificar categoria via IA leve
-    """
 
     def __init__(self):
         self.pdf_service = PdfService()
@@ -56,87 +49,53 @@ class ImportacaoService:
         if not os.path.exists(caminho_arquivo):
             raise FileNotFoundError("Arquivo não encontrado.")
 
-        extensao = os.path.splitext(caminho_arquivo)[1].lower()
-
         try:
             if progress_callback:
                 progress_callback(5, "Validando arquivo...")
 
-            dados = []
-            tipo_documento = "desconhecido"
+            extensao = os.path.splitext(caminho_arquivo)[1].lower()
 
-            # ==================================================
-            # PDF
-            # ==================================================
-            if extensao == ".pdf":
+            conteudo = self._ler_conteudo(
+                caminho_arquivo=caminho_arquivo,
+                extensao=extensao,
+                progress_callback=progress_callback
+            )
 
-                if progress_callback:
-                    progress_callback(15, "Extraindo texto do PDF...")
+            if not conteudo:
+                logger.warning("Arquivo sem conteúdo extraído.")
+                return []
 
-                texto = self.pdf_service.ler_texto(caminho_arquivo)
+            if progress_callback:
+                progress_callback(35, "Reconhecendo layout...")
 
-                if not texto:
-                    logger.warning("PDF sem conteúdo extraído.")
-                    return []
+            resultado_reconhecimento = (
+                self.reconhecimento_service
+                .reconhecer_layout(conteudo)
+            )
 
-                if progress_callback:
-                    progress_callback(35, "Reconhecendo layout...")
-
-                layout = self.reconhecimento_service.reconhecer_layout(texto)
-
-                if not layout:
-                    raise ValueError("Layout de PDF não reconhecido.")
-
-                if progress_callback:
-                    progress_callback(50, "Processando layout...")
-
-                dados = layout.parse(texto)
-
-                tipo_documento = getattr(
-                    layout,
-                    "tipo_documento",
-                    "extrato_bancario"
+            if resultado_reconhecimento["indice"] == 0:
+                raise ValueError(
+                    resultado_reconhecimento.get(
+                        "mensagem",
+                        "Layout não reconhecido."
+                    )
                 )
 
-            # ==================================================
-            # CSV
-            # ==================================================
-            elif extensao == ".csv":
+            layout = resultado_reconhecimento["layout"]
 
-                if progress_callback:
-                    progress_callback(20, "Lendo CSV...")
+            if progress_callback:
+                progress_callback(50, "Processando layout...")
 
-                dados = self.csv_service.ler(caminho_arquivo)
-                tipo_documento = "exportacao_sistema"
-
-            # ==================================================
-            # XLSX
-            # ==================================================
-            elif extensao in (".xlsx", ".xls"):
-
-                if progress_callback:
-                    progress_callback(20, "Lendo planilha...")
-
-                dados = self.xlsx_service.ler(caminho_arquivo)
-                tipo_documento = "exportacao_sistema"
-
-            # ==================================================
-            # TXT
-            # ==================================================
-            elif extensao == ".txt":
-
-                if progress_callback:
-                    progress_callback(20, "Lendo TXT...")
-
-                dados = self.txt_service.ler(caminho_arquivo)
-                tipo_documento = "exportacao_sistema"
-
-            else:
-                raise ValueError("Formato de arquivo não suportado.")
+            dados = layout.parse(conteudo)
 
             if not isinstance(dados, list):
-                logger.warning("Dados importados não estão em formato lista.")
+                logger.warning("Layout retornou dados inválidos.")
                 return []
+
+            tipo_documento = resultado_reconhecimento.get(
+                "tipo_documento",
+                getattr(layout, "tipo_documento", "desconhecido")
+            )
 
             if progress_callback:
                 progress_callback(70, "Normalizando dados...")
@@ -156,6 +115,45 @@ class ImportacaoService:
         except Exception:
             logger.exception("Erro na importação")
             raise
+
+    # ======================================================
+    # LEITURA DO CONTEÚDO
+    # ======================================================
+    def _ler_conteudo(
+        self,
+        caminho_arquivo: str,
+        extensao: str,
+        progress_callback: Optional[Callable] = None
+    ):
+
+        match extensao:
+
+            case ".pdf":
+                if progress_callback:
+                    progress_callback(15, "Extraindo texto do PDF...")
+
+                return self.pdf_service.ler_texto(caminho_arquivo)
+
+            case ".csv":
+                if progress_callback:
+                    progress_callback(20, "Lendo CSV...")
+
+                return self.csv_service.ler(caminho_arquivo)
+
+            case ".xlsx" | ".xls":
+                if progress_callback:
+                    progress_callback(20, "Lendo planilha...")
+
+                return self.xlsx_service.ler(caminho_arquivo)
+
+            case ".txt":
+                if progress_callback:
+                    progress_callback(20, "Lendo TXT...")
+
+                return self.txt_service.ler(caminho_arquivo)
+
+            case _:
+                raise ValueError("Formato de arquivo não suportado.")
 
     # ======================================================
     # NORMALIZAÇÃO
@@ -182,11 +180,13 @@ class ImportacaoService:
             if not data or not descricao:
                 continue
 
-            descricao = self._limpar_descricao_bancaria(str(descricao).strip())
+            descricao = self._limpar_descricao_bancaria(
+                str(descricao).strip()
+            )
 
-            try:
-                valor = float(valor)
-            except (TypeError, ValueError):
+            valor = self._parse_valor(valor)
+
+            if valor is None:
                 continue
 
             tipo = "Despesa" if valor < 0 else "Receita"
@@ -195,15 +195,20 @@ class ImportacaoService:
             confianca = 0.0
 
             match tipo_documento:
+
                 case "extrato_bancario":
                     try:
-                        id_categoria, confianca = self.categorizacao_service.categorizar(
-                            descricao,
-                            valor,
-                            id_usuario
+                        id_categoria, confianca = (
+                            self.categorizacao_service.categorizar(
+                                descricao,
+                                valor,
+                                id_usuario
+                            )
                         )
                     except Exception:
-                        logger.exception("Erro ao categorizar extrato bancário")
+                        logger.exception(
+                            "Erro ao categorizar extrato bancário"
+                        )
                         id_categoria = None
                         confianca = 0.0
 
@@ -216,11 +221,14 @@ class ImportacaoService:
                     subcategoria = item.get("Subcategoria")
 
                     if categoria_pai:
-                        id_categoria = self.category_service.resolver_categoria_importacao(
-                            categoria_pai_nome=categoria_pai,
-                            subcategoria_nome=subcategoria,
-                            valor=valor,
-                            id_usuario=id_usuario
+                        id_categoria = (
+                            self.category_service
+                            .resolver_categoria_importacao(
+                                categoria_pai_nome=categoria_pai,
+                                subcategoria_nome=subcategoria,
+                                valor=valor,
+                                id_usuario=id_usuario
+                            )
                         )
                         confianca = 1.0
 
@@ -246,28 +254,68 @@ class ImportacaoService:
         return dados_final
 
     # ======================================================
+    # PARSE DE VALOR
+    # ======================================================
+    def _parse_valor(self, valor):
+        if valor is None:
+            return None
+
+        try:
+            if isinstance(valor, (int, float)):
+                return float(valor)
+
+            valor_str = str(valor).strip()
+
+            negativo = (
+                "-" in valor_str
+                or "−" in valor_str
+            )
+
+            valor_str = (
+                valor_str
+                .replace("R$", "")
+                .replace(" ", "")
+                .replace("+", "")
+                .replace("-", "")
+                .replace("−", "")
+            )
+
+            if "," in valor_str:
+                valor_str = (
+                    valor_str
+                    .replace(".", "")
+                    .replace(",", ".")
+                )
+
+            numero = float(valor_str)
+
+            return -numero if negativo else numero
+
+        except Exception:
+            logger.warning("Valor inválido na importação: %s", valor)
+            return None
+
+    # ======================================================
     # LIMPEZA DE DESCRIÇÃO BANCÁRIA
     # ======================================================
     def _limpar_descricao_bancaria(self, descricao: str) -> str:
-        """
-        Limpa ruídos comuns de extrato bancário.
-        """
-
         if not descricao:
             return descricao
 
         descricao = descricao.upper()
 
-        # Remove códigos bancários comuns
         descricao = re.sub(r"\b(C|D)\b$", "", descricao)
-
-        # Remove múltiplos espaços
         descricao = re.sub(r"\s+", " ", descricao)
 
         return descricao.strip()
 
-
-    def importar_comprovante_pdf(self, caminho_arquivo: str) -> Optional[bytes]:
+    # ======================================================
+    # COMPROVANTE PDF
+    # ======================================================
+    def importar_comprovante_pdf(
+        self,
+        caminho_arquivo: str
+    ) -> Optional[bytes]:
 
         if not caminho_arquivo:
             raise ValueError("Arquivo não informado.")
@@ -278,7 +326,9 @@ class ImportacaoService:
         extensao = os.path.splitext(caminho_arquivo)[1].lower()
 
         if extensao != ".pdf":
-            raise ValueError("Apenas arquivos PDF são suportados para comprovantes.")
+            raise ValueError(
+                "Apenas arquivos PDF são suportados para comprovantes."
+            )
 
         try:
             return self.pdf_service.ler_bytes(caminho_arquivo)

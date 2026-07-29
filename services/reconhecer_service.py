@@ -1,164 +1,386 @@
+# -*- coding: utf-8 -*-
 import re
 
 from models.layouts.banco_brasil_layout import BancoBrasilLayoutModel
 from models.layouts.bradesco_layout import BradescoLayoutModel
 from models.layouts.itau_layout import ItauLayoutModel
 from models.layouts.datani_layout import DataniLayoutModel
+from models.layouts.picpay_layout import PicPayLayoutModel
 
 
 class ReconhecimentoService:
-    """
-    Serviço responsável apenas por decidir qual layout utilizar.
 
-    NÃO lê arquivo.
-    NÃO faz parsing.
-    NÃO categoriza.
+    INDICE_NAO_RECONHECIDO = 0
 
-    Apenas decide qual layout deve interpretar o texto.
-    """
+    # Migração
+    INDICE_DATANI = 101
+
+    # Extratos
+    INDICE_PICPAY = 201
+    INDICE_ITAU = 202
+    INDICE_BANCO_BRASIL = 203
+    INDICE_BRADESCO = 204
+
+    SCORE_MINIMO = 5
+    MAX_LINHAS_TEXTO = 100
+    MAX_LINHAS_TABELA = 50
 
     def __init__(self):
+        self.datani_layout = DataniLayoutModel()
+        self.picpay_layout = PicPayLayoutModel()
         self.itau_layout = ItauLayoutModel()
         self.bb_layout = BancoBrasilLayoutModel()
         self.bradesco_layout = BradescoLayoutModel()
-        self.datani_layout = DataniLayoutModel()
 
     # ======================================================
-    # MÉTODO PRINCIPAL
+    # ENTRADA PRINCIPAL
     # ======================================================
-    def reconhecer_layout(self, texto: str):
+    def reconhecer_layout(self, conteudo):
+        if conteudo is None:
+            return self._nao_reconhecido("Arquivo vazio.")
 
-        if not texto:
-            return None
+        tipo = self._identificar_tipo_documento(conteudo)
 
-        texto_lower = texto.lower()
+        match tipo:
+            case "migracao":
+                return self.reconhecer_migracao(conteudo)
 
-        # --------------------------------------------------
-        # ORDEM IMPORTA
-        # Mais específico primeiro
-        # --------------------------------------------------
+            case "extrato":
+                return self.reconhecer_extrato(conteudo)
 
-        # 🔹 Exportação de sistema (Datani ou similares)
-        if self._is_exportacao_sistema(texto_lower):
-            return self.datani_layout
+            case _:
+                return self._nao_reconhecido(
+                    "Documento não reconhecido como extrato ou migração."
+                )
 
-        # 🔹 Bancos
-        if self._is_itau(texto_lower):
-            return self.itau_layout
+    # ======================================================
+    # IDENTIFICAR GRUPO DO DOCUMENTO
+    # ======================================================
+    def _identificar_tipo_documento(self, conteudo):
+        score_migracao = self._score_migracao(conteudo)
+        score_extrato = self._score_extrato(conteudo)
 
-        if self._is_banco_do_brasil(texto_lower):
-            return self.bb_layout
+        # Em caso de empate, prioriza extrato bancário.
+        if score_extrato >= score_migracao and score_extrato >= self.SCORE_MINIMO:
+            return "extrato"
 
-        if self._is_bradesco(texto_lower):
-            return self.bradesco_layout
+        if score_migracao >= self.SCORE_MINIMO:
+            return "migracao"
 
         return None
 
     # ======================================================
-    # REGRAS DE RECONHECIMENTO
+    # RECONHECER DENTRO DO GRUPO
     # ======================================================
+    def reconhecer_migracao(self, conteudo):
+        candidatos = [
+            self._candidato(
+                indice=self.INDICE_DATANI,
+                nome="datani",
+                grupo="migracao",
+                tipo_documento="migracao_sistema",
+                layout=self.datani_layout,
+                score=self._score_datani(conteudo),
+            )
+        ]
 
-    # ------------------------------------------------------
-    # EXPORTAÇÃO DE SISTEMA (Datani / Sistema interno)
-    # ------------------------------------------------------
-    def _is_exportacao_sistema(self, texto):
+        return self._melhor(
+            candidatos,
+            "Migração de sistema não localizada."
+        )
 
-        # Cabeçalhos típicos de CSV exportado do sistema
-        if (
-            "importado" in texto
-            and "compensado" in texto
-            and "categoria" in texto
-            and ("receita" in texto or "despesa" in texto)
-        ):
-            return True
+    def reconhecer_extrato(self, conteudo):
+        candidatos = [
+            self._candidato(
+                indice=self.INDICE_PICPAY,
+                nome="picpay",
+                grupo="extrato",
+                tipo_documento="extrato_bancario",
+                layout=self.picpay_layout,
+                score=self._score_picpay(conteudo),
+            ),
+            self._candidato(
+                indice=self.INDICE_ITAU,
+                nome="itau",
+                grupo="extrato",
+                tipo_documento="extrato_bancario",
+                layout=self.itau_layout,
+                score=self._score_itau(conteudo),
+            ),
+            self._candidato(
+                indice=self.INDICE_BANCO_BRASIL,
+                nome="banco_brasil",
+                grupo="extrato",
+                tipo_documento="extrato_bancario",
+                layout=self.bb_layout,
+                score=self._score_banco_do_brasil(conteudo),
+            ),
+            self._candidato(
+                indice=self.INDICE_BRADESCO,
+                nome="bradesco",
+                grupo="extrato",
+                tipo_documento="extrato_bancario",
+                layout=self.bradesco_layout,
+                score=self._score_bradesco(conteudo),
+            ),
+        ]
 
-        # Presença clara de coluna Categoria
-        if "categoria" in texto and ("descrição" in texto or "descricao" in texto or "descri" in texto):
-            return True
+        return self._melhor(
+            candidatos,
+            "Extrato bancário não localizado."
+        )
 
-        # Estrutura Categoria: Subcategoria
-        if re.search(r"\b\w+\s*:\s*\w+", texto):
-            return True
+    # ======================================================
+    # SCORES GERAIS
+    # ======================================================
+    def _score_migracao(self, conteudo):
+        return self._score_datani(conteudo)
 
-        # Marcação explícita de transferência
+    def _score_extrato(self, conteudo):
+        return max(
+            self._score_picpay(conteudo),
+            self._score_itau(conteudo),
+            self._score_banco_do_brasil(conteudo),
+            self._score_bradesco(conteudo),
+        )
+
+    # ======================================================
+    # SCORES — DATANI / MIGRAÇÃO
+    # ======================================================
+    def _score_datani(self, conteudo):
+        score = 0
+
+        texto = self._conteudo_para_texto(conteudo)
+        colunas = self._colunas(conteudo)
+
         if "<transferencia>" in texto:
-            return True
+            score += 5
 
-        return False
+        if "importado" in texto:
+            score += 2
 
-    # ------------------------------------------------------
-    # ITAÚ
-    # ------------------------------------------------------
-    def _is_itau(self, texto):
+        if "compensado" in texto:
+            score += 2
 
-        # Marca explícita
+        if "categoria" in texto or "categoria" in colunas:
+            score += 2
+
+        if "receita" in texto and "despesa" in texto:
+            score += 2
+
+        if (
+            "descricao" in texto
+            or "descrição" in texto
+            or "descricao" in colunas
+            or "descrição" in colunas
+        ):
+            score += 1
+
+        return score
+
+    # ======================================================
+    # SCORES — PICPAY
+    # ======================================================
+    def _score_picpay(self, conteudo):
+        score = 0
+
+        texto = self._conteudo_para_texto(conteudo)
+        colunas = self._colunas(conteudo)
+
+        if "picpay" in texto:
+            score += 5
+
+        if "extrato de conta" in texto:
+            score += 3
+
+        if "saldo ao final do dia" in texto:
+            score += 3
+
+        if "origem / destino" in texto or "origem / destino" in colunas:
+            score += 3
+
+        if "forma de pagamento" in texto or "forma de pagamento" in colunas:
+            score += 3
+
+        if {"data", "hora", "tipo", "valor"}.issubset(colunas):
+            score += 5
+
+        if "pix recebido" in texto:
+            score += 1
+
+        if "pix enviado" in texto:
+            score += 1
+
+        if "troco guardado" in texto:
+            score += 1
+
+        if "dinheiro guardado" in texto:
+            score += 1
+
+        if "dinheiro resgatado" in texto:
+            score += 1
+
+        if "pagamento realizado" in texto:
+            score += 1
+
+        if "compra realizada" in texto:
+            score += 1
+
+        return score
+
+    # ======================================================
+    # SCORES — ITAÚ
+    # ======================================================
+    def _score_itau(self, conteudo):
+        score = 0
+        texto = self._conteudo_para_texto(conteudo)
+
         if "itaú" in texto or "itau" in texto:
-            return True
+            score += 5
 
-        linhas = texto.split("\n")
+        if "extrato conta" in texto:
+            score += 3
 
-        for linha in linhas[:40]:
+        if "limite da conta" in texto:
+            score += 3
 
-            linha = linha.strip()
+        if "saldo do dia" in texto:
+            score += 2
 
-            if re.match(
-                r"\d{2}/\d{2}/\d{4}\s+.+\s+-?\d+[.,]\d{2}(\s+\d+[.,]\d{2})?$",
-                linha
-            ):
-                # Itaú normalmente NÃO usa D/C no final
-                if not linha.endswith((" D", " C")):
-                    return True
+        if "agencia:" in texto or "agência:" in texto:
+            score += 1
 
-        return False
+        movimentos = self._contar_linhas(
+            texto,
+            r"\d{2}/\d{2}/\d{4}\s+.+\s+-?\d{1,3}(?:\.\d{3})*,\d{2}"
+        )
 
-    # ------------------------------------------------------
-    # BANCO DO BRASIL
-    # ------------------------------------------------------
-    def _is_banco_do_brasil(self, texto):
+        score += min(movimentos, 5)
+
+        return score
+
+    # ======================================================
+    # SCORES — BANCO DO BRASIL
+    # ======================================================
+    def _score_banco_do_brasil(self, conteudo):
+        score = 0
+        texto = self._conteudo_para_texto(conteudo)
 
         if "banco do brasil" in texto:
-            return True
+            score += 6
 
-        linhas = texto.split("\n")
+        movimentos_dc = self._contar_linhas(
+            texto,
+            r"\d{2}/\d{2}/\d{4}\s+.+\s+-?\d+[.,]\d{2}\s+[dc]$"
+        )
 
-        for linha in linhas[:40]:
+        score += min(movimentos_dc * 2, 6)
 
-            linha = linha.strip()
+        return score
 
-            if re.search(
-                r"\d{2}/\d{2}/\d{4}\s+.+\s+-?\d+[.,]\d{2}\s+[DC]$",
-                linha
-            ):
-                return True
+    # ======================================================
+    # SCORES — BRADESCO
+    # ======================================================
+    def _score_bradesco(self, conteudo):
+        score = 0
+        texto = self._conteudo_para_texto(conteudo)
 
-        return False
+        if "bradesco" in texto:
+            score += 6
 
-    # ------------------------------------------------------
-    # BRADESCO
-    # ------------------------------------------------------
-    def _is_bradesco(self, texto):
+        if "next" in texto:
+            score += 5
 
-        if "bradesco" in texto or "next" in texto:
-            return True
+        if "extrato de conta" in texto:
+            score += 2
 
-        linhas = texto.split("\n")
+        return score
 
-        for linha in linhas[:40]:
+    # ======================================================
+    # HELPERS
+    # ======================================================
+    def _conteudo_para_texto(self, conteudo):
+        if isinstance(conteudo, str):
+            return conteudo.lower()
 
-            linha = linha.strip()
+        if isinstance(conteudo, list):
+            partes = []
 
-            if re.search(
-                r"\d{2}/\d{2}/\d{4}.*R?\$?\s*-?\d+[.,]\d{2}",
-                linha
-            ):
-                return True
+            for linha in conteudo[:self.MAX_LINHAS_TABELA]:
+                if isinstance(linha, dict):
+                    partes.extend(
+                        str(valor)
+                        for valor in linha.values()
+                        if valor is not None
+                    )
 
-        return False
+            return " ".join(partes).lower()
 
+        return ""
 
-    def is_comprovante(self, texto):
+    def _colunas(self, conteudo):
+        if not isinstance(conteudo, list) or not conteudo:
+            return set()
 
-        if "comprovante" in texto:
-            return True
+        primeira = conteudo[0]
 
-        return False
+        if not isinstance(primeira, dict):
+            return set()
+
+        return {
+            str(chave).strip().lower()
+            for chave in primeira.keys()
+        }
+
+    def _contar_linhas(self, texto: str, padrao: str) -> int:
+        total = 0
+
+        for linha in texto.splitlines()[:self.MAX_LINHAS_TEXTO]:
+            if re.search(padrao, linha.strip()):
+                total += 1
+
+        return total
+
+    def _candidato(
+        self,
+        indice,
+        nome,
+        grupo,
+        tipo_documento,
+        layout,
+        score
+    ):
+        return {
+            "indice": indice,
+            "nome": nome,
+            "grupo": grupo,
+            "tipo_documento": tipo_documento,
+            "tipo_layout": nome,
+            "layout": layout,
+            "score": score,
+            "mensagem": "Layout reconhecido.",
+        }
+
+    def _melhor(self, candidatos, mensagem):
+        melhor = max(candidatos, key=lambda c: c["score"])
+
+        if melhor["score"] < self.SCORE_MINIMO:
+            return self._nao_reconhecido(mensagem)
+
+        return melhor
+
+    def _nao_reconhecido(self, mensagem):
+        return {
+            "indice": self.INDICE_NAO_RECONHECIDO,
+            "nome": "nao_reconhecido",
+            "grupo": None,
+            "tipo_documento": "desconhecido",
+            "tipo_layout": None,
+            "layout": None,
+            "score": 0,
+            "mensagem": mensagem,
+        }
+
+    def is_comprovante(self, conteudo):
+        texto = self._conteudo_para_texto(conteudo)
+        return "comprovante" in texto

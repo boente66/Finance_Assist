@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialogButtonBox,
     QMessageBox,
+    QLabel,
 )
 
 from core.translator_app import TranslatorApp
@@ -46,14 +47,15 @@ class SubcategoriaDialog(QDialog):
         self.nome_input = QLineEdit()
         self.categoria_pai_combo = QComboBox()
 
-        self.form.addRow("", self.nome_input)
-        self.form.addRow("", self.categoria_pai_combo)
+        self.nome_label = QLabel("")
+        self.categoria_pai_label = QLabel("")
+
+        self.form.addRow(self.nome_label, self.nome_input)
+        self.form.addRow(self.categoria_pai_label, self.categoria_pai_combo)
 
         layout.addLayout(self.form)
 
-        self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
 
         layout.addWidget(self.buttons)
 
@@ -68,21 +70,13 @@ class SubcategoriaDialog(QDialog):
     # TRADUÇÃO
     # ==================================================
     def _atualizar_textos(self, *_):
-        self.setWindowTitle(
-            TranslatorApp.get("Nova Subcategoria")
-        )
+        self.setWindowTitle(TranslatorApp.get("Nova Subcategoria"))
 
-        self.form.labelForField(self.nome_input).setText(
-            TranslatorApp.get("Nome") + ":"
-        )
+        self.nome_label.setText(TranslatorApp.get("Nome") + ":")
 
-        self.form.labelForField(self.categoria_pai_combo).setText(
-            TranslatorApp.get("Categoria Pai") + ":"
-        )
+        self.categoria_pai_label.setText(TranslatorApp.get("Categoria Pai") + ":")
 
-        self.buttons.button(QDialogButtonBox.Ok).setText(
-            TranslatorApp.get("OK")
-        )
+        self.buttons.button(QDialogButtonBox.Ok).setText(TranslatorApp.get("OK"))
 
         self.buttons.button(QDialogButtonBox.Cancel).setText(
             TranslatorApp.get("Cancelar")
@@ -100,8 +94,7 @@ class SubcategoriaDialog(QDialog):
             for cat in categorias:
                 if cat.get("ID_Categoria_Pai") is None:
                     self.categoria_pai_combo.addItem(
-                        cat.get("Nome", ""),
-                        cat.get("ID_Categoria")
+                        cat.get("Nome", ""), cat.get("ID_Categoria")
                     )
 
         except Exception as e:
@@ -118,9 +111,7 @@ class SubcategoriaDialog(QDialog):
         if not self.categoria_pai_id:
             return
 
-        index = self.categoria_pai_combo.findData(
-            self.categoria_pai_id
-        )
+        index = self.categoria_pai_combo.findData(self.categoria_pai_id)
 
         if index >= 0:
             self.categoria_pai_combo.setCurrentIndex(index)
@@ -144,9 +135,7 @@ class SubcategoriaDialog(QDialog):
             QMessageBox.warning(
                 self,
                 TranslatorApp.get("Atenção"),
-                TranslatorApp.get(
-                    "O nome da subcategoria não pode estar vazio."
-                ),
+                TranslatorApp.get("O nome da subcategoria não pode estar vazio."),
             )
             return None
 

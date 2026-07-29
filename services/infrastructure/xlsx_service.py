@@ -1,7 +1,32 @@
+# -*- coding: utf-8 -*-
+import re
+import unicodedata
+
+
 class XlsxService:
 
-    def ler(self, caminho_xlsx: str):
+    @staticmethod
+    def _normalizar_chave(chave) -> str:
+        chave = str(chave or "").strip()
 
+        chave = unicodedata.normalize("NFKD", chave)
+        chave = chave.encode("ASCII", "ignore").decode("ASCII")
+
+        chave = re.sub(r"\s+", "", chave)
+
+        return chave
+
+    @classmethod
+    def _normalizar_linha(cls, linha: dict) -> dict:
+        if not isinstance(linha, dict):
+            return {}
+
+        return {
+            cls._normalizar_chave(chave): ("" if valor is None else valor)
+            for chave, valor in linha.items()
+        }
+
+    def ler(self, caminho_xlsx: str):
         if not caminho_xlsx:
             raise ValueError("Arquivo XLSX não informado.")
 
@@ -17,13 +42,15 @@ class XlsxService:
         try:
             df = pd.read_excel(caminho_xlsx)
 
-            # remove linhas totalmente vazias
             df = df.dropna(how="all")
-
-            # converte NaN para ""
             df = df.fillna("")
 
-            return df.to_dict(orient="records")
+            dados = df.to_dict(orient="records")
+
+            return [
+                self._normalizar_linha(linha)
+                for linha in dados
+            ]
 
         except Exception as e:
             raise RuntimeError(

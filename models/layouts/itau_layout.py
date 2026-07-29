@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 import re
 from datetime import datetime
+
 from models.layouts.base_layout import BaseLayout
 
 
@@ -17,16 +19,13 @@ class ItauLayoutModel(BaseLayout):
     # =====================================================
     # PARSE PRINCIPAL
     # =====================================================
-
     def parse(self, texto: str) -> list:
         lancamentos = []
 
         if not texto:
             return lancamentos
 
-        linhas = texto.split("\n")
-
-        for linha in linhas:
+        for linha in texto.splitlines():
             linha = linha.strip()
 
             if not linha:
@@ -45,18 +44,28 @@ class ItauLayoutModel(BaseLayout):
     # =====================================================
     # FILTRO DE LINHAS
     # =====================================================
-
     def _linha_ignorada(self, linha: str) -> bool:
-        linha_upper = linha.upper()
+        linha_upper = linha.upper().strip()
 
         palavras_ignorar = [
             "SALDO DO DIA",
             "SALDO ANTERIOR",
             "POSIÇÃO CONSOLIDADA",
-            "ITAU",
-            "AGÊNCIA",
-            "CONTA",
-            "EXTRATO",
+            "POSICAO CONSOLIDADA",
+            "EXTRATO CONTA",
+            "EXTRATO CONTA / LANÇAMENTOS",
+            "EXTRATO CONTA / LANCAMENTOS",
+            "PERÍODO DE VISUALIZAÇÃO",
+            "PERIODO DE VISUALIZACAO",
+            "EMITIDO EM",
+            "LIMITE DA CONTA",
+            "TOTAL CONTRATADO",
+            "AGÊNCIA:",
+            "AGENCIA:",
+            "CONTA:",
+            "DATA LANÇAMENTOS VALOR",
+            "DATA LANCAMENTOS VALOR",
+            "AVISO!",
         ]
 
         return any(p in linha_upper for p in palavras_ignorar)
@@ -64,7 +73,6 @@ class ItauLayoutModel(BaseLayout):
     # =====================================================
     # PARSE DE CADA LINHA
     # =====================================================
-
     def _parse_linha(self, linha: str) -> dict | None:
         """
         Suporta padrões reais Itaú:
@@ -72,10 +80,19 @@ class ItauLayoutModel(BaseLayout):
         01/01/2024 DESCRICAO QUALQUER -123,45
         01/01/2024 DESCRICAO QUALQUER 123,45
         01/01/2024 DESCRICAO QUALQUER -123,45 1.500,00
+
+        Também trata descrições extraídas com sufixos colados:
+        PIX QRS 99 TECNOLOG16/06
+        RSCSS GRAN COFFEE1505
+        RSCSS BARBEARIA AM1306
         """
 
+        linha = self._normalizar_linha(linha)
+
         padrao = re.match(
-            r"(\d{2}/\d{2}/\d{4})\s+(.+?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})(?:\s+\d{1,3}(?:\.\d{3})*,\d{2})?$",
+            r"^(\d{2}/\d{2}/\d{4})\s+(.+?)\s+"
+            r"(-?\d{1,3}(?:\.\d{3})*,\d{2})"
+            r"(?:\s+\d{1,3}(?:\.\d{3})*,\d{2})?$",
             linha
         )
 
@@ -89,17 +106,51 @@ class ItauLayoutModel(BaseLayout):
             return None
 
         valor = self._parse_valor(valor_raw)
+        descricao = self._limpar_descricao(descricao_raw)
+
+        if not descricao:
+            return None
 
         return {
             "Data": data,
-            "Descricao": descricao_raw.strip(),
+            "Descricao": descricao,
             "Valor": valor,
         }
 
     # =====================================================
+    # LIMPEZA
+    # =====================================================
+    def _normalizar_linha(self, linha: str) -> str:
+        linha = str(linha or "").strip()
+        linha = re.sub(r"\s+", " ", linha)
+        return linha
+
+    def _limpar_descricao(self, descricao: str) -> str:
+        descricao = str(descricao or "").strip()
+
+        # Remove data colada no final: TECNOLOG16/06, LEONARD13/06
+        descricao = re.sub(
+            r"(?<=[A-ZÁÀÂÃÉÊÍÓÔÕÚÇa-záàâãéêíóôõúç])\d{2}/\d{2}$",
+            "",
+            descricao
+        )
+
+        # Remove data compacta colada no final: COFFEE1505, BEBIDAS1306
+        descricao = re.sub(
+            r"(?<=[A-ZÁÀÂÃÉÊÍÓÔÕÚÇa-záàâãéêíóôõúç])\d{4}$",
+            "",
+            descricao
+        )
+
+        # Remove hífens duplicados e espaços extras
+        descricao = re.sub(r"\s+", " ", descricao)
+        descricao = descricao.strip(" -")
+
+        return descricao.strip()
+
+    # =====================================================
     # CONVERSÕES
     # =====================================================
-
     def _parse_data(self, data_str: str) -> str | None:
         try:
             return datetime.strptime(
@@ -110,5 +161,5 @@ class ItauLayoutModel(BaseLayout):
             return None
 
     def _parse_valor(self, valor_str: str) -> float:
-        valor_str = valor_str.replace(".", "").replace(",", ".")
+        valor_str = str(valor_str).replace(".", "").replace(",", ".")
         return float(valor_str)
