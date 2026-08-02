@@ -48,7 +48,15 @@ class TransacaoView(QWidget):
 
         self.setWindowTitle("Contas e Lançamentos")
 
-        self.main_layout = QHBoxLayout(self)
+        root_layout = QVBoxLayout(self)
+        self.page_title = QLabel()
+        self.page_title.setObjectName("pageTitle")
+        self.page_subtitle = QLabel()
+        self.page_subtitle.setObjectName("pageSubtitle")
+        root_layout.addWidget(self.page_title)
+        root_layout.addWidget(self.page_subtitle)
+        self.main_layout = QHBoxLayout()
+        root_layout.addLayout(self.main_layout, 1)
 
         self._montar_painel_esquerdo()
         self._montar_area_painel()
@@ -65,6 +73,12 @@ class TransacaoView(QWidget):
     def _atualizar_textos(self, *_):
         self.setWindowTitle(
             TranslatorApp.get("Contas e Lançamentos")
+        )
+        self.page_title.setText(
+            TranslatorApp.get("Contas e Lançamentos")
+        )
+        self.page_subtitle.setText(
+            TranslatorApp.get("Gerencie contas, saldos e movimentações")
         )
 
         self.lbl_contas.setText(
@@ -229,6 +243,28 @@ class TransacaoView(QWidget):
         painel = PainelFatura(parent=self)
         painel.set_cartao(cartao)
 
+        self._trocar_painel(painel)
+
+    def abrir_fatura(self, id_cartao, mes, ano):
+        """Seleciona cartão e competência solicitados por outra tela."""
+        cartao = self.fatura_controller.buscar_cartao_por_id(id_cartao)
+        if not cartao:
+            QMessageBox.warning(
+                self,
+                TranslatorApp.get("Erro"),
+                TranslatorApp.get("Cartão não encontrado"),
+            )
+            return
+
+        for row in range(self.lista_cartoes.count()):
+            item = self.lista_cartoes.item(row)
+            if item.data(Qt.UserRole) == id_cartao:
+                self.lista_cartoes.setCurrentItem(item)
+                break
+
+        painel = PainelFatura(parent=self)
+        painel.set_competencia(mes, ano)
+        painel.set_cartao(cartao)
         self._trocar_painel(painel)
 
     # ==========================================================
@@ -478,15 +514,13 @@ class TransacaoView(QWidget):
         header = QHBoxLayout()
 
         label = QLabel(titulo)
-        label.setStyleSheet(
-            "font-size: 15px; font-weight: bold;"
-        )
+        label.setObjectName("cardTitle")
 
         btn = QPushButton("")
         btn.setIcon(
             self._icon("add")
         )
-        btn.setFixedSize(24, 24)
+        btn.setMinimumSize(32, 32)
         btn.clicked.connect(callback_novo)
 
         header.addWidget(label)
@@ -494,7 +528,7 @@ class TransacaoView(QWidget):
         header.addWidget(btn)
 
         lista = QListWidget()
-        lista.setFixedWidth(largura)
+        lista.setMinimumWidth(largura)
         lista.setMaximumHeight(altura_max)
 
         container.addLayout(header)

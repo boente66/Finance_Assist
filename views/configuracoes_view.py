@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 )
 
 from core.session import Session
-from core.themes import available_themes
+from core.theme_manager import ThemeManager
 from core.translator_app import TranslatorApp
 from controllers.configuracoes_controller import ConfiguracoesController
 from controllers.user_controller import UserController
@@ -59,8 +59,13 @@ class ConfiguracoesView(QWidget):
         self.layout.addWidget(self.tema_label)
 
         self.tema_combo = QComboBox()
-        self.tema_combo.addItems(available_themes())
+        for tema in ThemeManager.temas_disponiveis():
+            self.tema_combo.addItem(TranslatorApp.get(tema), tema)
         self.layout.addWidget(self.tema_combo)
+
+        self.design_mode_btn = QPushButton()
+        self.design_mode_btn.setObjectName("secondaryButton")
+        self.layout.addWidget(self.design_mode_btn)
 
         self.moeda_label = QLabel()
         self.layout.addWidget(self.moeda_label)
@@ -106,6 +111,7 @@ class ConfiguracoesView(QWidget):
 
     def _connect_events(self):
         self.aplicar_btn.clicked.connect(self.aplicar_usuario)
+        self.design_mode_btn.clicked.connect(self.abrir_modo_design)
 
         if self.eh_admin:
             self.aplicar_todos_btn.clicked.connect(self.aplicar_global)
@@ -117,6 +123,7 @@ class ConfiguracoesView(QWidget):
         self.titulo_label.setText(TranslatorApp.get("Configurações"))
         self.idioma_label.setText(TranslatorApp.get("Idioma"))
         self.tema_label.setText(TranslatorApp.get("Tema"))
+        self.design_mode_btn.setText(TranslatorApp.get("Abrir Modo Design"))
         self.moeda_label.setText(TranslatorApp.get("Moeda"))
         self.aplicar_btn.setText(TranslatorApp.get("Aplicar"))
         self.aplicar_todos_btn.setText(
@@ -129,6 +136,14 @@ class ConfiguracoesView(QWidget):
         self.db_btn.setText(
             TranslatorApp.get("Selecionar")
         )
+        selected_theme = self.tema_combo.currentData()
+        self.tema_combo.blockSignals(True)
+        self.tema_combo.clear()
+        for theme in ThemeManager.temas_disponiveis():
+            self.tema_combo.addItem(TranslatorApp.get(theme), theme)
+        index = self.tema_combo.findData(selected_theme)
+        self.tema_combo.setCurrentIndex(max(0, index))
+        self.tema_combo.blockSignals(False)
 
     def _load_config(self):
         config = self.config_controller.obter_configuracoes()
@@ -160,7 +175,10 @@ class ConfiguracoesView(QWidget):
         self._set_combo_by_data(self.idioma_combo, idioma)
 
         if tema:
-            self.tema_combo.setCurrentText(tema)
+            tema = ThemeManager._normalizar(tema)
+            index = self.tema_combo.findData(tema)
+            if index >= 0:
+                self.tema_combo.setCurrentIndex(index)
 
         self._set_combo_by_data(self.moeda_combo, moeda)
 
@@ -174,7 +192,7 @@ class ConfiguracoesView(QWidget):
     def _get_dados_config(self):
         return {
             "idioma": self.idioma_combo.currentData(),
-            "tema": self.tema_combo.currentText(),
+            "tema": self.tema_combo.currentData(),
             "moeda": self.moeda_combo.currentData(),
             "db_path": self.db_edit.text().strip()
             if self.eh_admin else None,
@@ -196,6 +214,15 @@ class ConfiguracoesView(QWidget):
 
         if caminho:
             self.db_edit.setText(caminho)
+
+    def abrir_modo_design(self):
+        from views.design_mode_dialog import DesignModeDialog
+
+        dialog = DesignModeDialog(self)
+        if dialog.exec_():
+            index = self.tema_combo.findData("Personalizado")
+            if index >= 0:
+                self.tema_combo.setCurrentIndex(index)
 
     def aplicar_usuario(self):
         dados = self._get_dados_config()

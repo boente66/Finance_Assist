@@ -167,6 +167,7 @@ class TransactionDialogConta(QDialog):
 
         self.btn_cancelar = QPushButton()
         self.btn_salvar = QPushButton()
+        self.btn_cancelar.setObjectName("secondaryButton")
 
         btn_layout.addWidget(self.btn_cancelar)
         btn_layout.addWidget(self.btn_salvar)
@@ -252,6 +253,13 @@ class TransactionDialogConta(QDialog):
         self.data_edit.setDate(QDate.currentDate())
         self.btn_salvar.setDefault(True)
         self.descricao_edit.setFocus()
+        self.setTabOrder(self.tipo_combo, self.descricao_edit)
+        self.setTabOrder(self.descricao_edit, self.data_edit)
+        self.setTabOrder(self.data_edit, self.favorecido_combo)
+        self.setTabOrder(self.favorecido_combo, self.categoria_combo)
+        self.setTabOrder(self.categoria_combo, self.valor_edit)
+        self.setTabOrder(self.valor_edit, self.notas_edit)
+        self.setTabOrder(self.notas_edit, self.btn_salvar)
 
     # ======================================================
     # DADOS

@@ -17,7 +17,7 @@ class Session:
 
     _config_padrao = {
         "idioma": "pt",
-        "tema": "Claro",
+        "tema": "Primavera",
         "moeda": "BRL"
     }
 
@@ -40,12 +40,22 @@ class Session:
     }
 
     _tema_map = {
-        "Claro": "Claro",
-        "Escuro": "Escuro",
-        "Verde": "Verde",
-        "claro": "Claro",
-        "escuro": "Escuro",
-        "verde": "Verde",
+        "Claro": "Primavera",
+        "Escuro": "Noite Intensa",
+        "Verde": "Prosperidade",
+        "claro": "Primavera",
+        "escuro": "Noite Intensa",
+        "verde": "Prosperidade",
+        "Primavera": "Primavera",
+        "Noite Intensa": "Noite Intensa",
+        "Prosperidade": "Prosperidade",
+        "Verão Quente": "Verão Quente",
+        "Personalizado": "Personalizado",
+        "PRIMAVERA": "Primavera",
+        "NOITE_INTENSA": "Noite Intensa",
+        "PROSPERIDADE": "Prosperidade",
+        "VERAO_QUENTE": "Verão Quente",
+        "PERSONALIZADO": "Personalizado",
     }
 
     @classmethod
@@ -55,10 +65,10 @@ class Session:
     @classmethod
     def _normalize_tema(cls, valor):
         if not isinstance(valor, str):
-            return "Claro"
+            return "Primavera"
 
         valor = valor.strip()
-        return cls._tema_map.get(valor, "Claro")
+        return cls._tema_map.get(valor, "Primavera")
 
     # ---------------------------------------
     # USUÁRIO

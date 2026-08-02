@@ -1,5 +1,7 @@
 import hashlib
+import calendar
 import logging
+from decimal import Decimal
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
@@ -560,38 +562,82 @@ class FaturaService:
 
 
     # ============================================
-    # LISTA FATURAS PROJETADAS 
+    # FATURAS VIRTUAIS PARA PROJEÇÃO
     # ============================================
-    def lista_fatura_projetadas(self,id_usuario: int, quantidade_meses: int=6):
-        hoje = date.today()
-        cartoes = self.listar_cartoes(id_usuario)
+    def listar_faturas_projetadas(
+        self,
+        id_usuario: int,
+        quantidade_meses: int = 6,
+        data_referencia=None,
+    ):
+        """Consulta faturas abertas sem criar registros em agendamentos.
+
+        O valor continua vindo de ``calcular_fatura_mes``, a mesma fonte usada
+        pelo painel da fatura. ``Decimal`` é mantido durante a normalização para
+        não introduzir arredondamento binário nos novos totais de projeção.
+        """
+        referencia = data_referencia or date.today()
+        quantidade_meses = max(1, min(int(quantidade_meses), 60))
         projecoes = []
-        for cartao in cartoes:
+        # Uma atualização explícita da projeção deve reler o banco, inclusive
+        # quando a operação ocorreu em outra instância do painel de faturas.
+        self._clear_cache()
+
+        for cartao in self.listar_cartoes(id_usuario) or []:
             id_cartao = cartao["ID_Cartao"]
-            nome_cartao = cartao["Nome", "Cartão"]
-            dia_fechamento = cartao["Dia_Fechamento"]
+            nome_cartao = cartao.get("Nome") or "Cartão"
+            dia_vencimento = int(cartao.get("Dia_Vencimento") or 1)
+            competencias = {
+                (
+                    (referencia + relativedelta(months=offset)).year,
+                    (referencia + relativedelta(months=offset)).month,
+                )
+                for offset in range(quantidade_meses)
+            }
+            limite_passado = referencia + relativedelta(months=-120)
+            limite_futuro = referencia + relativedelta(months=quantidade_meses - 1)
+            for lancamento in self.lancamento_model.get_lancamentos_nao_pagos(
+                id_cartao, id_usuario
+            ):
+                try:
+                    mes_lancamento = int(lancamento["Competencia_Mes"])
+                    ano_lancamento = int(lancamento["Competencia_Ano"])
+                    competencia = date(ano_lancamento, mes_lancamento, 1)
+                except (KeyError, TypeError, ValueError):
+                    logger.warning("Competência inválida no lançamento %s", lancamento)
+                    continue
+                if limite_passado.replace(day=1) <= competencia <= limite_futuro.replace(day=1):
+                    competencias.add((ano_lancamento, mes_lancamento))
 
-            for offset in range(quantidade_meses):
-                mes_ref = hoje + relativedelta(months=offset)
-                mes = mes_ref.month
-                ano = mes_ref.year
-
-                valor = self.calcular_fatura(id_cartao, mes, ano, id_usuario)
-
-                if valor <= 0:
+            for ano, mes in sorted(competencias):
+                valor = Decimal(str(self.calcular_fatura_mes(
+                    id_cartao, mes, ano, id_usuario
+                ))).quantize(Decimal("0.01"))
+                if valor <= Decimal("0.00"):
                     continue
 
-                vencimento = date(ano, mes, min(dia_fechamento,28))
-
+                ultimo_dia = calendar.monthrange(ano, mes)[1]
+                vencimento = date(ano, mes, min(dia_vencimento, ultimo_dia))
                 projecoes.append({
+                    "tipo_origem": "FATURA_CARTAO",
+                    "id_origem": id_cartao,
+                    "id_cartao": id_cartao,
                     "ID_Cartao": id_cartao,
-                    "Cartao": nome_cartao,
-                    "Descricao": f"Pgto Fatura {nome_cartao}",
-                    "Data": vencimento.isoformat(),
-                    "Mes": mes,
-                    "Ano": ano,
-                    "Valor": valor,
-                    "Status": "ABERTA",
+                    "competencia_mes": mes,
+                    "competencia_ano": ano,
+                    "descricao": f"Fatura – {mes:02d}/{ano}",
+                    "detalhe": "Fatura cartão de crédito",
+                    "nome_cartao": nome_cartao,
+                    "data_vencimento": vencimento.isoformat(),
+                    "valor": valor,
+                    "status": "A_PAGAR",
                 })
 
-        return projecoes
+        return sorted(
+            projecoes,
+            key=lambda item: (item["data_vencimento"], item["id_cartao"]),
+        )
+
+    # Compatibilidade com uma chamada introduzida em versões intermediárias.
+    def lista_fatura_projetadas(self, *args, **kwargs):
+        return self.listar_faturas_projetadas(*args, **kwargs)

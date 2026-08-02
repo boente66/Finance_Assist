@@ -48,9 +48,10 @@ class MetaView(QWidget):
 
         self.titulo = QLabel()
         self.titulo.setObjectName("pageTitle")
-        self.titulo.setAlignment(Qt.AlignCenter)
-
         self.layout_principal.addWidget(self.titulo)
+        self.subtitulo = QLabel()
+        self.subtitulo.setObjectName("pageSubtitle")
+        self.layout_principal.addWidget(self.subtitulo)
 
         self.btn_nova = QPushButton()
         self.btn_nova.setObjectName("addButton")
@@ -86,6 +87,9 @@ class MetaView(QWidget):
 
         self.titulo.setText(
             TranslatorApp.get("Metas Financeiras")
+        )
+        self.subtitulo.setText(
+            TranslatorApp.get("Acompanhe objetivos, prazos e valores acumulados")
         )
 
         self.btn_nova.setText(

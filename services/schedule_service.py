@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime
+from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 
@@ -171,6 +172,119 @@ class ScheduleService:
         except Exception:
             logger.exception("Erro ao obter todos os agendamentos")
             return []
+
+    def get_financial_projection(self, user_id: int, quantidade_meses: int = 12):
+        """Normaliza agendamentos e faturas virtuais em uma única projeção.
+
+        Compras agendadas no cartão permanecem visíveis, mas não entram nos
+        totais: o compromisso financeiro é a fatura consolidada. Uma fatura
+        virtual nunca é persistida nem recebe operações de agendamento.
+        """
+        schedules = self.schedule_model.get_all_schedules(user_id) or []
+        items = [self._normalizar_agendamento(item) for item in schedules]
+
+        # Não converte falha da fonte de faturas em uma lista vazia silenciosa.
+        invoices = self.fatura_service.listar_faturas_projetadas(
+            user_id, quantidade_meses
+        )
+        invoice_items = []
+        for invoice in invoices:
+            if self._tem_agendamento_manual_fatura(schedules, invoice):
+                continue
+            invoice_items.append(self._normalizar_fatura(invoice))
+        items.extend(invoice_items)
+        items.sort(key=lambda item: (item.get("data") or "9999-12-31", item["tipo_origem"]))
+
+        pendentes = {"AGENDADO", "ATRASADO", "PENDENTE", "A_PAGAR"}
+        total_receber = Decimal("0.00")
+        total_agendamentos_pagar = Decimal("0.00")
+        total_faturas = Decimal("0.00")
+        for item in items:
+            if item["status"] not in pendentes or not item["incluir_totais"]:
+                continue
+            if item["tipo_origem"] == "FATURA_CARTAO":
+                total_faturas += item["valor"]
+            elif item["tipo"] == "Contas a Receber":
+                total_receber += item["valor"]
+            elif item["tipo"] == "Contas a Pagar":
+                total_agendamentos_pagar += item["valor"]
+
+        total_pagar = total_agendamentos_pagar + total_faturas
+        return {
+            "itens": items,
+            "totais": {
+                "receber": total_receber.quantize(Decimal("0.01")),
+                "agendamentos_pagar": total_agendamentos_pagar.quantize(Decimal("0.01")),
+                "faturas": total_faturas.quantize(Decimal("0.01")),
+                "pagar": total_pagar.quantize(Decimal("0.01")),
+                "resultado": (total_receber - total_pagar).quantize(Decimal("0.01")),
+            },
+        }
+
+    @staticmethod
+    def _normalizar_agendamento(item):
+        tipo = item.get("Tipo") or ""
+        status = (item.get("Status") or "").upper()
+        compra_cartao = tipo in ScheduleService.TIPOS_CARTAO
+        return {
+            "tipo_origem": "TRANSFERENCIA" if tipo == "Transferências" else "AGENDAMENTO",
+            "id_origem": item.get("ID_Agendamento"),
+            "id_agendamento": item.get("ID_Agendamento"),
+            "id_cartao": item.get("ID_Cartao"),
+            "competencia_mes": None,
+            "competencia_ano": None,
+            "data": item.get("Data"),
+            "descricao": item.get("Descricao") or "",
+            "detalhe": "Compra agendada no cartão" if compra_cartao else "",
+            "origem": "Cartão" if compra_cartao else "Agendamento",
+            "categoria": item.get("Categoria") or "",
+            "favorecido": item.get("Favorecido") or item.get("Cartao") or "",
+            "conta": item.get("Conta") or "",
+            "tipo": tipo,
+            "valor": Decimal(str(item.get("Valor") or 0)).quantize(Decimal("0.01")),
+            "status": status,
+            "incluir_totais": not compra_cartao,
+            "dados_origem": item,
+        }
+
+    @staticmethod
+    def _normalizar_fatura(invoice):
+        return {
+            "tipo_origem": "FATURA_CARTAO",
+            "id_origem": invoice["id_origem"],
+            "id_agendamento": None,
+            "id_cartao": invoice["id_cartao"],
+            "competencia_mes": invoice["competencia_mes"],
+            "competencia_ano": invoice["competencia_ano"],
+            "data": invoice["data_vencimento"],
+            "descricao": invoice["descricao"],
+            "detalhe": invoice["detalhe"],
+            "origem": "Fatura de cartão",
+            "categoria": "Fatura cartão de crédito",
+            "favorecido": invoice["nome_cartao"],
+            "conta": "",
+            "tipo": "Contas a Pagar",
+            "valor": Decimal(str(invoice["valor"])).quantize(Decimal("0.01")),
+            "status": "A_PAGAR",
+            "incluir_totais": True,
+            "dados_origem": invoice,
+        }
+
+    @staticmethod
+    def _tem_agendamento_manual_fatura(schedules, invoice):
+        """Evita duplicidade apenas quando há vínculo explícito com o cartão."""
+        for item in schedules:
+            if item.get("ID_Cartao") != invoice["id_cartao"]:
+                continue
+            if item.get("Tipo") != "Contas a Pagar":
+                continue
+            if (item.get("Status") or "").upper() not in ("AGENDADO", "ATRASADO"):
+                continue
+            descricao = (item.get("Descricao") or "").casefold()
+            data = item.get("Data") or ""
+            if "fatura" in descricao and data[:7] == invoice["data_vencimento"][:7]:
+                return True
+        return False
 
     # ============================================================
     # ATUALIZAÇÃO

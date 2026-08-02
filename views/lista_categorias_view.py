@@ -13,6 +13,8 @@ from PyQt5.QtWidgets import (
     QDialog,
     QMessageBox,
     QApplication,
+    QLineEdit,
+    QComboBox,
 )
 from PyQt5.QtCore import Qt
 
@@ -51,7 +53,10 @@ class ListaCategoriasView(QWidget):
         )
 
         self.title.setText(
-            TranslatorApp.get("Listas e Categorias")
+            TranslatorApp.get("Categorias")
+        )
+        self.subtitle.setText(
+            TranslatorApp.get("Organize receitas e despesas por grupos e subcategorias")
         )
 
         self.btn_nova.setText(
@@ -65,6 +70,12 @@ class ListaCategoriasView(QWidget):
         self.btn_excluir.setText(
             TranslatorApp.get("Excluir")
         )
+        self.search_input.setPlaceholderText(
+            TranslatorApp.get("Buscar categoria")
+        )
+        self.type_filter.setItemText(0, TranslatorApp.get("Todas"))
+        self.type_filter.setItemText(1, TranslatorApp.get("Receita"))
+        self.type_filter.setItemText(2, TranslatorApp.get("Despesa"))
 
     # ==================================================
     # UI
@@ -74,8 +85,11 @@ class ListaCategoriasView(QWidget):
 
         # ---------------- TÍTULO ----------------
         self.title = QLabel("Listas e Categorias")
-        self.title.setObjectName("title")
+        self.title.setObjectName("pageTitle")
         layout.addWidget(self.title)
+        self.subtitle = QLabel()
+        self.subtitle.setObjectName("pageSubtitle")
+        layout.addWidget(self.subtitle)
 
         # ---------------- BOTÕES ----------------
         buttons = QHBoxLayout()
@@ -83,6 +97,8 @@ class ListaCategoriasView(QWidget):
         self.btn_nova = QPushButton("Nova Categoria")
         self.btn_sub = QPushButton("Nova Subcategoria")
         self.btn_excluir = QPushButton("Excluir")
+        self.btn_sub.setObjectName("secondaryButton")
+        self.btn_excluir.setObjectName("dangerButton")
 
         self.btn_nova.clicked.connect(self.add_categoria_dialog)
         self.btn_sub.clicked.connect(self.add_subcategoria_dialog)
@@ -94,6 +110,18 @@ class ListaCategoriasView(QWidget):
 
         buttons.addStretch()
         layout.addLayout(buttons)
+
+        filters = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.type_filter = QComboBox()
+        self.type_filter.addItem("Todas", None)
+        self.type_filter.addItem("Receita", "Receita")
+        self.type_filter.addItem("Despesa", "Despesa")
+        self.search_input.textChanged.connect(self.apply_filter)
+        self.type_filter.currentIndexChanged.connect(self.apply_filter)
+        filters.addWidget(self.search_input, 1)
+        filters.addWidget(self.type_filter)
+        layout.addLayout(filters)
 
         # ---------------- TABELA ----------------
         self.table = QTableWidget()
@@ -120,6 +148,7 @@ class ListaCategoriasView(QWidget):
             self.table.setRowCount(0)
 
             categorias = self.controller.get_all_categories()
+            self._categorias = categorias or []
 
             if not categorias:
                 self.table.setRowCount(1)
@@ -142,14 +171,35 @@ class ListaCategoriasView(QWidget):
                 f"{TranslatorApp.get('Erro ao carregar categorias')}:\n{e}",
             )
 
+    def apply_filter(self, *_):
+        categorias = getattr(self, "_categorias", [])
+        termo = self.search_input.text().strip().casefold()
+        tipo = self.type_filter.currentData()
+        ids = {
+            c["ID_Categoria"] for c in categorias
+            if (not tipo or c.get("Tipo") == tipo)
+            and (not termo or termo in (c.get("Nome") or "").casefold())
+        }
+        # Mantém o contexto hierárquico dos resultados filhos.
+        parents = {c["ID_Categoria"]: c.get("ID_Categoria_Pai") for c in categorias}
+        for category_id in tuple(ids):
+            parent_id = parents.get(category_id)
+            while parent_id:
+                ids.add(parent_id)
+                parent_id = parents.get(parent_id)
+        self.table.setRowCount(0)
+        self._popular_tabela(categorias, allowed_ids=ids)
+
     # ==================================================
     # POPULAR TABELA
     # ==================================================
-    def _popular_tabela(self, categorias, pai_id=None, indent=""):
+    def _popular_tabela(self, categorias, pai_id=None, indent="", allowed_ids=None):
 
         for categoria in categorias:
 
-            if categoria["ID_Categoria_Pai"] == pai_id:
+            if categoria["ID_Categoria_Pai"] == pai_id and (
+                allowed_ids is None or categoria["ID_Categoria"] in allowed_ids
+            ):
 
                 row = self.table.rowCount()
                 self.table.insertRow(row)
@@ -169,7 +219,8 @@ class ListaCategoriasView(QWidget):
                 self._popular_tabela(
                     categorias,
                     categoria["ID_Categoria"],
-                    indent + "    └ "
+                    indent + "    └ ",
+                    allowed_ids,
                 )
 
     # ==================================================
@@ -263,6 +314,15 @@ class ListaCategoriasView(QWidget):
             return
 
         categoria_id = item_id.data(Qt.UserRole)
+
+        confirm = QMessageBox.question(
+            self,
+            TranslatorApp.get("Confirmar Exclusão"),
+            TranslatorApp.get("Deseja realmente excluir esta categoria?"),
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if confirm != QMessageBox.Yes:
+            return
 
         try:
             ok, msg = self.controller.delete_category(categoria_id)

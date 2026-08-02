@@ -1,862 +1,475 @@
 # -*- coding: utf-8 -*-
+"""Visão unificada de agendamentos e faturas virtuais."""
+
 import logging
 import os
+from datetime import date, datetime, timedelta
 
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGroupBox,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QLabel,
-    QComboBox,
-    QLineEdit,
-    QMessageBox,
-    QAbstractItemView,
-    QHeaderView,
-    QFrame,
-    QSplitter,
+    QAbstractItemView, QComboBox, QFrame, QHBoxLayout, QHeaderView, QLabel,
+    QLineEdit, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
 
-from views.agendamento_dialog import AgendamentoDialog
 from controllers.schedule_controller import ScheduleController
-from controllers.account_controller import AccountController
-from controllers.fatura_controller import FaturaController
-from controllers.favorecido_controller import FavorecidoController
-
+from core.theme_manager import ThemeManager
+from core.translator_app import TranslatorApp
 from utilitarios.currency_formatter import CurrencyFormatter
 from utilitarios.date_formatter import DateFormatter
 from utilitarios.ion_path import IonPath
-
-from core.translator_app import TranslatorApp
+from views.agendamento_dialog import AgendamentoDialog
 
 logger = logging.getLogger(__name__)
 
 
 class AgendamentoView(QWidget):
+    open_invoice_requested = pyqtSignal(int, int, int)
 
-    def __init__(self, parent=None):
+    FILTER_ALL = "TODOS"
+    FILTER_RECEIVE = "RECEBER"
+    FILTER_PAY = "PAGAR"
+    FILTER_TRANSFER = "TRANSFERENCIAS"
+    FILTER_INVOICES = "FATURAS"
+
+    def __init__(self, parent=None, schedule_controller=None):
         super().__init__(parent)
-
-        self.schedule_controller = ScheduleController()
-        self.account_controller = AccountController()
-        self.fatura_controller = FaturaController()
-        self.favorecido_controller = FavorecidoController()
-        
-
-        self._icon_cache = {}
-
+        self.schedule_controller = schedule_controller or ScheduleController()
         self.data = []
         self.filtered_data = []
-
-        self.total_pagar = 0
-        self.total_receber = 0
-        self.total_previsto = 0
-
+        self.totals = {}
+        self._icon_cache = {}
+        self._loading_error = None
         self._init_ui()
         self._connect_signals()
-
         TranslatorApp.bind(self._atualizar_textos, self)
         self._atualizar_textos()
-
-        self.load_favorecidos()
-        self.load_cartao()
         self.load_data()
 
-    # ==================================================
-    # CICLO DE VIDA
-    # ==================================================
+    def _icon(self, name):
+        if name not in self._icon_cache:
+            path = IonPath.resource("assets", "icons", f"{name}.svg")
+            self._icon_cache[name] = QIcon(path) if os.path.exists(path) else QIcon()
+        return self._icon_cache[name]
+
+    def _init_ui(self):
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(14)
+
+        header = QHBoxLayout()
+        titles = QVBoxLayout()
+        self.title = QLabel()
+        self.title.setObjectName("pageTitle")
+        self.subtitle = QLabel()
+        self.subtitle.setObjectName("pageSubtitle")
+        titles.addWidget(self.title)
+        titles.addWidget(self.subtitle)
+        header.addLayout(titles)
+        header.addStretch()
+        self.period_combo = QComboBox()
+        self.period_combo.addItem("3 meses", 3)
+        self.period_combo.addItem("6 meses", 6)
+        self.period_combo.addItem("12 meses", 12)
+        self.period_combo.setCurrentIndex(2)
+        self.refresh_btn = QPushButton()
+        self.refresh_btn.setObjectName("secondaryButton")
+        self.refresh_btn.setIcon(self._icon("refresh"))
+        header.addWidget(self.period_combo)
+        header.addWidget(self.refresh_btn)
+        root.addLayout(header)
+
+        actions = QHBoxLayout()
+        self.btn_add = QPushButton()
+        self.btn_edit = QPushButton()
+        self.btn_exec = QPushButton()
+        self.btn_cancel = QPushButton()
+        self.btn_edit.setObjectName("secondaryButton")
+        self.btn_exec.setObjectName("secondaryButton")
+        self.btn_cancel.setObjectName("dangerButton")
+        for button, icon in (
+            (self.btn_add, "add"), (self.btn_edit, "edit"),
+            (self.btn_exec, "pay"), (self.btn_cancel, "delete"),
+        ):
+            button.setIcon(self._icon(icon))
+            actions.addWidget(button)
+        actions.addStretch()
+        root.addLayout(actions)
+
+        filters = QFrame()
+        filters.setObjectName("card")
+        filter_layout = QHBoxLayout(filters)
+        self.quick_buttons = {}
+        for code in (
+            self.FILTER_ALL, self.FILTER_RECEIVE, self.FILTER_PAY,
+            self.FILTER_TRANSFER, self.FILTER_INVOICES,
+        ):
+            button = QPushButton()
+            button.setObjectName("filterButton")
+            button.setCheckable(True)
+            button.clicked.connect(lambda _=False, value=code: self.apply_quick_filter(value))
+            self.quick_buttons[code] = button
+            filter_layout.addWidget(button)
+        self.quick_buttons[self.FILTER_ALL].setChecked(True)
+        filter_layout.addStretch()
+        self.combo_status = QComboBox()
+        for label, value in (
+            ("Todos", "TODOS"), ("Pendentes", "PENDENTES"),
+            ("Executados", "EXECUTADOS"), ("Cancelados", "CANCELADOS"),
+        ):
+            self.combo_status.addItem(label, value)
+        self.combo_conta = QComboBox()
+        self.combo_categoria = QComboBox()
+        self.combo_pessoa = QComboBox()
+        self.search_input = QLineEdit()
+        self.search_input.setClearButtonEnabled(True)
+        for widget in (self.combo_status, self.combo_conta, self.combo_categoria, self.combo_pessoa):
+            filter_layout.addWidget(widget)
+        filter_layout.addWidget(self.search_input, 1)
+        root.addWidget(filters)
+
+        self.error_label = QLabel()
+        self.error_label.setObjectName("warning")
+        self.error_label.setWordWrap(True)
+        self.error_label.hide()
+        root.addWidget(self.error_label)
+
+        self.table = QTableWidget(0, 10)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        header_view = self.table.horizontalHeader()
+        header_view.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header_view.setSectionResizeMode(2, QHeaderView.Stretch)
+        header_view.setSectionResizeMode(5, QHeaderView.Stretch)
+        root.addWidget(self.table, 1)
+
+        summary = QFrame()
+        summary.setObjectName("card")
+        summary_layout = QHBoxLayout(summary)
+        self.summary_labels = {}
+        for key in ("receber", "agendamentos_pagar", "faturas", "pagar", "resultado"):
+            box = QVBoxLayout()
+            caption = QLabel()
+            caption.setObjectName("cardTitle")
+            value = QLabel()
+            value.setObjectName("cardValue")
+            box.addWidget(caption)
+            box.addWidget(value)
+            summary_layout.addLayout(box)
+            if key != "resultado":
+                summary_layout.addStretch()
+            self.summary_labels[key] = (caption, value)
+        root.addWidget(summary)
+
+    def _connect_signals(self):
+        self.refresh_btn.clicked.connect(self.load_data)
+        self.period_combo.currentIndexChanged.connect(self.load_data)
+        self.btn_add.clicked.connect(self.open_add_dialog)
+        self.btn_edit.clicked.connect(self.open_edit_dialog)
+        self.btn_exec.clicked.connect(self.execute_agendamento)
+        self.btn_cancel.clicked.connect(self.cancel_agendamento)
+        self.table.itemSelectionChanged.connect(self._update_buttons)
+        self.table.itemDoubleClicked.connect(lambda *_: self.open_selected_item())
+        self.combo_status.currentIndexChanged.connect(self.load_data)
+        self.combo_conta.currentIndexChanged.connect(self.load_data)
+        self.combo_categoria.currentIndexChanged.connect(self.load_data)
+        self.combo_pessoa.currentIndexChanged.connect(self.load_data)
+        self.search_input.textChanged.connect(self.apply_filter)
+
+    def _atualizar_textos(self, *_):
+        self.setWindowTitle(TranslatorApp.get("Agendamentos"))
+        self.title.setText(TranslatorApp.get("Agendamentos"))
+        self.subtitle.setText(TranslatorApp.get("Planeje receitas, pagamentos e transferências futuras"))
+        self.refresh_btn.setText(TranslatorApp.get("Atualizar"))
+        self.period_combo.setItemText(0, TranslatorApp.get("3 meses"))
+        self.period_combo.setItemText(1, TranslatorApp.get("6 meses"))
+        self.period_combo.setItemText(2, TranslatorApp.get("12 meses"))
+        for index, label in enumerate(("Todos", "Pendentes", "Executados", "Cancelados")):
+            self.combo_status.setItemText(index, TranslatorApp.get(label))
+        self.btn_add.setText(TranslatorApp.get("Novo"))
+        self.btn_edit.setText(TranslatorApp.get("Editar"))
+        self.btn_exec.setText(TranslatorApp.get("Executar / Abrir"))
+        self.btn_cancel.setText(TranslatorApp.get("Cancelar"))
+        labels = {
+            self.FILTER_ALL: "Todos", self.FILTER_RECEIVE: "A receber",
+            self.FILTER_PAY: "A pagar", self.FILTER_TRANSFER: "Transferências",
+            self.FILTER_INVOICES: "Faturas",
+        }
+        for code, button in self.quick_buttons.items():
+            button.setText(TranslatorApp.get(labels[code]))
+        self.search_input.setPlaceholderText(TranslatorApp.get("Buscar descrição, favorecido ou cartão"))
+        self.table.setHorizontalHeaderLabels([
+            TranslatorApp.get("Data / Vencimento"), TranslatorApp.get("Período"),
+            TranslatorApp.get("Descrição"), TranslatorApp.get("Origem"),
+            TranslatorApp.get("Categoria"), TranslatorApp.get("Favorecido / Cartão"),
+            TranslatorApp.get("Conta"), TranslatorApp.get("Valor"),
+            TranslatorApp.get("Status"), TranslatorApp.get("Detalhe"),
+        ])
+        captions = {
+            "receber": "Total a receber", "agendamentos_pagar": "Agendamentos a pagar",
+            "faturas": "Faturas em aberto", "pagar": "Total geral a pagar",
+            "resultado": "Resultado previsto",
+        }
+        for key, (caption, value) in self.summary_labels.items():
+            caption.setText(TranslatorApp.get(captions[key]))
+            value.setText(CurrencyFormatter.format(self.totals.get(key, 0)))
+        self._update_buttons()
+
+    def on_load(self):
+        self.load_data()
+
+    def load_data(self):
+        try:
+            projection = self.schedule_controller.get_financial_projection(
+                self.period_combo.currentData() or 12
+            )
+            self.data = projection.get("itens", [])
+            self.totals = projection.get("totais", {})
+            self._loading_error = None
+            self.error_label.hide()
+            self._rebuild_dynamic_filters()
+            self.apply_filter()
+        except Exception as exc:
+            logger.exception("Erro ao consultar a projeção financeira")
+            self.data = []
+            self.totals = {}
+            self._loading_error = exc
+            self.error_label.setText(TranslatorApp.get(
+                "Não foi possível carregar a projeção. Tente atualizar novamente."
+            ))
+            self.error_label.show()
+            self._render_rows([])
+            self._atualizar_textos()
+
+    def _rebuild_dynamic_filters(self):
+        current = {
+            "conta": self.combo_conta.currentData(),
+            "categoria": self.combo_categoria.currentData(),
+            "pessoa": self.combo_pessoa.currentData(),
+        }
+        values = {
+            "conta": sorted({i["conta"] for i in self.data if i.get("conta")}),
+            "categoria": sorted({i["categoria"] for i in self.data if i.get("categoria")}),
+            "pessoa": sorted({i["favorecido"] for i in self.data if i.get("favorecido")}),
+        }
+        for key, combo in (("conta", self.combo_conta), ("categoria", self.combo_categoria), ("pessoa", self.combo_pessoa)):
+            combo.blockSignals(True)
+            combo.clear()
+            combo.addItem(TranslatorApp.get("Todos"), None)
+            for value in values[key]:
+                combo.addItem(value, value)
+            index = combo.findData(current[key])
+            combo.setCurrentIndex(max(0, index))
+            combo.blockSignals(False)
+
+    def apply_quick_filter(self, code):
+        code = code or self.FILTER_ALL
+        for item_code, button in self.quick_buttons.items():
+            button.setChecked(item_code == code)
+        self.load_data()
+
+    def _quick_filter(self):
+        return next((code for code, button in self.quick_buttons.items() if button.isChecked()), self.FILTER_ALL)
+
+    def apply_filter(self, *_):
+        quick = self._quick_filter()
+        status_filter = self.combo_status.currentData() or "TODOS"
+        account = self.combo_conta.currentData()
+        category = self.combo_categoria.currentData()
+        person = self.combo_pessoa.currentData()
+        term = self.search_input.text().strip().casefold()
+        pending = {"AGENDADO", "ATRASADO", "PENDENTE", "A_PAGAR"}
+        executed = {"EXECUTADO", "PAGO"}
+        filtered = []
+        for item in self.data:
+            if quick == self.FILTER_RECEIVE and item["tipo"] != "Contas a Receber":
+                continue
+            if quick == self.FILTER_PAY and item["tipo"] != "Contas a Pagar":
+                continue
+            if quick == self.FILTER_TRANSFER and item["tipo_origem"] != "TRANSFERENCIA":
+                continue
+            if quick == self.FILTER_INVOICES and item["tipo_origem"] != "FATURA_CARTAO":
+                continue
+            if status_filter == "PENDENTES" and item["status"] not in pending:
+                continue
+            if status_filter == "EXECUTADOS" and item["status"] not in executed:
+                continue
+            if status_filter == "CANCELADOS" and item["status"] != "CANCELADO":
+                continue
+            if account and item.get("conta") != account:
+                continue
+            if category and item.get("categoria") != category:
+                continue
+            if person and item.get("favorecido") != person:
+                continue
+            searchable = " ".join(str(item.get(k) or "") for k in ("descricao", "detalhe", "favorecido", "categoria", "conta")).casefold()
+            if term and term not in searchable:
+                continue
+            filtered.append(item)
+        self.filtered_data = filtered
+        self._render_rows(filtered)
+        self._atualizar_textos()
+
+    def _render_rows(self, items):
+        self.table.setRowCount(0)
+        if not items and not self._loading_error:
+            self.table.setRowCount(1)
+            empty = QTableWidgetItem(TranslatorApp.get("Nenhum compromisso no período"))
+            empty.setTextAlignment(Qt.AlignCenter)
+            self.table.setSpan(0, 0, 1, self.table.columnCount())
+            self.table.setItem(0, 0, empty)
+            return
+        for item in items:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            values = (
+                DateFormatter.iso_to_br(item.get("data") or ""),
+                self._period_label(item.get("data")), self._display_description(item),
+                TranslatorApp.get(item.get("origem") or ""), item.get("categoria"),
+                item.get("favorecido"), item.get("conta"),
+                CurrencyFormatter.format(item.get("valor", 0)),
+                TranslatorApp.get(self._status_label(item.get("status"))),
+                TranslatorApp.get(item.get("detalhe") or ""),
+            )
+            for column, value in enumerate(values):
+                cell = QTableWidgetItem(str(value or "—"))
+                if column == 0:
+                    cell.setData(Qt.UserRole, item)
+                if column == 7:
+                    cell.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    cell.setForeground(QColor(
+                        ThemeManager.get_color("danger") if item["tipo"] == "Contas a Pagar"
+                        else ThemeManager.get_color("success")
+                    ))
+                self.table.setItem(row, column, cell)
+
+    @staticmethod
+    def _display_description(item):
+        if item.get("tipo_origem") != "FATURA_CARTAO":
+            return item.get("descricao") or ""
+        month = DateFormatter.map_nome_mes(int(item["competencia_mes"]))
+        return f"{TranslatorApp.get('Fatura')} – {month} {item['competencia_ano']}"
+
+    @staticmethod
+    def _status_label(status):
+        return {
+            "A_PAGAR": "A pagar", "AGENDADO": "Agendado", "ATRASADO": "Atrasado",
+            "EXECUTADO": "Executado", "PAGO": "Pago", "CANCELADO": "Cancelado",
+        }.get(status, status or "")
+
+    @staticmethod
+    def _period_label(iso_date):
+        try:
+            target = datetime.strptime(iso_date, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return "—"
+        today = date.today()
+        if target < today:
+            return TranslatorApp.get("Atrasados")
+        if target == today:
+            return TranslatorApp.get("Hoje")
+        if target <= today + timedelta(days=7):
+            return TranslatorApp.get("Próximos 7 dias")
+        if target.month == today.month and target.year == today.year:
+            return TranslatorApp.get("Restante do mês")
+        return TranslatorApp.get("Meses seguintes")
+
+    def _selected_item(self):
+        rows = self.table.selectionModel().selectedRows() if self.table.selectionModel() else []
+        if not rows:
+            return None
+        cell = self.table.item(rows[0].row(), 0)
+        return cell.data(Qt.UserRole) if cell else None
+
+    def _get_selected_ids(self):
+        item = self._selected_item()
+        return [item["id_agendamento"]] if item and item.get("id_agendamento") else []
+
+    def _update_buttons(self):
+        item = self._selected_item()
+        invoice = bool(item and item.get("tipo_origem") == "FATURA_CARTAO")
+        self.btn_edit.setEnabled(bool(item))
+        self.btn_exec.setEnabled(bool(item))
+        self.btn_cancel.setEnabled(bool(item) and not invoice and item.get("status") in ("AGENDADO", "ATRASADO"))
+        if invoice:
+            self.btn_edit.setToolTip(TranslatorApp.get("Abrir painel da fatura"))
+            self.btn_exec.setText(TranslatorApp.get("Pagar fatura"))
+        else:
+            self.btn_edit.setToolTip("")
+            self.btn_exec.setText(TranslatorApp.get("Executar"))
+
+    def open_selected_item(self):
+        item = self._selected_item()
+        if not item:
+            return
+        if item["tipo_origem"] == "FATURA_CARTAO":
+            self.open_invoice_requested.emit(
+                int(item["id_cartao"]), int(item["competencia_mes"]), int(item["competencia_ano"])
+            )
+        else:
+            self.open_edit_dialog()
+
+    def open_add_dialog(self):
+        if AgendamentoDialog(self).exec_():
+            self.load_data()
+
+    def open_edit_dialog(self):
+        item = self._selected_item()
+        if not item:
+            return
+        if item["tipo_origem"] == "FATURA_CARTAO":
+            self.open_selected_item()
+            return
+        dialog = AgendamentoDialog(self, agendamento_id=item["id_agendamento"])
+        if dialog.exec_():
+            self.load_data()
+
+    def cancel_agendamento(self):
+        item = self._selected_item()
+        if not item or item["tipo_origem"] == "FATURA_CARTAO":
+            return
+        if self.schedule_controller.cancelar_agendamento(item["id_agendamento"]):
+            self.load_data()
+
+    def execute_agendamento(self):
+        item = self._selected_item()
+        if not item:
+            return
+        if item["tipo_origem"] == "FATURA_CARTAO":
+            self.open_selected_item()
+            return
+        agendamento = self.schedule_controller.get_schedule_by_id(item["id_agendamento"])
+        if not agendamento:
+            return
+        from views.execute_schedule_dialog import ExecuteScheduleDialog
+        dialog = ExecuteScheduleDialog(parent=self, agendamento=agendamento)
+        if not dialog.exec_():
+            return
+        resultado = self.schedule_controller.execute_schedule(dialog.get_dados_execucao())
+        if not resultado.get("sucesso"):
+            QMessageBox.warning(self, TranslatorApp.get("Aviso"), TranslatorApp.get(
+                resultado.get("mensagem", "Não foi possível executar o agendamento.")
+            ))
+            return
+        self.load_data()
+
+    # Métodos legados mantidos para integrações externas da view.
+    def load_favorecidos(self):
+        self._rebuild_dynamic_filters()
+
+    def load_cartao(self):
+        self.apply_filter()
+
+    def load_historico(self):
+        self.apply_filter()
+
     def closeEvent(self, event):
         try:
             TranslatorApp.unbind(self)
         except Exception:
             pass
-
         super().closeEvent(event)
-
-    # ==================================================
-    # ICON
-    # ==================================================
-    def _icon(self, nome: str) -> QIcon:
-
-        if nome in self._icon_cache:
-            return self._icon_cache[nome]
-
-        path = IonPath.resource(
-            "assets",
-            "icons",
-            f"{nome}.svg"
-        )
-
-        icon = QIcon(path) if os.path.exists(path) else QIcon()
-
-        self._icon_cache[nome] = icon
-
-        return icon
-
-    # ==================================================
-    # UI
-    # ==================================================
-    def _init_ui(self):
-
-        main_layout = QHBoxLayout(self)
-
-        # --------------------------------------------------
-        # SIDEBAR
-        # --------------------------------------------------
-        sidebar = QFrame()
-
-        sidebar_layout = QVBoxLayout(sidebar)
-
-        self.btn_all = QPushButton()
-        self.btn_receber = QPushButton()
-        self.btn_pagar = QPushButton()
-        self.btn_transfer = QPushButton()
-
-        sidebar_layout.addWidget(self.btn_all)
-        sidebar_layout.addWidget(self.btn_receber)
-        sidebar_layout.addWidget(self.btn_pagar)
-        sidebar_layout.addWidget(self.btn_transfer)
-
-        sidebar_layout.addStretch()
-
-        main_layout.addWidget(sidebar, 1)
-
-        # --------------------------------------------------
-        # MAIN
-        # --------------------------------------------------
-        container = QWidget()
-
-        layout = QVBoxLayout(container)
-
-        layout.addLayout(self._create_toolbar())
-
-        self.main_splitter = QSplitter(Qt.Vertical)
-
-        # TOPO
-        top = QWidget()
-
-        top_layout = QVBoxLayout(top)
-
-        self.table = self._create_table()
-
-        top_layout.addWidget(self.table)
-        top_layout.addLayout(self._create_cards())
-
-        self.main_splitter.addWidget(top)
-
-        # BASE
-        self.bottom_splitter = QSplitter(Qt.Vertical)
-
-        self.fatura_group = self._create_fatura()
-        self.historico_group = self._create_historico()
-
-        self.bottom_splitter.addWidget(self.fatura_group)
-        self.bottom_splitter.addWidget(self.historico_group)
-
-        self.main_splitter.addWidget(self.bottom_splitter)
-
-        layout.addWidget(self.main_splitter)
-
-        main_layout.addWidget(container, 4)
-
-    # ==================================================
-    # SIGNALS
-    # ==================================================
-    def _connect_signals(self):
-
-        self.btn_all.clicked.connect(
-            lambda: self.apply_quick_filter(None)
-        )
-
-        self.btn_receber.clicked.connect(
-            lambda: self.apply_quick_filter("Contas a Receber")
-        )
-
-        self.btn_pagar.clicked.connect(
-            lambda: self.apply_quick_filter("Contas a Pagar")
-        )
-
-        self.btn_transfer.clicked.connect(
-            lambda: self.apply_quick_filter("Transferências")
-        )
-
-        self.btn_add.clicked.connect(self.open_add_dialog)
-        self.btn_edit.clicked.connect(self.open_edit_dialog)
-        self.btn_exec.clicked.connect(self.execute_agendamento)
-        self.btn_cancel.clicked.connect(self.cancel_agendamento)
-
-        self.combo_tipo.currentIndexChanged.connect(
-            self.apply_filter
-        )
-
-        self.combo_status.currentIndexChanged.connect(
-            self.apply_filter
-        )
-
-        self.combo_favorecido.currentIndexChanged.connect(
-            self.apply_filter
-        )
-
-        self.search_input.textChanged.connect(
-            self.apply_filter
-        )
-
-        self.cartao_filter.currentIndexChanged.connect(
-            self.apply_filter
-        )
-
-    # ==================================================
-    # TRADUÇÃO
-    # ==================================================
-    def _atualizar_textos(self):
-
-        self.setWindowTitle(
-            TranslatorApp.get("Agendamentos")
-        )
-
-        # SIDEBAR
-        self.btn_all.setText(
-            TranslatorApp.get("Todos")
-        )
-
-        self.btn_receber.setText(
-            TranslatorApp.get("Receber")
-        )
-
-        self.btn_pagar.setText(
-            TranslatorApp.get("Pagar")
-        )
-
-        self.btn_transfer.setText(
-            TranslatorApp.get("Transferência")
-        )
-
-        # TOOLBAR
-        self.btn_add.setText(
-            TranslatorApp.get("Novo")
-        )
-
-        self.btn_edit.setText(
-            TranslatorApp.get("Editar")
-        )
-
-        self.btn_exec.setText(
-            TranslatorApp.get("Executar")
-        )
-
-        self.btn_cancel.setText(
-            TranslatorApp.get("Cancelar")
-        )
-
-        self.search_input.setPlaceholderText(
-            TranslatorApp.get("Pesquisar...")
-        )
-
-        # GROUPS
-        self.fatura_group.setTitle(
-            TranslatorApp.get("💳 Fatura Prevista")
-        )
-
-        self.historico_group.setTitle(
-            TranslatorApp.get("📊 Histórico")
-        )
-
-        # CARDS
-        self.lbl_pagar.setText(
-            f"{TranslatorApp.get('Total a Pagar')}: "
-            f"{CurrencyFormatter.format(self.total_pagar)}"
-        )
-
-        self.lbl_receber.setText(
-            f"{TranslatorApp.get('Total a Receber')}: "
-            f"{CurrencyFormatter.format(self.total_receber)}"
-        )
-
-        total = self.total_receber - self.total_pagar
-
-        self.lbl_total.setText(
-            f"{TranslatorApp.get('Total')}: "
-            f"{CurrencyFormatter.format(total)}"
-        )
-
-        self.lbl_total_fatura.setText(
-            f"{TranslatorApp.get('TOTAL PREVISTO')}: "
-            f"{CurrencyFormatter.format(self.total_previsto)}"
-        )
-
-        # TABLE HEADERS
-        self.table.setHorizontalHeaderLabels([
-            TranslatorApp.get("ID"),
-            TranslatorApp.get("Data"),
-            TranslatorApp.get("Descrição"),
-            TranslatorApp.get("Categoria"),
-            TranslatorApp.get("Favorecido"),
-            TranslatorApp.get("Conta"),
-            TranslatorApp.get("Valor"),
-            TranslatorApp.get("Status"),
-        ])
-
-        self.table_cartao.setHorizontalHeaderLabels([
-            TranslatorApp.get("Data"),
-            TranslatorApp.get("Descrição"),
-            TranslatorApp.get("Categoria"),
-            TranslatorApp.get("Favorecido"),
-            TranslatorApp.get("Valor"),
-            TranslatorApp.get("Parcelas"),
-            TranslatorApp.get("Status"),
-        ])
-
-        self.table_hist.setHorizontalHeaderLabels([
-            TranslatorApp.get("Data"),
-            TranslatorApp.get("Descrição"),
-            TranslatorApp.get("Valor"),
-            TranslatorApp.get("Status"),
-        ])
-
-    # ==================================================
-    # RESPONSIVO
-    # ==================================================
-    def resizeEvent(self, event):
-
-        super().resizeEvent(event)
-
-        h = self.height()
-
-        topo = int(h * 0.5)
-        base = int(h * 0.5)
-
-        fatura = int(base * 0.5)
-        historico = int(base * 0.5)
-
-        try:
-            self.main_splitter.setSizes([topo, base])
-            self.bottom_splitter.setSizes([fatura, historico])
-        except Exception:
-            pass
-
-    # ==================================================
-    # TOOLBAR
-    # ==================================================
-    def _create_toolbar(self):
-
-        layout = QHBoxLayout()
-
-        self.btn_add = QPushButton()
-        self.btn_edit = QPushButton()
-        self.btn_exec = QPushButton()
-        self.btn_cancel = QPushButton()
-
-        layout.addWidget(self.btn_add)
-        layout.addWidget(self.btn_edit)
-        layout.addWidget(self.btn_exec)
-        layout.addWidget(self.btn_cancel)
-
-        layout.addStretch()
-
-        self.combo_tipo = QComboBox()
-
-        self.combo_tipo.addItems([
-            "Todos",
-            "Contas a Receber",
-            "Contas a Pagar",
-            "Transferências",
-        ])
-
-        self.combo_status = QComboBox()
-
-        self.combo_status.addItems([
-            "Todos",
-            "AGENDADO",
-            "PAGO",
-            "CANCELADO",
-        ])
-
-        self.combo_favorecido = QComboBox()
-
-        self.search_input = QLineEdit()
-
-        layout.addWidget(self.combo_tipo)
-        layout.addWidget(self.combo_status)
-        layout.addWidget(self.combo_favorecido)
-        layout.addWidget(self.search_input)
-
-        return layout
-
-    # ==================================================
-    # TABLE
-    # ==================================================
-    def _create_table(self):
-
-        table = QTableWidget(0, 8)
-
-        table.setColumnHidden(0, True)
-
-        table.setSelectionBehavior(
-            QAbstractItemView.SelectRows
-        )
-
-        table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.Stretch
-        )
-
-        table.itemSelectionChanged.connect(
-            self._update_buttons
-        )
-
-        return table
-
-    def _create_cards(self):
-
-        layout = QHBoxLayout()
-
-        self.lbl_pagar = QLabel()
-        self.lbl_receber = QLabel()
-        self.lbl_total = QLabel()
-
-        layout.addWidget(self.lbl_pagar)
-        layout.addWidget(self.lbl_receber)
-        layout.addWidget(self.lbl_total)
-
-        return layout
-
-    def _update_buttons(self):
-
-        has_selection = len(
-            self._get_selected_ids()
-        ) > 0
-
-        self.btn_edit.setEnabled(has_selection)
-        self.btn_cancel.setEnabled(has_selection)
-
-    def _get_selected_ids(self):
-
-        rows = self.table.selectionModel().selectedRows()
-
-        return [
-            int(self.table.item(r.row(), 0).text())
-            for r in rows
-        ]
-
-    # ==================================================
-    # LOAD
-    # ==================================================
-    def load_data(self):
-
-        self.data = (
-            self.schedule_controller.get_all_schedules() or []
-        )
-
-        self.apply_filter()
-
-    def load_favorecidos(self):
-
-        self.combo_favorecido.clear()
-
-        self.combo_favorecido.addItem(
-            "Todos",
-            None
-        )
-
-        for favorecido in self.favorecido_controller.listar_favorecidos():
-
-            self.combo_favorecido.addItem(
-                favorecido["Nome"],
-                favorecido["ID_Favorecido"]
-            )
-
-    # ==================================================
-    # FILTER
-    # ==================================================
-    def apply_filter(self):
-
-        tipo = self.combo_tipo.currentText()
-
-        status = self.combo_status.currentText()
-
-        favorecido = self.combo_favorecido.currentData()
-
-        termo = self.search_input.text().lower()
-
-        self.table.setRowCount(0)
-
-        self.filtered_data = []
-
-        self.total_pagar = 0
-        self.total_receber = 0
-
-        for ag in self.data:
-
-            if tipo != "Todos" and ag.get("Tipo") != tipo:
-                continue
-
-            if status != "Todos" and ag.get("Status") != status:
-                continue
-
-            if favorecido and ag.get("ID_Favorecido") != favorecido:
-                continue
-
-            if termo and termo not in (
-                ag.get("Descricao") or ""
-            ).lower():
-                continue
-
-            self.filtered_data.append(ag)
-
-            valor = float(ag.get("Valor", 0))
-
-            if ag.get("Tipo") == "Contas a Pagar":
-                self.total_pagar += valor
-
-            elif ag.get("Tipo") == "Contas a Receber":
-                self.total_receber += valor
-
-            row = self.table.rowCount()
-
-            self.table.insertRow(row)
-
-            self.table.setItem(
-                row,
-                0,
-                QTableWidgetItem(
-                    str(ag.get("ID_Agendamento"))
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                1,
-                QTableWidgetItem(
-                    DateFormatter.iso_to_br(
-                        ag.get("Data")
-                    )
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                2,
-                QTableWidgetItem(
-                    ag.get("Descricao", "")
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                3,
-                QTableWidgetItem(
-                    ag.get("Categoria", "")
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                4,
-                QTableWidgetItem(
-                    ag.get("Favorecido", "")
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                5,
-                QTableWidgetItem(
-                    ag.get("Conta", "")
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                6,
-                QTableWidgetItem(
-                    CurrencyFormatter.format(valor)
-                ),
-            )
-
-            self.table.setItem(
-                row,
-                7,
-                QTableWidgetItem(
-                    ag.get("Status", "")
-                ),
-            )
-
-        self.load_cartao()
-        self.load_historico()
-        self._atualizar_textos()
-
-    # ==================================================
-    # FATURA
-    # ==================================================
-    def _create_fatura(self):
-
-        group = QGroupBox()
-
-        layout = QVBoxLayout(group)
-
-        self.cartao_filter = QComboBox()
-
-        layout.addWidget(self.cartao_filter)
-
-        self.table_cartao = QTableWidget(0, 7)
-
-        self.table_cartao.horizontalHeader().setSectionResizeMode(
-            QHeaderView.Stretch
-        )
-
-        layout.addWidget(self.table_cartao)
-
-        self.lbl_total_fatura = QLabel()
-
-        layout.addWidget(self.lbl_total_fatura)
-
-        return group
-
-    def load_cartao(self):
-
-        self.table_cartao.setRowCount(0)
-
-        self.total_previsto = 0
-
-        id_cartao = self.cartao_filter.currentData()
-
-        if not id_cartao:
-            self._atualizar_textos()
-            return
-
-        for ag in self.filtered_data:
-
-            if ag.get("ID_Cartao") != id_cartao:
-                continue
-
-            valor = float(ag.get("Valor", 0))
-
-            self.total_previsto += valor
-
-            row = self.table_cartao.rowCount()
-
-            self.table_cartao.insertRow(row)
-
-            self.table_cartao.setItem(
-                row,
-                0,
-                QTableWidgetItem(
-                    DateFormatter.iso_to_br(
-                        ag.get("Data")
-                    )
-                ),
-            )
-
-            self.table_cartao.setItem(
-                row,
-                1,
-                QTableWidgetItem(
-                    ag.get("Descricao", "")
-                ),
-            )
-
-            self.table_cartao.setItem(
-                row,
-                4,
-                QTableWidgetItem(
-                    CurrencyFormatter.format(valor)
-                ),
-            )
-
-        self._atualizar_textos()
-
-    # ==================================================
-    # HISTÓRICO
-    # ==================================================
-    def _create_historico(self):
-
-        group = QGroupBox()
-
-        layout = QVBoxLayout(group)
-
-        self.table_hist = QTableWidget(0, 4)
-
-        self.table_hist.horizontalHeader().setSectionResizeMode(
-            QHeaderView.Stretch
-        )
-
-        layout.addWidget(self.table_hist)
-
-        return group
-
-    def load_historico(self):
-
-        self.table_hist.setRowCount(0)
-
-        for ag in self.filtered_data:
-
-            if ag.get("Status") != "PAGO":
-                continue
-
-            row = self.table_hist.rowCount()
-
-            self.table_hist.insertRow(row)
-
-            self.table_hist.setItem(
-                row,
-                0,
-                QTableWidgetItem(
-                    DateFormatter.iso_to_br(
-                        ag.get("Data")
-                    )
-                ),
-            )
-
-            self.table_hist.setItem(
-                row,
-                1,
-                QTableWidgetItem(
-                    ag.get("Descricao", "")
-                ),
-            )
-
-            self.table_hist.setItem(
-                row,
-                2,
-                QTableWidgetItem(
-                    CurrencyFormatter.format(
-                        float(ag.get("Valor", 0))
-                    )
-                ),
-            )
-
-            self.table_hist.setItem(
-                row,
-                3,
-                QTableWidgetItem(
-                    TranslatorApp.get("Pago")
-                ),
-            )
-
-    # ==================================================
-    # ACTIONS
-    # ==================================================
-    def open_add_dialog(self):
-
-        dlg = AgendamentoDialog(self)
-
-        if dlg.exec_():
-            self.load_data()
-
-    def open_edit_dialog(self):
-
-        ids = self._get_selected_ids()
-
-        if not ids:
-            QMessageBox.warning(
-                self,
-                TranslatorApp.get("Aviso"),
-                TranslatorApp.get(
-                    "Selecione um agendamento"
-                ),
-            )
-            return
-
-        dlg = AgendamentoDialog(
-            self,
-            agendamento_id=ids[0]
-        )
-
-        if dlg.exec_():
-            self.load_data()
-
-    def cancel_agendamento(self):
-
-        ids = self._get_selected_ids()
-
-        if not ids:
-            return
-
-        for ag_id in ids:
-            self.schedule_controller.cancelar_agendamento(
-                ag_id
-            )
-
-        self.load_data()
-
-    def execute_agendamento(self):
-
-        ids = self._get_selected_ids()
-
-        if not ids:
-            QMessageBox.warning(
-                self,
-                TranslatorApp.get("Aviso"),
-                TranslatorApp.get(
-                    "Selecione um agendamento."
-                ),
-            )
-            return
-
-        if len(ids) > 1:
-            QMessageBox.warning(
-                self,
-                TranslatorApp.get("Aviso"),
-                TranslatorApp.get(
-                    "Selecione apenas um agendamento."
-                ),
-            )
-            return
-
-        agendamento = self.schedule_controller.get_schedule_by_id(
-            ids[0]
-        )
-
-        if not agendamento:
-            return
-
-        from views.execute_schedule_dialog import ExecuteScheduleDialog
-
-        dialog = ExecuteScheduleDialog(
-            parent=self,
-            agendamento=agendamento
-        )
-
-        if dialog.exec_():
-
-            dados_execucao = dialog.get_dados_execucao()
-
-            resultado = self.schedule_controller.execute_schedule(
-                dados_execucao
-            )
-
-            if not resultado.get("sucesso"):
-                QMessageBox.warning(
-                    self,
-                    TranslatorApp.get("Aviso"),
-                    TranslatorApp.get(
-                        resultado.get(
-                            "mensagem",
-                            "Não foi possível executar o agendamento."
-                        )
-                    ),
-                )
-                return
-
-            self.load_data()
-
-            QMessageBox.information(
-                self,
-                TranslatorApp.get("Sucesso"),
-                TranslatorApp.get(
-                    resultado.get(
-                        "mensagem",
-                        "Agendamento executado com sucesso."
-                    )
-                ),
-            )
-
-    def apply_quick_filter(self, tipo):
-
-        self.combo_tipo.setCurrentText(
-            tipo or "Todos"
-        )

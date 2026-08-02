@@ -17,9 +17,9 @@ class ScheduleController:
     - Padronizar erros
     """
 
-    def __init__(self):
-        self.schedule_service = ScheduleService()
-        self.payment_service = PaymentService()
+    def __init__(self, db_name=None):
+        self.schedule_service = ScheduleService(db_name)
+        self.payment_service = PaymentService(db_name)
 
     # ============================================================
     # 🔥 UTIL
@@ -108,6 +108,14 @@ class ScheduleController:
         except Exception:
             logger.exception("Erro ao listar agendamentos")
             return []
+
+    def get_financial_projection(self, quantidade_meses: int = 12) -> dict:
+        """Retorna a projeção unificada; erros são propagados para a view."""
+        user_id = self._get_usuario_id()
+        return self.schedule_service.get_financial_projection(
+            user_id,
+            quantidade_meses,
+        )
 
     # ============================================================
     # CANCELAR

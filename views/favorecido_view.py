@@ -64,6 +64,9 @@ class FavorecidoView(QWidget):
         self.title_label = QLabel()
         self.title_label.setObjectName("pageTitle")
         main_layout.addWidget(self.title_label)
+        self.subtitle_label = QLabel()
+        self.subtitle_label.setObjectName("pageSubtitle")
+        main_layout.addWidget(self.subtitle_label)
 
         button_layout = QHBoxLayout()
 
@@ -144,6 +147,9 @@ class FavorecidoView(QWidget):
 
         self.title_label.setText(
             TranslatorApp.get("Favorecidos")
+        )
+        self.subtitle_label.setText(
+            TranslatorApp.get("Gerencie pessoas e empresas vinculadas às transações")
         )
 
         self.add_btn.setText(

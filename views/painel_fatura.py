@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QDialog,
     QToolButton, QMessageBox, QPushButton, QInputDialog
+    , QFrame
 )
 from PyQt5.QtGui import QColor, QIcon
 
@@ -124,7 +125,23 @@ class PainelFatura(QWidget):
         self.info_label.setObjectName("muted")
 
         layout.addWidget(self.nome_cartao_label)
-        layout.addWidget(self.info_label)
+
+        indicators = QHBoxLayout()
+        self.indicator_labels = {}
+        for key in ("limite", "saldo_devedor", "disponivel"):
+            card = QFrame()
+            card.setObjectName("card")
+            card_layout = QVBoxLayout(card)
+            caption = QLabel()
+            caption.setObjectName("cardTitle")
+            value = QLabel()
+            value.setObjectName("cardValue")
+            card_layout.addWidget(caption)
+            card_layout.addWidget(value)
+            indicators.addWidget(card)
+            self.indicator_labels[key] = (caption, value)
+        layout.addLayout(indicators)
+        self.info_label.hide()
 
         # TOOLBAR
         toolbar = QHBoxLayout()
@@ -143,6 +160,8 @@ class PainelFatura(QWidget):
 
         self.btn_exportar = btn("PDF", self.exportar_pdf)
         self.btn_exportar.setIcon(self._icon("pdf"))
+        self.btn_pagar.setObjectName("secondaryButton")
+        self.btn_exportar.setObjectName("secondaryButton")
 
         toolbar.addWidget(self.btn_lancar)
         toolbar.addWidget(self.btn_pagar)
@@ -218,6 +237,7 @@ class PainelFatura(QWidget):
         layout.addLayout(paginacao)
 
         self.resumo_label = QLabel()
+        self.resumo_label.setObjectName("cardValue")
         layout.addWidget(self.resumo_label)
 
         self.futuras_label = QLabel()
@@ -250,6 +270,15 @@ class PainelFatura(QWidget):
         self.cartao = cartao
         self.page = 0
         self._carregar()
+
+    def set_competencia(self, mes, ano):
+        """Seleciona a competência sem depender da ordem de set_cartao."""
+        self.mes_combo.setCurrentIndex(max(0, min(11, int(mes) - 1)))
+        texto_ano = str(int(ano))
+        if self.ano_combo.findText(texto_ano) < 0:
+            self.ano_combo.addItem(texto_ano)
+        self.ano_combo.setCurrentText(texto_ano)
+        self.page = 0
 
     def _reset_paginacao(self):
         self.page = 0
@@ -315,6 +344,14 @@ class PainelFatura(QWidget):
             f"{TranslatorApp.get('Disponível')}: "
             f"{CurrencyFormatter.format(resumo.get('disponivel', 0))}"
         )
+        captions = {
+            "limite": "Limite", "saldo_devedor": "Usado", "disponivel": "Disponível"
+        }
+        for key, (caption, value) in self.indicator_labels.items():
+            caption.setText(TranslatorApp.get(captions[key]))
+            value.setText(CurrencyFormatter.format(resumo.get(key, 0)))
+        self.indicator_labels["saldo_devedor"][1].setObjectName("warning")
+        self.indicator_labels["disponivel"][1].setObjectName("positivo")
 
     def _render_resumo(self, fatura):
         self.resumo_label.setText(

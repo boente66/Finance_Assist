@@ -42,10 +42,12 @@ class MainView(QMainWindow):
         self._user_menu_expanded = False
         self._icon_cache = {}
 
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(80, 60, 1440, 900)
+        self.setMinimumSize(1180, 720)
         self.setWindowTitle("Controle Financeiro")
 
         self._init_ui()
+        self._criar_marca()
         self._criar_menu()
         self.aplicar_tema()
 
@@ -60,6 +62,23 @@ class MainView(QMainWindow):
         self._atualizar_textos()
 
         self._abrir_primeira_view()
+
+    # ==================================================
+    # MARCA
+    # ==================================================
+    def _criar_marca(self):
+        brand = QWidget()
+        brand.setObjectName("sidebarBrand")
+        brand_layout = QHBoxLayout(brand)
+        brand_layout.setContentsMargins(18, 12, 14, 22)
+        self.brand_icon = QLabel()
+        self.brand_icon.setObjectName("brandIcon")
+        self.brand_icon.setPixmap(self._icon("finance_assist").pixmap(42, 42))
+        self.brand_title = QLabel("Finance\nAssist")
+        self.brand_title.setObjectName("brandTitle")
+        brand_layout.addWidget(self.brand_icon)
+        brand_layout.addWidget(self.brand_title, 1)
+        self.sidebar_layout.addWidget(brand)
 
     # ==================================================
     # UI BASE
@@ -193,6 +212,13 @@ class MainView(QMainWindow):
             "agendamentos"
         )
 
+        add_btn(
+            "btn_configuracoes",
+            "Configurações",
+            ("views.configuracoes_view", "ConfiguracoesView"),
+            "configuracoes"
+        )
+
         self.sidebar_layout.addStretch()
 
         divisor = QFrame()
@@ -211,14 +237,35 @@ class MainView(QMainWindow):
             or TranslatorApp.get("Usuário")
         )
 
+        self.user_card = QFrame()
+        self.user_card.setObjectName("sidebarUserCard")
+        user_layout = QHBoxLayout(self.user_card)
+        user_layout.setContentsMargins(14, 10, 12, 10)
+        user_layout.setSpacing(10)
+        initials = "".join(part[0] for part in nome.split()[:2]).upper() or "U"
+        self.user_avatar = QLabel(initials)
+        self.user_avatar.setObjectName("sidebarAvatar")
+        self.user_avatar.setAlignment(Qt.AlignCenter)
+        copy = QVBoxLayout()
+        copy.setSpacing(1)
         self.lbl_usuario = QLabel(nome)
         self.lbl_usuario.setObjectName("sidebarUser")
-        self.lbl_usuario.setAlignment(Qt.AlignLeft)
-        self.lbl_usuario.setContentsMargins(15, 10, 10, 10)
-        self.lbl_usuario.setCursor(Qt.PointingHandCursor)
-        self.lbl_usuario.mousePressEvent = self._toggle_user_menu
+        self.lbl_usuario_detail = QLabel(
+            self.usuario.get("Email") or self.usuario.get("Nivel_Acesso") or ""
+        )
+        self.lbl_usuario_detail.setObjectName("sidebarUserDetail")
+        copy.addWidget(self.lbl_usuario)
+        copy.addWidget(self.lbl_usuario_detail)
+        self.user_toggle = QLabel("⌄")
+        self.user_toggle.setObjectName("sidebarUserToggle")
+        user_layout.addWidget(self.user_avatar)
+        user_layout.addLayout(copy, 1)
+        user_layout.addWidget(self.user_toggle)
+        self.user_card.setCursor(Qt.PointingHandCursor)
+        self.user_card.setToolTip(TranslatorApp.get("Abrir opções do usuário"))
+        self.user_card.mousePressEvent = self._toggle_user_menu
 
-        self.sidebar_layout.addWidget(self.lbl_usuario)
+        self.sidebar_layout.addWidget(self.user_card)
 
         self.user_menu_container = QWidget()
 
@@ -235,6 +282,14 @@ class MainView(QMainWindow):
         )
 
         self._criar_menu_usuario()
+
+        self.btn_logout = QPushButton("Sair")
+        self.btn_logout.setObjectName("menuButton")
+        self.btn_logout.setIcon(self._icon("login"))
+        self.btn_logout.setIconSize(QSize(17, 17))
+        self.btn_logout.setCursor(Qt.PointingHandCursor)
+        self.btn_logout.clicked.connect(self._logout)
+        self.sidebar_layout.addWidget(self.btn_logout)
 
     # ==================================================
     # MENU USUÁRIO
@@ -279,13 +334,6 @@ class MainView(QMainWindow):
                 "gerenciar_usuarios"
             )
 
-        add_user_btn(
-            "btn_configuracoes",
-            "Configurações",
-            ("views.configuracoes_view", "ConfiguracoesView"),
-            "configuracoes"
-        )
-
         if self._is_admin():
             add_user_btn(
                 "btn_backup",
@@ -301,6 +349,7 @@ class MainView(QMainWindow):
         self.setWindowTitle(
             TranslatorApp.get("Controle Financeiro")
         )
+        self.brand_title.setText("Finance\nAssist")
 
         self.btn_resumo.setText(
             TranslatorApp.get("Resumo Financeiro")
@@ -330,6 +379,10 @@ class MainView(QMainWindow):
             TranslatorApp.get("Agendamentos")
         )
 
+        self.btn_configuracoes.setText(
+            TranslatorApp.get("Configurações")
+        )
+
         nome = (
             self.usuario.get("Nome")
             or TranslatorApp.get("Usuário")
@@ -347,15 +400,13 @@ class MainView(QMainWindow):
                 TranslatorApp.get("Gerenciamento de Usuários")
             )
 
-        if hasattr(self, "btn_configuracoes"):
-            self.btn_configuracoes.setText(
-                TranslatorApp.get("Configurações")
-            )
-
         if hasattr(self, "btn_backup"):
             self.btn_backup.setText(
                 TranslatorApp.get("Backup e Restauração")
             )
+
+        if hasattr(self, "btn_logout"):
+            self.btn_logout.setText(TranslatorApp.get("Sair"))
 
     # ==================================================
     # TOGGLE MENU
@@ -431,6 +482,9 @@ class MainView(QMainWindow):
                     self._logout
                 )
 
+            if hasattr(view, "open_invoice_requested"):
+                view.open_invoice_requested.connect(self.open_invoice)
+
             if hasattr(view, "on_load"):
                 view.on_load()
 
@@ -450,6 +504,15 @@ class MainView(QMainWindow):
                 "Erro ao carregar view %s",
                 view_name
             )
+
+    def open_invoice(self, id_cartao, mes, ano):
+        """Abre o cartão e a competência vindos da projeção financeira."""
+        from views.transacao_view import TransacaoView
+
+        self._ativar_botao(self.btn_transacoes)
+        self._carregar_view(TransacaoView)
+        if isinstance(self._current_widget, TransacaoView):
+            self._current_widget.abrir_fatura(id_cartao, mes, ano)
 
     # ==================================================
     # LOGOUT
@@ -478,7 +541,7 @@ class MainView(QMainWindow):
         try:
             tema = Session.get_config(
                 "tema",
-                "Claro"
+                ThemeManager.DEFAULT
             )
 
             app = QApplication.instance()

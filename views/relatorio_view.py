@@ -52,10 +52,18 @@ class RelatorioView(QWidget):
     # UI
     # ==================================================
     def _init_ui(self):
-        main_layout = QHBoxLayout(self)
+        root_layout = QVBoxLayout(self)
+        self.page_title = QLabel()
+        self.page_title.setObjectName("pageTitle")
+        self.page_subtitle = QLabel()
+        self.page_subtitle.setObjectName("pageSubtitle")
+        root_layout.addWidget(self.page_title)
+        root_layout.addWidget(self.page_subtitle)
+        main_layout = QHBoxLayout()
+        root_layout.addLayout(main_layout, 1)
 
         sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
+        sidebar.setObjectName("card")
 
         sidebar_layout = QVBoxLayout(sidebar)
 
@@ -118,7 +126,11 @@ class RelatorioView(QWidget):
         )
 
         self.titulo.setText(
-            TranslatorApp.get("Relatórios")
+            TranslatorApp.get("Tipos de Relatório")
+        )
+        self.page_title.setText(TranslatorApp.get("Relatórios"))
+        self.page_subtitle.setText(
+            TranslatorApp.get("Analise receitas, despesas e desempenho financeiro")
         )
 
         atual = self.sections.currentRow()
@@ -422,7 +434,14 @@ class RelatorioView(QWidget):
         try:
             dias = int(self.input_days.currentText())
 
-            data = self.controller.relatorio_diario(dias) or []
+            data = self.controller.relatorio_diario(dias)
+
+            if data is None:
+                self._error(
+                    self.table,
+                    TranslatorApp.get("Não foi possível gerar o relatório."),
+                )
+                return
 
             if not data:
                 self._empty(self.table)
@@ -582,6 +601,13 @@ class RelatorioView(QWidget):
                 "📭 " + TranslatorApp.get("Nenhum dado")
             )
         )
+
+    def _error(self, table, message):
+        table.setRowCount(1)
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels([TranslatorApp.get("Erro")])
+        item = QTableWidgetItem(message)
+        table.setItem(0, 0, item)
 
     # ==================================================
     # CICLO DE VIDA

@@ -177,9 +177,9 @@ class FaturaController:
 
 
     def listar_faturas_projetadas(self, quantidade_meses=6):
-            return self.service.listar_faturas_projetadas(
-                self.get_id_usuario(),
-                quantidade_meses
-            )
+        return self.service.listar_faturas_projetadas(
+            self.get_id_usuario(),
+            quantidade_meses
+        )
 
    
