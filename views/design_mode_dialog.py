@@ -7,19 +7,20 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QApplication, QColorDialog, QComboBox, QDialog, QFileDialog, QFormLayout,
-    QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
+    QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSplitter,
     QScrollArea, QSpinBox, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget,
 )
 
 from core.theme_manager import ThemeManager
 from core.translator_app import TranslatorApp
+from views.responsive_layout import FlowLayout
 
 
 class DesignModeDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(980, 650)
+        self.setMinimumSize(720, 520)
         self.config = ThemeManager.load_custom_theme() or ThemeManager.get_theme_config("Primavera")
         self.config["nome"] = self.config.get("nome") or "Meu Tema"
         self.config["base"] = "PERSONALIZADO"
@@ -34,7 +35,8 @@ class DesignModeDialog(QDialog):
     def _build_ui(self):
         self.setWindowTitle(self._t("Modo Design"))
         root = QVBoxLayout(self)
-        body = QHBoxLayout()
+        body = QSplitter(Qt.Horizontal)
+        body.setChildrenCollapsible(False)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -112,12 +114,15 @@ class DesignModeDialog(QDialog):
         form.addRow(self._t("Densidade da interface"), self.density_combo)
 
         scroll.setWidget(properties)
-        body.addWidget(scroll, 2)
+        body.addWidget(scroll)
         self.preview = self._build_preview()
-        body.addWidget(self.preview, 3)
-        root.addLayout(body)
+        body.addWidget(self.preview)
+        body.setStretchFactor(0, 2)
+        body.setStretchFactor(1, 3)
+        body.setSizes([380, 600])
+        root.addWidget(body, 1)
 
-        actions = QHBoxLayout()
+        actions = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
         self.import_btn = QPushButton(self._t("Importar"))
         self.export_btn = QPushButton(self._t("Exportar"))
         self.restore_btn = QPushButton(self._t("Restaurar"))
@@ -135,7 +140,6 @@ class DesignModeDialog(QDialog):
         for button in (self.import_btn, self.export_btn, self.restore_btn):
             button.setObjectName("secondaryButton")
             actions.addWidget(button)
-        actions.addStretch()
         actions.addWidget(self.cancel_btn)
         actions.addWidget(self.save_as_btn)
         actions.addWidget(self.save_btn)

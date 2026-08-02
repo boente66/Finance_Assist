@@ -13,13 +13,16 @@ from PyQt5.QtWidgets import (
     QLabel,
     QFrame,
     QApplication,
+    QScrollArea,
 )
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QPointF, QRectF, QTimer, Qt, QSize
+from PyQt5.QtGui import QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPen, QPixmap
+from PyQt5.QtWidgets import QShortcut
 
 from core.session import Session
 from core.theme_manager import ThemeManager
 from core.translator_app import TranslatorApp
+from core.window_manager import WindowManager
 from utilitarios.ion_path import IonPath
 
 logger = logging.getLogger(__name__)
@@ -41,14 +44,23 @@ class MainView(QMainWindow):
 
         self._user_menu_expanded = False
         self._icon_cache = {}
+        default_sidebar = ThemeManager.get_theme_config()["layout"]["sidebar_width"]
+        self._menu_compact_preference, self._sidebar_expanded_width = (
+            WindowManager.menu_preferences(default_sidebar)
+        )
+        self._sidebar_compact = False
+        self._manual_compact_override = False
 
-        self.setGeometry(80, 60, 1440, 900)
-        self.setMinimumSize(1180, 720)
+        self.setMinimumSize(820, 600)
         self.setWindowTitle("Controle Financeiro")
+        self.setWindowFlags(
+            self.windowFlags() | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint
+        )
 
         self._init_ui()
         self._criar_marca()
         self._criar_menu()
+        self._configure_shortcuts()
         self.aplicar_tema()
 
         Session.on_tema_change(
@@ -61,24 +73,35 @@ class MainView(QMainWindow):
         )
         self._atualizar_textos()
 
+        WindowManager.restore_main_window(self)
+        self._update_sidebar_for_width()
+
         self._abrir_primeira_view()
 
     # ==================================================
     # MARCA
     # ==================================================
     def _criar_marca(self):
-        brand = QWidget()
-        brand.setObjectName("sidebarBrand")
-        brand_layout = QHBoxLayout(brand)
+        self.brand = QWidget()
+        self.brand.setObjectName("sidebarBrand")
+        brand_layout = QHBoxLayout(self.brand)
         brand_layout.setContentsMargins(18, 12, 14, 22)
         self.brand_icon = QLabel()
         self.brand_icon.setObjectName("brandIcon")
-        self.brand_icon.setPixmap(self._icon("finance_assist").pixmap(42, 42))
+        self.brand_icon.setPixmap(
+            self._tinted_icon("finance_assist", "#20C7D4", 42).pixmap(42, 42)
+        )
         self.brand_title = QLabel("Finance\nAssist")
         self.brand_title.setObjectName("brandTitle")
         brand_layout.addWidget(self.brand_icon)
         brand_layout.addWidget(self.brand_title, 1)
-        self.sidebar_layout.addWidget(brand)
+        self.sidebar_layout.addWidget(self.brand)
+
+        self.sidebar_toggle = QPushButton("‹")
+        self.sidebar_toggle.setObjectName("sidebarToggle")
+        self.sidebar_toggle.setCursor(Qt.PointingHandCursor)
+        self.sidebar_toggle.clicked.connect(self.toggle_sidebar)
+        self.sidebar_layout.addWidget(self.sidebar_toggle, 0, Qt.AlignRight)
 
     # ==================================================
     # UI BASE
@@ -91,9 +114,21 @@ class MainView(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.sidebar = QWidget()
-        self.sidebar.setObjectName("sidebar")
+        self.sidebar.setObjectName("sidebarShell")
+        sidebar_shell_layout = QVBoxLayout(self.sidebar)
+        sidebar_shell_layout.setContentsMargins(0, 0, 0, 0)
+        self.sidebar_scroll = QScrollArea()
+        self.sidebar_scroll.setObjectName("sidebarScroll")
+        self.sidebar_scroll.setWidgetResizable(True)
+        self.sidebar_scroll.setFrameShape(QFrame.NoFrame)
+        self.sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.sidebar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.sidebar_content = QWidget()
+        self.sidebar_content.setObjectName("sidebar")
+        self.sidebar_scroll.setWidget(self.sidebar_content)
+        sidebar_shell_layout.addWidget(self.sidebar_scroll)
 
-        self.sidebar_layout = QVBoxLayout(self.sidebar)
+        self.sidebar_layout = QVBoxLayout(self.sidebar_content)
         self.sidebar_layout.setContentsMargins(0, 15, 0, 15)
         self.sidebar_layout.setSpacing(4)
 
@@ -137,6 +172,65 @@ class MainView(QMainWindow):
             )
             return QIcon()
 
+    def _tinted_icon(self, name, color, size):
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(color), max(1.6, size / 12), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        painter.setPen(pen)
+        s = float(size)
+        if name in ("resumo", "relatorios", "finance_assist"):
+            painter.drawLine(QPointF(.18*s, .82*s), QPointF(.18*s, .58*s))
+            painter.drawLine(QPointF(.42*s, .82*s), QPointF(.42*s, .38*s))
+            painter.drawLine(QPointF(.66*s, .82*s), QPointF(.66*s, .18*s))
+            if name == "relatorios":
+                painter.drawLine(QPointF(.12*s, .86*s), QPointF(.86*s, .86*s))
+        elif name == "transacoes":
+            painter.drawRoundedRect(QRectF(.10*s, .24*s, .80*s, .56*s), 2, 2)
+            painter.drawLine(QPointF(.10*s, .42*s), QPointF(.90*s, .42*s))
+            painter.drawEllipse(QRectF(.67*s, .57*s, .10*s, .10*s))
+        elif name == "metas":
+            painter.drawEllipse(QRectF(.13*s, .13*s, .68*s, .68*s))
+            painter.drawEllipse(QRectF(.34*s, .34*s, .28*s, .28*s))
+            painter.drawLine(QPointF(.52*s, .48*s), QPointF(.88*s, .12*s))
+        elif name == "categorias":
+            path = QPainterPath()
+            path.moveTo(.10*s, .30*s); path.lineTo(.38*s, .30*s)
+            path.lineTo(.47*s, .40*s); path.lineTo(.90*s, .40*s)
+            path.lineTo(.84*s, .80*s); path.lineTo(.14*s, .80*s); path.closeSubpath()
+            painter.drawPath(path)
+        elif name in ("favorecidos", "perfil", "gerenciar_usuarios"):
+            painter.drawEllipse(QRectF(.36*s, .12*s, .28*s, .28*s))
+            arc = QPainterPath(); arc.moveTo(.18*s, .86*s)
+            arc.cubicTo(.20*s, .50*s, .80*s, .50*s, .82*s, .86*s)
+            painter.drawPath(arc)
+        elif name == "agendamentos":
+            painter.drawRoundedRect(QRectF(.13*s, .22*s, .74*s, .65*s), 2, 2)
+            painter.drawLine(QPointF(.13*s, .42*s), QPointF(.87*s, .42*s))
+            painter.drawLine(QPointF(.30*s, .10*s), QPointF(.30*s, .30*s))
+            painter.drawLine(QPointF(.70*s, .10*s), QPointF(.70*s, .30*s))
+        elif name == "configuracoes":
+            painter.drawEllipse(QRectF(.31*s, .31*s, .38*s, .38*s))
+            for start, end in (((.50,.08),(.50,.25)),((.50,.75),(.50,.92)),
+                               ((.08,.50),(.25,.50)),((.75,.50),(.92,.50)),
+                               ((.20,.20),(.32,.32)),((.68,.68),(.80,.80))):
+                painter.drawLine(QPointF(start[0]*s,start[1]*s), QPointF(end[0]*s,end[1]*s))
+        elif name == "backup":
+            painter.drawRoundedRect(QRectF(.14*s, .48*s, .72*s, .38*s), 2, 2)
+            painter.drawLine(QPointF(.50*s, .12*s), QPointF(.50*s, .60*s))
+            painter.drawLine(QPointF(.32*s, .32*s), QPointF(.50*s, .12*s))
+            painter.drawLine(QPointF(.68*s, .32*s), QPointF(.50*s, .12*s))
+        elif name == "login":
+            painter.drawRoundedRect(QRectF(.12*s, .16*s, .48*s, .70*s), 2, 2)
+            painter.drawLine(QPointF(.40*s, .50*s), QPointF(.90*s, .50*s))
+            painter.drawLine(QPointF(.72*s, .32*s), QPointF(.90*s, .50*s))
+            painter.drawLine(QPointF(.72*s, .68*s), QPointF(.90*s, .50*s))
+        else:
+            painter.drawRoundedRect(QRectF(.16*s, .16*s, .68*s, .68*s), 3, 3)
+        painter.end()
+        return QIcon(pixmap)
+
     # ==================================================
     # MENU PRINCIPAL
     # ==================================================
@@ -152,6 +246,9 @@ class MainView(QMainWindow):
             btn.setIcon(self._icon(icon_name))
             btn.setIconSize(QSize(18, 18))
             btn.setContentsMargins(15, 8, 10, 8)
+            btn.setProperty("fullText", texto)
+            btn.setProperty("iconName", icon_name)
+            btn.setToolTip(texto)
 
             btn.clicked.connect(
                 lambda _, b=btn, v=view_ref:
@@ -239,9 +336,9 @@ class MainView(QMainWindow):
 
         self.user_card = QFrame()
         self.user_card.setObjectName("sidebarUserCard")
-        user_layout = QHBoxLayout(self.user_card)
-        user_layout.setContentsMargins(14, 10, 12, 10)
-        user_layout.setSpacing(10)
+        self.user_card_layout = QHBoxLayout(self.user_card)
+        self.user_card_layout.setContentsMargins(14, 10, 12, 10)
+        self.user_card_layout.setSpacing(10)
         initials = "".join(part[0] for part in nome.split()[:2]).upper() or "U"
         self.user_avatar = QLabel(initials)
         self.user_avatar.setObjectName("sidebarAvatar")
@@ -258,9 +355,9 @@ class MainView(QMainWindow):
         copy.addWidget(self.lbl_usuario_detail)
         self.user_toggle = QLabel("⌄")
         self.user_toggle.setObjectName("sidebarUserToggle")
-        user_layout.addWidget(self.user_avatar)
-        user_layout.addLayout(copy, 1)
-        user_layout.addWidget(self.user_toggle)
+        self.user_card_layout.addWidget(self.user_avatar)
+        self.user_card_layout.addLayout(copy, 1)
+        self.user_card_layout.addWidget(self.user_toggle)
         self.user_card.setCursor(Qt.PointingHandCursor)
         self.user_card.setToolTip(TranslatorApp.get("Abrir opções do usuário"))
         self.user_card.mousePressEvent = self._toggle_user_menu
@@ -268,6 +365,7 @@ class MainView(QMainWindow):
         self.sidebar_layout.addWidget(self.user_card)
 
         self.user_menu_container = QWidget()
+        self.user_menu_container.setObjectName("sidebarSubmenu")
 
         self.user_menu_layout = QVBoxLayout(
             self.user_menu_container
@@ -287,6 +385,9 @@ class MainView(QMainWindow):
         self.btn_logout.setObjectName("menuButton")
         self.btn_logout.setIcon(self._icon("login"))
         self.btn_logout.setIconSize(QSize(17, 17))
+        self.btn_logout.setProperty("fullText", "Sair")
+        self.btn_logout.setProperty("iconName", "login")
+        self.btn_logout.setToolTip("Sair")
         self.btn_logout.setCursor(Qt.PointingHandCursor)
         self.btn_logout.clicked.connect(self._logout)
         self.sidebar_layout.addWidget(self.btn_logout)
@@ -305,6 +406,9 @@ class MainView(QMainWindow):
             btn.setIcon(self._icon(icon_name))
             btn.setIconSize(QSize(16, 16))
             btn.setContentsMargins(30, 8, 10, 8)
+            btn.setProperty("fullText", texto)
+            btn.setProperty("iconName", icon_name)
+            btn.setToolTip(texto)
 
             btn.clicked.connect(
                 lambda _, v=view_ref:
@@ -408,6 +512,94 @@ class MainView(QMainWindow):
         if hasattr(self, "btn_logout"):
             self.btn_logout.setText(TranslatorApp.get("Sair"))
 
+        for button, _ in self._menu_buttons + self._user_menu_buttons:
+            button.setProperty("fullText", button.text())
+            button.setToolTip(button.text())
+        if hasattr(self, "btn_logout"):
+            self.btn_logout.setProperty("fullText", self.btn_logout.text())
+            self.btn_logout.setToolTip(self.btn_logout.text())
+        if hasattr(self, "sidebar_toggle"):
+            self.sidebar_toggle.setToolTip(
+                TranslatorApp.get("Expandir menu" if self._sidebar_compact else "Recolher menu")
+            )
+        self._apply_sidebar_mode(self._sidebar_compact)
+
+    # ==================================================
+    # RESPONSIVIDADE E ATALHOS
+    # ==================================================
+    def _configure_shortcuts(self):
+        self.shortcut_maximize = QShortcut(QKeySequence(Qt.Key_F11), self)
+        self.shortcut_maximize.activated.connect(self.toggle_maximized)
+        self.shortcut_sidebar = QShortcut(QKeySequence("Ctrl+Shift+M"), self)
+        self.shortcut_sidebar.activated.connect(self.toggle_sidebar)
+
+    def toggle_maximized(self):
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def toggle_sidebar(self):
+        if self._sidebar_compact:
+            self._menu_compact_preference = False
+            self._manual_compact_override = self.width() < 1080
+            self._apply_sidebar_mode(False)
+        else:
+            self._menu_compact_preference = True
+            self._manual_compact_override = False
+            self._apply_sidebar_mode(True)
+
+    def _update_sidebar_for_width(self):
+        auto_compact = self.width() < 1080 and not self._manual_compact_override
+        self._apply_sidebar_mode(self._menu_compact_preference or auto_compact)
+
+    def _apply_sidebar_mode(self, compact):
+        self._sidebar_compact = bool(compact)
+        width = 72 if compact else self._sidebar_expanded_width
+        self.sidebar.setMinimumWidth(width)
+        self.sidebar.setMaximumWidth(width)
+        self.sidebar.setProperty("compact", compact)
+        self.sidebar_content.setProperty("compact", compact)
+        self.brand_title.setVisible(not compact)
+        self.lbl_usuario.setVisible(not compact)
+        self.lbl_usuario_detail.setVisible(not compact)
+        self.user_toggle.setVisible(not compact)
+        self.user_card_layout.setContentsMargins(12 if compact else 14, 10, 12, 10)
+        buttons = [button for button, _ in self._menu_buttons + self._user_menu_buttons]
+        buttons.append(self.btn_logout)
+        for button in buttons:
+            full_text = button.property("fullText") or button.toolTip()
+            icon_name = button.property("iconName")
+            if icon_name:
+                button.setIcon(self._tinted_icon(icon_name, "#E9F0FA", 20))
+            button.setText("" if compact else full_text)
+            button.setToolTip(full_text)
+            button.setProperty("compact", compact)
+            button.style().unpolish(button)
+            button.style().polish(button)
+        self.sidebar_toggle.setText("›" if compact else "‹")
+        self.sidebar_toggle.setToolTip(TranslatorApp.get(
+            "Expandir menu" if compact else "Recolher menu"
+        ))
+        self.sidebar.style().unpolish(self.sidebar)
+        self.sidebar.style().polish(self.sidebar)
+        self.sidebar_content.style().unpolish(self.sidebar_content)
+        self.sidebar_content.style().polish(self.sidebar_content)
+        self._notify_responsive_view()
+
+    def _notify_responsive_view(self):
+        if self._current_widget and hasattr(self._current_widget, "set_compact_mode"):
+            self._current_widget.set_compact_mode(
+                self._sidebar_compact,
+                max(0, self.content.width()),
+            )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "sidebar"):
+            self._update_sidebar_for_width()
+            self._notify_responsive_view()
+
     # ==================================================
     # TOGGLE MENU
     # ==================================================
@@ -417,6 +609,14 @@ class MainView(QMainWindow):
         self.user_menu_container.setVisible(
             self._user_menu_expanded
         )
+        self.user_toggle.setText("⌃" if self._user_menu_expanded else "⌄")
+        if self._user_menu_expanded:
+            QTimer.singleShot(
+                0,
+                lambda: self.sidebar_scroll.ensureWidgetVisible(
+                    self.user_menu_container, 0, 24
+                ),
+            )
 
     # ==================================================
     # NAVEGAÇÃO
@@ -492,6 +692,7 @@ class MainView(QMainWindow):
 
             self._current_widget = view
             self._current_view_class = view_cls
+            self._notify_responsive_view()
 
         except Exception:
             view_name = getattr(
@@ -550,6 +751,8 @@ class MainView(QMainWindow):
                 tema,
                 app
             )
+            if hasattr(self, "sidebar"):
+                self._apply_sidebar_mode(self._sidebar_compact)
 
         except Exception:
             logger.exception(
@@ -560,6 +763,11 @@ class MainView(QMainWindow):
     # CICLO DE VIDA
     # ==================================================
     def closeEvent(self, event):
+        WindowManager.save_main_window(
+            self,
+            menu_compact=self._menu_compact_preference,
+            sidebar_width=self._sidebar_expanded_width,
+        )
         try:
             TranslatorApp.unbind(self)
         except Exception:

@@ -180,7 +180,11 @@ QWidget {{
 QLabel {{ background: transparent; border: 0; }}
 QMainWindow, QDialog {{ background-color: {c['background']}; }}
 QToolTip {{ color: white; background: #172033; border: 1px solid {c['border']}; padding: 6px; }}
-QWidget#sidebar {{ background-color: {c['sidebar']}; min-width: {int(l['sidebar_width'])}px; max-width: {int(l['sidebar_width'])}px; }}
+QWidget#sidebarShell, QWidget#sidebar, QScrollArea#sidebarScroll {{ background-color: {c['sidebar']}; border: 0; }}
+QWidget#sidebarSubmenu {{ background: transparent; border: 0; }}
+QScrollArea#sidebarScroll QScrollBar:vertical {{ background: rgba(255,255,255,0.07); width: 12px; margin: 2px; }}
+QScrollArea#sidebarScroll QScrollBar::handle:vertical {{ background: rgba(255,255,255,0.42); border-radius: 4px; min-height: 30px; }}
+QScrollArea#sidebarScroll QScrollBar::handle:vertical:hover {{ background: rgba(255,255,255,0.68); }}
 QWidget#sidebarBrand {{ background: transparent; border: 0; }}
 QLabel#brandIcon {{ background: transparent; border: 0; min-width: 46px; min-height: 46px; }}
 QLabel#brandTitle {{ color: white; font-size: 16pt; font-weight: 700; }}
@@ -191,8 +195,11 @@ QLabel#sidebarUser {{ color: white; font-weight: 700; }}
 QLabel#sidebarUserDetail {{ color: #B8C7D9; font-size: 8pt; }}
 QLabel#sidebarUserToggle {{ color: #D7E3F0; font-size: 13pt; }}
 QPushButton#menuButton {{ background: transparent; color: #E9F0FA; border: 0; border-radius: {radius}px; text-align: left; padding: 10px 16px; min-height: 26px; }}
+QPushButton#menuButton[compact="true"] {{ text-align: center; padding: 10px; min-width: 34px; }}
 QPushButton#menuButton:hover {{ background: rgba(255,255,255,0.09); }}
 QPushButton#menuButton[active=\"true\"] {{ background-color: {c['sidebar_active']}; color: white; font-weight: 600; }}
+QPushButton#sidebarToggle {{ background: transparent; color: #DCE8F5; border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px; padding: 0; margin-right: 10px; }}
+QPushButton#sidebarToggle:hover {{ background: rgba(255,255,255,0.10); }}
 QFrame#card, QGroupBox, QWidget#surface {{ background-color: {c['surface']}; border: {surface_border}px solid {c['border']}; border-radius: {radius}px; }}
 QGroupBox {{ margin-top: 12px; padding: {pad}px; font-weight: 600; }}
 QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 5px; }}
@@ -218,6 +225,9 @@ QTableWidget::item, QTableView::item {{ padding: {line_pad}px; min-height: {int(
 QTableWidget::item:selected, QTableView::item:selected {{ background: {c['selection']}; color: {c['text_primary']}; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; }}
 QScrollBar::handle:vertical {{ background: {c['border']}; border-radius: 5px; min-height: 24px; }}
+QScrollArea#sidebarScroll QScrollBar:vertical {{ background: rgba(255,255,255,0.10); width: 14px; margin: 2px; }}
+QScrollArea#sidebarScroll QScrollBar::handle:vertical {{ background: {c['sidebar_active']}; border-radius: 5px; min-height: 36px; }}
+QScrollArea#sidebarScroll QScrollBar::handle:vertical:hover {{ background: {c['primary_hover']}; }}
 QProgressBar {{ background: {c['surface_alt']}; border: 0; border-radius: 6px; text-align: center; }}
 QProgressBar::chunk {{ background: {c['success']}; border-radius: 6px; }}
 QSplitter::handle {{ background: {c['border']}; min-width: {divider_size}px; min-height: {divider_size}px; }}

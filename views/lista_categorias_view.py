@@ -23,6 +23,7 @@ from views.categoria_dialog import CategoriaDialog
 from views.subcategoria_dialog import SubcategoriaDialog
 
 from core.translator_app import TranslatorApp
+from views.responsive_layout import FlowLayout
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -92,7 +93,7 @@ class ListaCategoriasView(QWidget):
         layout.addWidget(self.subtitle)
 
         # ---------------- BOTÕES ----------------
-        buttons = QHBoxLayout()
+        buttons = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
         self.btn_nova = QPushButton("Nova Categoria")
         self.btn_sub = QPushButton("Nova Subcategoria")
@@ -108,18 +109,18 @@ class ListaCategoriasView(QWidget):
         buttons.addWidget(self.btn_sub)
         buttons.addWidget(self.btn_excluir)
 
-        buttons.addStretch()
         layout.addLayout(buttons)
 
-        filters = QHBoxLayout()
+        filters = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
         self.search_input = QLineEdit()
+        self.search_input.setMinimumWidth(240)
         self.type_filter = QComboBox()
         self.type_filter.addItem("Todas", None)
         self.type_filter.addItem("Receita", "Receita")
         self.type_filter.addItem("Despesa", "Despesa")
         self.search_input.textChanged.connect(self.apply_filter)
         self.type_filter.currentIndexChanged.connect(self.apply_filter)
-        filters.addWidget(self.search_input, 1)
+        filters.addWidget(self.search_input)
         filters.addWidget(self.type_filter)
         layout.addLayout(filters)
 
@@ -136,6 +137,7 @@ class ListaCategoriasView(QWidget):
         self.table.setColumnHidden(2, True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.customContextMenuRequested.connect(self.show_context_menu)
 
         layout.addWidget(self.table)

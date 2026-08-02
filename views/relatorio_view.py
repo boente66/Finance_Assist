@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QHBoxLayout,
+    QSplitter,
     QPushButton,
     QListWidget,
     QStackedWidget,
@@ -59,8 +60,9 @@ class RelatorioView(QWidget):
         self.page_subtitle.setObjectName("pageSubtitle")
         root_layout.addWidget(self.page_title)
         root_layout.addWidget(self.page_subtitle)
-        main_layout = QHBoxLayout()
-        root_layout.addLayout(main_layout, 1)
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.setChildrenCollapsible(False)
+        root_layout.addWidget(self.main_splitter, 1)
 
         sidebar = QFrame()
         sidebar.setObjectName("card")
@@ -77,7 +79,8 @@ class RelatorioView(QWidget):
         sidebar_layout.addWidget(self.sections)
         sidebar_layout.addStretch()
 
-        main_layout.addWidget(sidebar, 1)
+        sidebar.setMinimumWidth(170)
+        self.main_splitter.addWidget(sidebar)
 
         self.stacked = QStackedWidget()
 
@@ -89,9 +92,16 @@ class RelatorioView(QWidget):
         self.stacked.addWidget(self.w_anual)
         self.stacked.addWidget(self.w_informe)
 
-        main_layout.addWidget(self.stacked, 4)
+        self.main_splitter.addWidget(self.stacked)
+        self.main_splitter.setStretchFactor(0, 0)
+        self.main_splitter.setStretchFactor(1, 1)
+        self.main_splitter.setSizes([220, 900])
 
         self.sections.setCurrentRow(0)
+
+    def set_compact_mode(self, compact, available_width=None):
+        width = int(available_width or self.width())
+        self.main_splitter.setSizes([180 if width < 900 else 220, max(380, width - 220)])
 
     # ==================================================
     # EVENTOS

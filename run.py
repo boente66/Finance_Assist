@@ -9,6 +9,7 @@ from core.config import carregar_config
 from core.session import Session
 from core.themes import get_theme
 from core.translator_app import TranslatorApp
+from core.window_manager import install_dialog_geometry_filter
 
 from views.login_dialog import LoginDialog
 from views.main_view import MainView
@@ -64,6 +65,7 @@ def aplicar_tema(tema, app=None):
 
 def main():
     app = QApplication(sys.argv)
+    install_dialog_geometry_filter(app)
 
     try:
         config = carregar_config()

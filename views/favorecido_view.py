@@ -23,6 +23,7 @@ from views.FavorecidoDialog import FavorecidoDialog
 from controllers.favorecido_controller import FavorecidoController
 from utilitarios.ion_path import IonPath
 from core.translator_app import TranslatorApp
+from views.responsive_layout import FlowLayout
 
 
 class FavorecidoView(QWidget):
@@ -32,7 +33,7 @@ class FavorecidoView(QWidget):
 
         self.controller = FavorecidoController()
 
-        self.setMinimumSize(820, 600)
+        self.setMinimumSize(560, 420)
 
         self.data_original = []
         self.data_filtrada = []
@@ -68,7 +69,7 @@ class FavorecidoView(QWidget):
         self.subtitle_label.setObjectName("pageSubtitle")
         main_layout.addWidget(self.subtitle_label)
 
-        button_layout = QHBoxLayout()
+        button_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
         self.add_btn = self._create_button(
             "Adicionar",
@@ -94,14 +95,13 @@ class FavorecidoView(QWidget):
         button_layout.addWidget(self.add_btn)
         button_layout.addWidget(self.edit_btn)
         button_layout.addWidget(self.delete_btn)
-        button_layout.addStretch()
-
         main_layout.addLayout(button_layout)
 
-        filtro_layout = QHBoxLayout()
+        filtro_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
         self.search_label = QLabel()
         self.search_input = QLineEdit()
+        self.search_input.setMinimumWidth(240)
         self.search_input.textChanged.connect(self._on_busca_change)
 
         self.tipo_label = QLabel()
@@ -125,6 +125,7 @@ class FavorecidoView(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSortingEnabled(True)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.doubleClicked.connect(self.edit_favorecido)
 
         main_layout.addWidget(self.table)

@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QSplitter,
     QListWidget,
     QListWidgetItem,
     QLabel,
@@ -55,8 +56,9 @@ class TransacaoView(QWidget):
         self.page_subtitle.setObjectName("pageSubtitle")
         root_layout.addWidget(self.page_title)
         root_layout.addWidget(self.page_subtitle)
-        self.main_layout = QHBoxLayout()
-        root_layout.addLayout(self.main_layout, 1)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setChildrenCollapsible(False)
+        root_layout.addWidget(self.splitter, 1)
 
         self._montar_painel_esquerdo()
         self._montar_area_painel()
@@ -130,7 +132,9 @@ class TransacaoView(QWidget):
     # PAINEL ESQUERDO
     # ==========================================================
     def _montar_painel_esquerdo(self):
-        self.left = QVBoxLayout()
+        self.left_widget = QWidget()
+        self.left_widget.setObjectName("surface")
+        self.left = QVBoxLayout(self.left_widget)
         self.left.setSpacing(10)
 
         (
@@ -185,14 +189,27 @@ class TransacaoView(QWidget):
         self.left.addLayout(cartoes_box)
         self.left.addStretch()
 
-        self.main_layout.addLayout(self.left, 0)
+        self.splitter.addWidget(self.left_widget)
 
     # ==========================================================
     # ÁREA DE PAINEL
     # ==========================================================
     def _montar_area_painel(self):
-        self.area_painel = QVBoxLayout()
-        self.main_layout.addLayout(self.area_painel, 1)
+        self.area_painel_widget = QWidget()
+        self.area_painel = QVBoxLayout(self.area_painel_widget)
+        self.area_painel.setContentsMargins(8, 0, 0, 0)
+        self.splitter.addWidget(self.area_painel_widget)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setSizes([280, 900])
+
+    def set_compact_mode(self, compact, available_width=None):
+        width = int(available_width or self.width())
+        left_width = 210 if width < 900 else 280
+        self.left_widget.setMinimumWidth(180)
+        self.splitter.setSizes([left_width, max(360, width - left_width)])
+        if self.painel_ativo and hasattr(self.painel_ativo, "set_compact_mode"):
+            self.painel_ativo.set_compact_mode(compact, max(360, width - left_width))
 
     def _trocar_painel(self, painel):
         if self.painel_ativo:
@@ -201,6 +218,7 @@ class TransacaoView(QWidget):
 
         self.painel_ativo = painel
         self.area_painel.addWidget(painel)
+        self.set_compact_mode(self.width() < 900, self.width())
 
     # ==========================================================
     # SELEÇÃO
@@ -528,7 +546,7 @@ class TransacaoView(QWidget):
         header.addWidget(btn)
 
         lista = QListWidget()
-        lista.setMinimumWidth(largura)
+        lista.setMinimumWidth(min(190, largura))
         lista.setMaximumHeight(altura_max)
 
         container.addLayout(header)

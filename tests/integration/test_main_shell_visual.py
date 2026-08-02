@@ -20,7 +20,8 @@ def test_shell_principal_mantem_navegacao_e_expoe_configuracoes(monkeypatch):
     })
     assert view.brand_title.text() == "Finance\nAssist"
     assert view.btn_configuracoes in [button for button, _ in view._menu_buttons]
-    assert view.btn_logout.text()
+    assert view.btn_logout.property("fullText")
+    assert view.btn_logout.toolTip()
     assert view.user_card.objectName() == "sidebarUserCard"
     assert len(view._menu_buttons) == 8
     view.close()

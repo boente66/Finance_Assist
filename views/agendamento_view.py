@@ -8,9 +8,9 @@ from datetime import date, datetime, timedelta
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
-    QAbstractItemView, QComboBox, QFrame, QHBoxLayout, QHeaderView, QLabel,
-    QLineEdit, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget,
+    QAbstractItemView, QComboBox, QFrame, QGridLayout, QHBoxLayout,
+    QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton, QTableWidget,
+    QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from controllers.schedule_controller import ScheduleController
@@ -20,6 +20,7 @@ from utilitarios.currency_formatter import CurrencyFormatter
 from utilitarios.date_formatter import DateFormatter
 from utilitarios.ion_path import IonPath
 from views.agendamento_dialog import AgendamentoDialog
+from views.responsive_layout import FlowLayout
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class AgendamentoView(QWidget):
         self.title.setObjectName("pageTitle")
         self.subtitle = QLabel()
         self.subtitle.setObjectName("pageSubtitle")
+        self.subtitle.setWordWrap(True)
         titles.addWidget(self.title)
         titles.addWidget(self.subtitle)
         header.addLayout(titles)
@@ -80,7 +82,7 @@ class AgendamentoView(QWidget):
         header.addWidget(self.refresh_btn)
         root.addLayout(header)
 
-        actions = QHBoxLayout()
+        self.actions_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
         self.btn_add = QPushButton()
         self.btn_edit = QPushButton()
         self.btn_exec = QPushButton()
@@ -93,13 +95,13 @@ class AgendamentoView(QWidget):
             (self.btn_exec, "pay"), (self.btn_cancel, "delete"),
         ):
             button.setIcon(self._icon(icon))
-            actions.addWidget(button)
-        actions.addStretch()
-        root.addLayout(actions)
+            self.actions_layout.addWidget(button)
+        root.addLayout(self.actions_layout)
 
         filters = QFrame()
         filters.setObjectName("card")
-        filter_layout = QHBoxLayout(filters)
+        filter_layout = QVBoxLayout(filters)
+        self.quick_filter_layout = FlowLayout(horizontal_spacing=7, vertical_spacing=7)
         self.quick_buttons = {}
         for code in (
             self.FILTER_ALL, self.FILTER_RECEIVE, self.FILTER_PAY,
@@ -110,9 +112,10 @@ class AgendamentoView(QWidget):
             button.setCheckable(True)
             button.clicked.connect(lambda _=False, value=code: self.apply_quick_filter(value))
             self.quick_buttons[code] = button
-            filter_layout.addWidget(button)
+            self.quick_filter_layout.addWidget(button)
         self.quick_buttons[self.FILTER_ALL].setChecked(True)
-        filter_layout.addStretch()
+        filter_layout.addLayout(self.quick_filter_layout)
+        self.fields_filter_layout = FlowLayout(horizontal_spacing=7, vertical_spacing=7)
         self.combo_status = QComboBox()
         for label, value in (
             ("Todos", "TODOS"), ("Pendentes", "PENDENTES"),
@@ -124,9 +127,11 @@ class AgendamentoView(QWidget):
         self.combo_pessoa = QComboBox()
         self.search_input = QLineEdit()
         self.search_input.setClearButtonEnabled(True)
+        self.search_input.setMinimumWidth(230)
         for widget in (self.combo_status, self.combo_conta, self.combo_categoria, self.combo_pessoa):
-            filter_layout.addWidget(widget)
-        filter_layout.addWidget(self.search_input, 1)
+            self.fields_filter_layout.addWidget(widget)
+        self.fields_filter_layout.addWidget(self.search_input)
+        filter_layout.addLayout(self.fields_filter_layout)
         root.addWidget(filters)
 
         self.error_label = QLabel()
@@ -140,6 +145,7 @@ class AgendamentoView(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.verticalHeader().setVisible(False)
         header_view = self.table.horizontalHeader()
         header_view.setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -149,21 +155,44 @@ class AgendamentoView(QWidget):
 
         summary = QFrame()
         summary.setObjectName("card")
-        summary_layout = QHBoxLayout(summary)
+        self.summary_layout = QGridLayout(summary)
+        self.summary_layout.setSpacing(10)
         self.summary_labels = {}
-        for key in ("receber", "agendamentos_pagar", "faturas", "pagar", "resultado"):
-            box = QVBoxLayout()
+        self.summary_widgets = []
+        for index, key in enumerate(("receber", "agendamentos_pagar", "faturas", "pagar", "resultado")):
+            item = QFrame()
+            item.setObjectName("summaryItem")
+            box = QVBoxLayout(item)
             caption = QLabel()
             caption.setObjectName("cardTitle")
             value = QLabel()
             value.setObjectName("cardValue")
             box.addWidget(caption)
             box.addWidget(value)
-            summary_layout.addLayout(box)
-            if key != "resultado":
-                summary_layout.addStretch()
+            self.summary_layout.addWidget(item, 0, index)
+            self.summary_widgets.append(item)
             self.summary_labels[key] = (caption, value)
         root.addWidget(summary)
+        self.set_compact_mode(False, self.width())
+
+    def set_compact_mode(self, compact, available_width=None):
+        width = int(available_width or self.width())
+        columns = 5 if width >= 1200 else 3 if width >= 820 else 2
+        for item in self.summary_widgets:
+            self.summary_layout.removeWidget(item)
+        for index, item in enumerate(self.summary_widgets):
+            self.summary_layout.addWidget(item, index // columns, index % columns)
+        for column in range(5):
+            self.summary_layout.setColumnStretch(column, 1 if column < columns else 0)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        if width >= 980:
+            self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+            self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "summary_widgets"):
+            self.set_compact_mode(event.size().width() < 980, event.size().width())
 
     def _connect_signals(self):
         self.refresh_btn.clicked.connect(self.load_data)

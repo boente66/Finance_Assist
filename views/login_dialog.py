@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
 from controllers.user_controller import UserController
 from core.translator_app import TranslatorApp
 from core.theme_manager import ThemeManager
+from core.window_manager import WindowManager
 from utilitarios.ion_path import IonPath
 from views.cadastro_usuario_dialog import CadastroUsuarioDialog
 
@@ -127,8 +128,10 @@ class LoginDialog(QDialog):
         self.setObjectName("loginRoot")
         self.setWindowIcon(self._icon("finance_assist"))
         self.setModal(True)
-        self.setMinimumSize(860, 620)
-        self.resize(1280, 800)
+        self.setMinimumSize(720, 540)
+        self.resize(1120, 720)
+        self.setWindowFlag(Qt.WindowMinimizeButtonHint, True)
+        self.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
         self.setSizeGripEnabled(True)
 
         self._build_ui()
@@ -549,3 +552,7 @@ class LoginDialog(QDialog):
         except Exception:
             pass
         super().closeEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        WindowManager.fit_dialog(self, self.parentWidget())

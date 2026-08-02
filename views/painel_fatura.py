@@ -4,13 +4,14 @@ import os
 from datetime import datetime
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QDialog,
     QToolButton, QMessageBox, QPushButton, QInputDialog
     , QFrame
 )
 from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtCore import Qt
 
 from controllers.fatura_controller import FaturaController
 from controllers.account_controller import AccountController
@@ -24,6 +25,7 @@ from utilitarios.date_formatter import DateFormatter
 from utilitarios.ion_path import IonPath
 
 from views.fatura_dialog import FaturaDialog
+from views.responsive_layout import FlowLayout
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +128,11 @@ class PainelFatura(QWidget):
 
         layout.addWidget(self.nome_cartao_label)
 
-        indicators = QHBoxLayout()
+        self.indicators_layout = QGridLayout()
+        self.indicators_layout.setSpacing(10)
         self.indicator_labels = {}
-        for key in ("limite", "saldo_devedor", "disponivel"):
+        self.indicator_widgets = []
+        for index, key in enumerate(("limite", "saldo_devedor", "disponivel")):
             card = QFrame()
             card.setObjectName("card")
             card_layout = QVBoxLayout(card)
@@ -138,13 +142,14 @@ class PainelFatura(QWidget):
             value.setObjectName("cardValue")
             card_layout.addWidget(caption)
             card_layout.addWidget(value)
-            indicators.addWidget(card)
+            self.indicators_layout.addWidget(card, 0, index)
+            self.indicator_widgets.append(card)
             self.indicator_labels[key] = (caption, value)
-        layout.addLayout(indicators)
+        layout.addLayout(self.indicators_layout)
         self.info_label.hide()
 
         # TOOLBAR
-        toolbar = QHBoxLayout()
+        self.toolbar = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
         def btn(texto, fn):
             b = QToolButton()
@@ -163,10 +168,9 @@ class PainelFatura(QWidget):
         self.btn_pagar.setObjectName("secondaryButton")
         self.btn_exportar.setObjectName("secondaryButton")
 
-        toolbar.addWidget(self.btn_lancar)
-        toolbar.addWidget(self.btn_pagar)
-        toolbar.addWidget(self.btn_exportar)
-        toolbar.addStretch()
+        self.toolbar.addWidget(self.btn_lancar)
+        self.toolbar.addWidget(self.btn_pagar)
+        self.toolbar.addWidget(self.btn_exportar)
 
         self.filtro_combo = QComboBox()
         self.filtro_combo.addItem("Todos", "Todos")
@@ -175,13 +179,13 @@ class PainelFatura(QWidget):
         self.filtro_combo.currentIndexChanged.connect(self._on_filtro_changed)
 
         self.lbl_status = QLabel("Status:")
-        toolbar.addWidget(self.lbl_status)
-        toolbar.addWidget(self.filtro_combo)
+        self.toolbar.addWidget(self.lbl_status)
+        self.toolbar.addWidget(self.filtro_combo)
 
-        layout.addLayout(toolbar)
+        layout.addLayout(self.toolbar)
 
         # FILTROS
-        filtros = QHBoxLayout()
+        self.filters_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
         self.mes_combo = QComboBox()
 
@@ -203,12 +207,12 @@ class PainelFatura(QWidget):
         self.lbl_mes = QLabel("Mês:")
         self.lbl_ano = QLabel("Ano:")
 
-        filtros.addWidget(self.lbl_mes)
-        filtros.addWidget(self.mes_combo)
-        filtros.addWidget(self.lbl_ano)
-        filtros.addWidget(self.ano_combo)
+        self.filters_layout.addWidget(self.lbl_mes)
+        self.filters_layout.addWidget(self.mes_combo)
+        self.filters_layout.addWidget(self.lbl_ano)
+        self.filters_layout.addWidget(self.ano_combo)
 
-        layout.addLayout(filtros)
+        layout.addLayout(self.filters_layout)
 
         # TABELA
         self.table = QTableWidget(0, 5)
@@ -217,6 +221,7 @@ class PainelFatura(QWidget):
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         layout.addWidget(self.table)
 
@@ -238,11 +243,34 @@ class PainelFatura(QWidget):
 
         self.resumo_label = QLabel()
         self.resumo_label.setObjectName("cardValue")
+        self.resumo_label.setWordWrap(True)
         layout.addWidget(self.resumo_label)
 
         self.futuras_label = QLabel()
         self.futuras_label.setObjectName("muted")
+        self.futuras_label.setWordWrap(True)
         layout.addWidget(self.futuras_label)
+        self.set_compact_mode(False, self.width())
+
+    def set_compact_mode(self, compact, available_width=None):
+        width = int(available_width or self.width())
+        columns = 3 if width >= 850 else 2 if width >= 520 else 1
+        for widget in self.indicator_widgets:
+            self.indicators_layout.removeWidget(widget)
+        for index, widget in enumerate(self.indicator_widgets):
+            self.indicators_layout.addWidget(widget, index // columns, index % columns)
+        for column in range(3):
+            self.indicators_layout.setColumnStretch(column, 1 if column < columns else 0)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        if width >= 760:
+            header.setSectionResizeMode(1, QHeaderView.Stretch)
+            header.setSectionResizeMode(2, QHeaderView.Stretch)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "indicator_widgets"):
+            self.set_compact_mode(event.size().width() < 850, event.size().width())
 
     # ======================================================
     # MESES

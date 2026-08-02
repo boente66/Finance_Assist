@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 
 from core.session import Session
 from core.theme_manager import ThemeManager
+from views.responsive_layout import FlowLayout
 from core.translator_app import TranslatorApp
 from controllers.configuracoes_controller import ConfiguracoesController
 from controllers.user_controller import UserController
@@ -83,7 +84,8 @@ class ConfiguracoesView(QWidget):
         if self.eh_admin:
             self.layout.addWidget(self.db_label)
 
-            db_layout = QHBoxLayout()
+            db_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
+            self.db_edit.setMinimumWidth(260)
             db_layout.addWidget(self.db_edit)
             db_layout.addWidget(self.db_btn)
             self.layout.addLayout(db_layout)
@@ -92,7 +94,7 @@ class ConfiguracoesView(QWidget):
             self.db_edit.hide()
             self.db_btn.hide()
 
-        self.buttons_layout = QHBoxLayout()
+        self.buttons_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
         self.aplicar_btn = QPushButton()
         self.aplicar_btn.setObjectName("primaryButton")

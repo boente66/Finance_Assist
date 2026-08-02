@@ -8,8 +8,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QProgressBar, QPushButton, QScrollArea,
-    QSizePolicy, QVBoxLayout, QWidget,
+    QFrame, QGridLayout, QHBoxLayout, QLabel, QProgressBar, QPushButton,
+    QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from controllers.account_controller import AccountController
@@ -134,58 +134,59 @@ class ResumoFinanceiroView(QWidget):
         header.addWidget(self.refresh_btn)
         self.main_layout.addLayout(header)
 
-        metrics = QHBoxLayout()
-        metrics.setSpacing(12)
+        self.metrics_layout = QGridLayout()
+        self.metrics_layout.setSpacing(12)
         self.metric_accounts = MetricCard("▣", "Saldo total das contas", "Contas cadastradas")
         self.metric_cards = MetricCard("▤", "Cartões de crédito", "Faturas em aberto")
         self.metric_income = MetricCard("↗", "Receitas do mês", "Até o momento")
         self.metric_expense = MetricCard("↘", "Despesas do mês", "Até o momento")
         self.metric_result = MetricCard("◴", "Resultado do mês", "Receitas - Despesas")
-        for card in (
+        self.metric_widgets = (
             self.metric_accounts, self.metric_cards, self.metric_income,
             self.metric_expense, self.metric_result,
-        ):
-            metrics.addWidget(card)
-        self.main_layout.addLayout(metrics)
+        )
+        for index, card in enumerate(self.metric_widgets):
+            self.metrics_layout.addWidget(card, 0, index)
+        self.main_layout.addLayout(self.metrics_layout)
 
-        middle = QHBoxLayout()
-        middle.setSpacing(16)
+        self.middle_layout = QGridLayout()
+        self.middle_layout.setSpacing(16)
         self.chart_panel, self.chart_layout, self.chart_title = self._panel(
             "Receitas x Despesas do mês", "Ver relatório", lambda: self._navigate("btn_relatorios")
         )
         self.chart_content = QVBoxLayout()
         self.chart_layout.addLayout(self.chart_content)
-        middle.addWidget(self.chart_panel, 3)
+        self.middle_layout.addWidget(self.chart_panel, 0, 0)
 
         self.schedules_panel, schedules_box, self.schedules_title = self._panel(
             "Próximos lançamentos", "Ver todos", lambda: self._navigate("btn_agendamentos")
         )
         self.schedules_layout = QVBoxLayout()
         schedules_box.addLayout(self.schedules_layout)
-        middle.addWidget(self.schedules_panel, 2)
-        self.main_layout.addLayout(middle)
+        self.middle_layout.addWidget(self.schedules_panel, 0, 1)
+        self.main_layout.addLayout(self.middle_layout)
 
-        lower = QHBoxLayout()
-        lower.setSpacing(16)
+        self.lower_layout = QGridLayout()
+        self.lower_layout.setSpacing(16)
         self.analysis_panel, analysis_box, self.analysis_title = self._panel("Análise do mês")
         self.analysis_layout = QVBoxLayout()
         analysis_box.addLayout(self.analysis_layout)
-        lower.addWidget(self.analysis_panel, 1)
+        self.lower_layout.addWidget(self.analysis_panel, 0, 0)
 
         self.goals_panel, goals_box, self.goals_title = self._panel(
             "Metas em andamento", "Ver todas", lambda: self._navigate("btn_metas")
         )
         self.goals_layout = QVBoxLayout()
         goals_box.addLayout(self.goals_layout)
-        lower.addWidget(self.goals_panel, 1)
+        self.lower_layout.addWidget(self.goals_panel, 0, 1)
 
         self.accounts_panel, accounts_box, self.accounts_title = self._panel(
             "Contas e cartões", "Gerenciar", lambda: self._navigate("btn_transacoes")
         )
         self.accounts_layout = QVBoxLayout()
         accounts_box.addLayout(self.accounts_layout)
-        lower.addWidget(self.accounts_panel, 1)
-        self.main_layout.addLayout(lower)
+        self.lower_layout.addWidget(self.accounts_panel, 0, 2)
+        self.main_layout.addLayout(self.lower_layout)
 
         tip = QFrame()
         tip.setObjectName("financeTip")
@@ -196,6 +197,39 @@ class ResumoFinanceiroView(QWidget):
         tip_layout.addWidget(QLabel("◉"))
         tip_layout.addWidget(self.tip_label, 1)
         self.main_layout.addWidget(tip)
+        self._reflow_layouts(self.width())
+
+    @staticmethod
+    def _place_widgets(layout, widgets, columns):
+        for widget in widgets:
+            layout.removeWidget(widget)
+        for index, widget in enumerate(widgets):
+            layout.addWidget(widget, index // columns, index % columns)
+        for column in range(max(5, columns)):
+            layout.setColumnStretch(column, 1 if column < columns else 0)
+
+    def _reflow_layouts(self, width):
+        width = max(0, int(width or self.width()))
+        metric_columns = 5 if width >= 1250 else 3 if width >= 900 else 2
+        middle_columns = 2 if width >= 900 else 1
+        lower_columns = 3 if width >= 1100 else 2 if width >= 760 else 1
+        self._place_widgets(self.metrics_layout, self.metric_widgets, metric_columns)
+        self._place_widgets(
+            self.middle_layout, (self.chart_panel, self.schedules_panel), middle_columns
+        )
+        self._place_widgets(
+            self.lower_layout,
+            (self.analysis_panel, self.goals_panel, self.accounts_panel),
+            lower_columns,
+        )
+
+    def set_compact_mode(self, compact, available_width=None):
+        self._reflow_layouts(available_width or self.width())
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "metrics_layout"):
+            self._reflow_layouts(event.size().width())
 
     def _navigate(self, button_name):
         parent = self.parentWidget()
