@@ -193,10 +193,17 @@ Permanecem fora da publicação: `.venv/`, `venv/`, `env/`, `assistente/`, `fina
 
 ## 13. Registro de publicação
 
-Esta seção será atualizada após a confirmação do commit e do push para registrar o estado efetivamente publicado, sem antecipar um resultado externo.
+Em 2 de agosto de 2026, após a validação integral, foram publicados no `origin/main`:
+
+- `8f98237` — commit local anterior com categorização, importação e ajustes correlatos;
+- `ebe0781` — `feat: modernizar interface e integrar projeção financeira`;
+- intervalo remoto atualizado: `f475849..ebe0781`;
+- resultado do push: `main -> main`, sem merge forçado e sem reescrita do histórico.
+
+Antes do push foi executado `git fetch origin main`. O resultado mostrou `0` commits exclusivamente remotos e `2` exclusivamente locais, confirmando avanço linear seguro. Este registro documental é publicado em commit subsequente no mesmo `main`.
 
 ## 14. Conclusão técnica
 
 A modernização respeita a arquitetura existente e converte os modelos de referência em componentes nativos compatíveis com o projeto. As funcionalidades financeiras continuam separadas da apresentação e foram validadas em conjunto com as interfaces.
 
-Com 102 testes aprovados, sintaxe válida, diff íntegro e inspeção visual concluída, o conjunto encontra-se tecnicamente apto para versionamento e publicação no `main`, observadas as limitações declaradas.
+Com 102 testes aprovados, sintaxe válida, diff íntegro e inspeção visual concluída, o conjunto foi versionado e publicado no `main`, observadas as limitações declaradas.
