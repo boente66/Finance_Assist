@@ -1,0 +1,206 @@
+FINANCE ASSIST NON-COMMERCIAL SOURCE LICENSE 1.0
+LICENCA DE CODIGO-FONTE PARA USO NAO COMERCIAL 1.0
+
+Copyright (c) 2026 Leonardo Boente. Todos os direitos reservados.
+Copyright (c) 2026 Leonardo Boente. All rights reserved.
+
+AVISO IMPORTANTE
+
+Esta e uma licenca proprietaria de codigo-fonte disponivel ("source-available").
+Ela NAO e uma licenca de software livre ou de codigo aberto aprovada pela Open
+Source Initiative. O uso comercial e proibido sem autorizacao previa, expressa
+e escrita do Licenciante.
+
+O texto em portugues e a versao juridicamente prevalente. A traducao em ingles
+e fornecida apenas por conveniencia.
+
+========================================================================
+PARTE I — TERMOS EM PORTUGUES (VERSAO PREVALENTE)
+========================================================================
+
+1. PARTES E SOFTWARE
+
+"Licenciante" significa Leonardo Boente, titular dos direitos sobre o projeto
+Finance Assist — ControleFinanceiro.
+
+"Licenciado" significa qualquer pessoa fisica ou juridica que acesse, copie,
+instale, execute, modifique ou distribua o Software.
+
+"Software" significa os arquivos de codigo-fonte, codigo-objeto, recursos,
+documentacao e demais materiais deste repositorio aos quais este aviso se
+aplica, incluindo modificacoes e obras derivadas. Componentes de terceiros
+permanecem sujeitos as suas proprias licencas.
+
+2. ACEITACAO
+
+Ao copiar, instalar, executar, modificar ou distribuir o Software, o Licenciado
+declara que leu e aceitou estes termos. O simples acesso publico ao repositorio
+nao transfere titularidade nem concede direitos alem dos expressamente previstos
+nesta Licenca. Se nao aceitar estes termos, o Licenciado nao podera usar, copiar,
+modificar ou distribuir o Software.
+
+3. CONCESSAO LIMITADA PARA USO NAO COMERCIAL
+
+Sujeito ao cumprimento integral desta Licenca, o Licenciante concede ao
+Licenciado uma permissao mundial, revogavel, nao exclusiva, intransferivel e
+sem direito a sublicenciamento para:
+
+a) visualizar e estudar o codigo;
+b) executar o Software para fins pessoais e nao comerciais;
+c) usar o Software em ensino, aprendizagem ou pesquisa academica nao comercial;
+d) modificar o Software para os mesmos fins nao comerciais; e
+e) redistribuir copias ou modificacoes exclusivamente sem finalidade comercial,
+   desde que esta Licenca, os avisos de autoria e a indicacao clara das
+   alteracoes sejam mantidos integralmente.
+
+Entidades com fins lucrativos podem avaliar internamente o Software por ate 30
+(trinta) dias corridos, exclusivamente para decidir sobre a contratacao de uma
+licenca comercial. Essa avaliacao nao autoriza uso em producao, atendimento a
+clientes, processamento operacional ou obtencao de vantagem economica.
+
+4. USO COMERCIAL PROIBIDO SEM LICENCA ESPECIFICA
+
+Qualquer Uso Comercial exige contrato ou autorizacao previa, expressa e escrita
+do Licenciante. Para esta Licenca, "Uso Comercial" inclui, sem limitacao:
+
+a) vender, alugar, sublicenciar ou cobrar pelo Software ou por obra derivada;
+b) oferecer o Software, suas funcionalidades ou obra derivada como servico,
+   SaaS, hospedagem, API, consultoria, suporte pago ou produto integrado;
+c) usar o Software em producao por empresa, profissional, organizacao com fins
+   lucrativos ou atividade economica, ainda que apenas internamente;
+d) usar o Software para gerar receita, publicidade, leads, economia operacional,
+   vantagem competitiva ou outro beneficio economico direto ou indireto;
+e) incluir o Software em produto ou servico comercial, gratuito ou pago;
+f) remover a restricao nao comercial de uma copia ou obra derivada; ou
+g) permitir que terceiro pratique qualquer dos atos acima.
+
+A natureza gratuita de um produto ou servico nao afasta o Uso Comercial quando
+houver monetizacao, promocao empresarial, coleta de vantagem economica ou uso
+como parte de atividade lucrativa.
+
+5. CONDICOES DE REDISTRIBUICAO E MODIFICACAO
+
+Toda copia ou obra derivada permitida deve:
+
+a) conservar este arquivo LICENSE e todos os avisos de direitos autorais;
+b) identificar de forma razoavel as modificacoes e suas datas;
+c) ser disponibilizada somente sob estes mesmos termos, sem permissoes
+   adicionais que conflitem com esta Licenca;
+d) nao sugerir endosso, parceria ou afiliacao com o Licenciante; e
+e) nao usar nomes, marcas, logotipos ou identidade visual do projeto para
+   promover produto ou servico sem autorizacao escrita.
+
+A mera hospedagem, indexacao, cache tecnico ou criacao de fork pela plataforma
+GitHub e permitida na medida necessaria ao funcionamento da plataforma e aos
+usos nao comerciais autorizados nesta Licenca.
+
+6. DIREITOS RESERVADOS
+
+Nenhuma titularidade e transferida. Todos os direitos nao concedidos de modo
+expresso permanecem reservados ao Licenciante. Esta Licenca nao concede direitos
+sobre marcas, nomes comerciais, logotipos, patentes, segredos de negocio ou
+dados de terceiros. Dados produzidos ou inseridos pelo usuario nao se tornam
+propriedade do Licenciante em razao desta Licenca.
+
+7. COMPONENTES E CONTRIBUICOES DE TERCEIROS
+
+Bibliotecas, icones, fontes e outros materiais de terceiros incluidos ou usados
+pelo Software continuam regidos por suas licencas originais. Nada nesta Licenca
+amplia os direitos do Licenciante sobre materiais de terceiros.
+
+Salvo acordo escrito em contrario, uma contribuicao enviada deliberadamente ao
+repositorio podera ser incorporada e licenciada pelo Licenciante sob estes mesmos
+termos, sem prejuizo dos direitos que o contribuidor efetivamente possua.
+
+8. RESCISAO
+
+Esta Licenca termina automaticamente se o Licenciado violar qualquer termo. Ao
+termino, deve cessar o uso e eliminar as copias sob seu controle, ressalvadas as
+copias que a lei obrigue a conservar. Para violacoes sanaveis que nao envolvam
+Uso Comercial deliberado, os direitos poderao ser restabelecidos se a violacao
+for integralmente corrigida em ate 15 (quinze) dias apos notificacao escrita.
+
+O termino nao prejudica direitos, indenizacoes ou medidas judiciais decorrentes
+de violacao anterior.
+
+9. AUSENCIA DE GARANTIA
+
+NA MAXIMA EXTENSAO PERMITIDA PELA LEI APLICAVEL, O SOFTWARE E FORNECIDO "COMO
+ESTA", SEM GARANTIAS EXPRESSAS OU IMPLICITAS DE ADEQUACAO, COMERCIALIZACAO,
+DISPONIBILIDADE, SEGURANCA OU AUSENCIA DE ERROS. NADA NESTA CLAUSULA EXCLUI
+DIREITOS OU RESPONSABILIDADES QUE NAO POSSAM SER LEGALMENTE EXCLUIDOS.
+
+10. LIMITACAO DE RESPONSABILIDADE
+
+Na maxima extensao permitida pela lei aplicavel, o Licenciante nao respondera
+por danos indiretos, lucros cessantes, perda de dados, interrupcao de negocios
+ou prejuizos consequenciais decorrentes do uso ou da impossibilidade de uso do
+Software. Esta limitacao nao se aplica onde e na medida em que a lei imperativa
+proibir sua exclusao.
+
+11. LEI APLICAVEL E PROTECAO INTERNACIONAL
+
+Esta Licenca e regida pelas leis da Republica Federativa do Brasil, em especial
+pela Lei nº 9.609/1998 (Lei de Software), pela Lei nº 9.610/1998 (Direitos
+Autorais) e pelas demais normas aplicaveis.
+
+Os direitos autorais tambem serao protegidos, quando aplicavel, pela Convencao
+de Berna, promulgada no Brasil pelo Decreto nº 75.699/1975, pelo Acordo TRIPS,
+promulgado pelo Decreto nº 1.355/1994, e por outros tratados e leis nacionais
+aplicaveis no territorio em que a protecao for requerida.
+
+Fica eleito o foro competente do domicilio do Licenciante, no Brasil, para
+dirimir controversias, sem afastar foros obrigatorios, normas de ordem publica
+ou medidas cabiveis em outras jurisdicoes.
+
+12. DISPOSICOES GERAIS
+
+Se uma disposicao for considerada invalida ou inexequivel, ela sera ajustada no
+limite minimo necessario, permanecendo as demais em vigor. A tolerancia a uma
+violacao nao representa renuncia. Qualquer licenca comercial, excecao ou
+alteracao destes termos somente sera valida por escrito e emitida pelo
+Licenciante.
+
+Solicitacoes de licenca comercial devem ser encaminhadas ao titular pelo perfil
+GitHub: https://github.com/boente66
+
+========================================================================
+PART II — ENGLISH CONVENIENCE TRANSLATION
+========================================================================
+
+IMPORTANT: This is a proprietary source-available license. It is NOT an Open
+Source Initiative-approved open-source or free-software license. The Portuguese
+text above controls in case of conflict.
+
+Subject to full compliance with this License, the Licensor grants a worldwide,
+revocable, non-exclusive, non-transferable, non-sublicensable permission to
+view, study, run, modify, and redistribute the Software solely for personal,
+educational, academic-research, and other non-commercial purposes. Copies and
+modifications must retain this License, copyright notices, change notices, and
+the same restrictions.
+
+For-profit entities may evaluate the Software internally for up to 30 calendar
+days solely to decide whether to obtain a commercial license. Evaluation does
+not permit production use, customer service, operational processing, or any
+economic advantage.
+
+Commercial Use requires the Licensor's prior express written authorization.
+Commercial Use includes selling, renting, sublicensing, paid support, SaaS,
+hosting, APIs, consulting, integration into a product or service, production or
+internal business use by a for-profit activity, advertising, revenue generation,
+cost savings, competitive advantage, or any other direct or indirect economic
+benefit. A zero-price offering may still be commercial.
+
+No ownership is transferred. No trademark, patent, trade-secret, branding, or
+third-party rights are granted. Third-party materials remain under their own
+licenses. The License terminates automatically upon breach. To the maximum
+extent permitted by mandatory law, the Software is provided "AS IS", without
+warranty, and the Licensor excludes liability for indirect or consequential
+losses.
+
+This License is governed by Brazilian law, particularly Laws 9,609/1998 and
+9,610/1998. Protection may also arise under the Berne Convention, TRIPS, and
+other applicable national laws and treaties. Mandatory rules and non-waivable
+rights remain unaffected.
+
+Commercial licensing requests: https://github.com/boente66

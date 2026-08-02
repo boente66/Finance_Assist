@@ -80,7 +80,16 @@ assets/icons/
 
 📄 Licença
 
-Uso privado / projeto proprietário
+Copyright © 2026 Leonardo Boente. Todos os direitos reservados.
+
+Este projeto utiliza uma licença proprietária de código-fonte disponível para
+**uso exclusivamente não comercial**. Uso empresarial, produção comercial,
+venda, SaaS, serviço pago, monetização ou obtenção de vantagem econômica exigem
+autorização prévia e escrita do titular.
+
+Esta **não é uma licença open source** aprovada pela OSI. Consulte os termos
+completos em [LICENSE](LICENSE). Para solicitar licenciamento comercial, entre
+em contato pelo perfil [boente66](https://github.com/boente66).
 
 ---
 
