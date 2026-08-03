@@ -50,6 +50,15 @@ Plataformas suportadas:
 - Linux (.deb / AppImage)
 - macOS (.dmg)
 
+### Teste para Linux
+
+A versão **2.1.0-test.1** está sendo disponibilizada como teste inicial para
+Linux `amd64` em pacote Debian. Ela não é classificada como versão estável.
+
+Consulte as [notas da versão de teste](docs/releases/v2.1.0-test.1.md) antes de
+instalar e faça backup dos dados. O pacote e seu checksum são publicados nos
+Releases do GitHub.
+
 ---
 
 📸 Interface

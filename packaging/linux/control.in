@@ -1,0 +1,13 @@
+Package: finance-assist-test
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: @ARCH@
+Installed-Size: @INSTALLED_SIZE@
+Maintainer: Leonardo Boente <boente66@users.noreply.github.com>
+Depends: libc6, libgl1, libglib2.0-0, libx11-6, libxcb1, libxext6, libxrender1
+Homepage: https://github.com/boente66/ControleFinanceiro
+Description: Finance Assist - versão de teste para Linux
+ Aplicativo desktop para controle financeiro pessoal.
+ Este pacote é uma versão de teste destinada à validação no Linux e não deve
+ ser considerado uma versão estável de produção.

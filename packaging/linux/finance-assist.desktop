@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Finance Assist (Teste)
+Comment=Controle financeiro pessoal - versão de teste
+Exec=/usr/bin/finance-assist-test
+Icon=finance-assist
+Terminal=false
+Categories=Office;Finance;
+StartupNotify=true
+Keywords=finanças;financeiro;controle;finance;

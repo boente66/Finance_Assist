@@ -312,6 +312,23 @@ QLabel#listAmountPositive {{ color: {c['success']}; font-weight: 700; }}
 QLabel#listAmountNegative {{ color: {c['danger']}; font-weight: 700; }}
 QFrame#dashboardRow {{ background: transparent; border-bottom: 1px solid {c['border']}; }}
 QFrame#financeTip {{ background: {c['surface_alt']}; border: 1px solid {c['border']}; border-radius: {radius}px; }}
+
+/* Perfil */
+QScrollArea#profileScroll, QWidget#profilePage {{ background: {c['background']}; border: 0; }}
+QLabel#profileHeaderIcon {{ background: {c['surface_alt']}; color: {c['text_primary']}; border-radius: 25px; min-width: 50px; max-width: 50px; min-height: 50px; max-height: 50px; font-size: 25pt; }}
+QFrame#profileHero, QFrame#profilePanel {{ background: {c['surface']}; border: 1px solid {c['border']}; border-radius: {radius}px; }}
+QLabel#profileAvatar {{ background: {c['primary']}; color: white; border-radius: 58px; min-width: 116px; max-width: 116px; min-height: 116px; max-height: 116px; font-size: 30pt; font-weight: 700; }}
+QLabel#profileName {{ color: {c['text_primary']}; font-size: 18pt; font-weight: 700; }}
+QLabel#profileRole {{ color: {c['primary']}; font-weight: 700; }}
+QFrame#profileDetailRow {{ background: transparent; border: 0; border-bottom: 1px solid {c['border']}; }}
+QLabel#profileDetailName {{ color: {c['text_secondary']}; }}
+QLabel#profileDetailValue {{ color: {c['text_primary']}; }}
+QLabel#profileHint {{ color: {c['text_secondary']}; padding-top: 10px; }}
+QLabel#profileSecurityIcon {{ background: {c['surface_alt']}; color: {c['primary']}; border-radius: 22px; min-width: 44px; max-width: 44px; min-height: 44px; max-height: 44px; font-size: 18pt; }}
+QLabel#profileSecurityTitle {{ color: {c['text_primary']}; font-weight: 700; }}
+QFrame#profileFooter {{ background: transparent; border-top: 1px solid {c['border']}; }}
+QDialog#profileDialog {{ background: {c['background']}; }}
+QLabel#dialogTitle {{ color: {c['text_primary']}; font-size: 16pt; font-weight: 700; }}
 """
 
 

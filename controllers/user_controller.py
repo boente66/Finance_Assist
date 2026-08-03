@@ -51,6 +51,15 @@ class UserController:
             Session.get_usuario()
         )
 
+    def update_own_profile(self, user_data: dict) -> bool:
+        """Atualiza somente os dados do usuário autenticado."""
+        id_usuario = self._get_usuario_id()
+        return self.service.update_own_profile(
+            id_usuario,
+            user_data,
+            Session.get_usuario(),
+        )
+
     def delete_user(self, id_usuario) -> bool:
         return self.service.delete_user(
             id_usuario,

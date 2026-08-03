@@ -685,6 +685,9 @@ class MainView(QMainWindow):
             if hasattr(view, "open_invoice_requested"):
                 view.open_invoice_requested.connect(self.open_invoice)
 
+            if hasattr(view, "profile_updated"):
+                view.profile_updated.connect(self._update_sidebar_user)
+
             if hasattr(view, "on_load"):
                 view.on_load()
 
@@ -705,6 +708,17 @@ class MainView(QMainWindow):
                 "Erro ao carregar view %s",
                 view_name
             )
+
+    def _update_sidebar_user(self, usuario):
+        """Reflete a autoedição do perfil sem reconstruir a navegação."""
+        self.usuario = dict(usuario or {})
+        name = self.usuario.get("Nome") or TranslatorApp.get("Usuário")
+        initials = "".join(part[0] for part in name.split()[:2]).upper() or "U"
+        self.user_avatar.setText(initials)
+        self.lbl_usuario.setText(name)
+        self.lbl_usuario_detail.setText(
+            self.usuario.get("Email") or self.usuario.get("Nivel_Acesso") or ""
+        )
 
     def open_invoice(self, id_cartao, mes, ano):
         """Abre o cartão e a competência vindos da projeção financeira."""

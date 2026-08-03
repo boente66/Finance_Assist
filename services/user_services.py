@@ -163,6 +163,55 @@ class UserService:
             logger.exception("Erro ao atualizar usuário")
             return False
 
+    def update_own_profile(
+        self,
+        id_usuario: int,
+        user_data: dict,
+        usuario_logado: dict,
+    ) -> bool:
+        """Atualiza dados pessoais sem permitir elevação de privilégio."""
+        try:
+            if not usuario_logado or usuario_logado.get("ID_Usuario") != id_usuario:
+                raise PermissionError("Somente o próprio usuário pode alterar o perfil.")
+
+            atual = self.get_user_by_id(id_usuario)
+            if not atual:
+                return False
+
+            if not user_data.get("Nome") or not user_data.get("Login") or not user_data.get("Email"):
+                raise ValueError("Dados obrigatórios ausentes.")
+
+            existente = self.user_model.fetch_one(
+                """
+                SELECT ID_Usuario
+                FROM usuarios
+                WHERE (Login = ? OR Email = ?)
+                  AND ID_Usuario <> ?
+                """,
+                (user_data.get("Login"), user_data.get("Email"), id_usuario),
+            )
+            if existente:
+                return False
+
+            dados_seguros = {
+                "Nome": user_data["Nome"],
+                "DataNascimento": user_data.get("DataNascimento"),
+                "Sexo": user_data.get("Sexo"),
+                "CPF": user_data.get("CPF"),
+                "Telefone": user_data.get("Telefone"),
+                "Celular": user_data.get("Celular"),
+                "Email": user_data["Email"],
+                "Login": user_data["Login"],
+                # Nunca confiar em nível enviado pela interface de perfil.
+                "Nivel_Acesso": atual.get("Nivel_Acesso", "usuario"),
+            }
+            self.user_model.update_user(id_usuario, dados_seguros)
+            return True
+
+        except (DatabaseError, PermissionError, ValueError):
+            logger.exception("Erro ao atualizar o próprio perfil")
+            return False
+
     # ======================================================
     # ALTERAÇÃO DE NÍVEL
     # ======================================================
