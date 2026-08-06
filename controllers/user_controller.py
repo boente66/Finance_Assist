@@ -71,6 +71,10 @@ class UserController:
     def change_password(self, nova_senha) -> bool:
         id_usuario = self._get_usuario_id()
         return self.service.change_password(id_usuario, nova_senha)
+
+    def password_validation_error(self, senha):
+        """Expõe a política do service sem duplicá-la na interface."""
+        return self.service.password_validation_error(senha)
     # =============================
     # RECUPERAÇÃO DE SENHA (TOKEN)
     # =============================

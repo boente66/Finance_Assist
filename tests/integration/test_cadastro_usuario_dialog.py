@@ -36,6 +36,14 @@ class UserControllerStub:
         self.edicoes.append((user_id, dict(dados)))
         return True
 
+    @staticmethod
+    def password_validation_error(senha):
+        if len(senha) < 8:
+            return "A senha deve possuir pelo menos 8 caracteres."
+        if len(senha) > 128:
+            return "A senha deve possuir no máximo 128 caracteres."
+        return None
+
 
 @pytest.fixture(scope="module")
 def app():
@@ -110,6 +118,19 @@ def test_senhas_diferentes_impedem_salvamento_e_mostram_erro(app, controller):
     assert dialog._error_labels["confirmar_senha"].isVisible()
     assert "não coincidem" in dialog._error_labels["confirmar_senha"].text()
     assert dialog.confirmar_senha_input.hasFocus()
+    dialog.close()
+
+
+def test_senha_fraca_impede_salvamento_com_feedback_no_campo(app, controller):
+    dialog = CadastroUsuarioDialog(controller=controller)
+    _preencher_cadastro(dialog)
+    dialog.senha_input.setText("curta")
+    dialog.confirmar_senha_input.setText("curta")
+
+    dialog.salvar_usuario()
+
+    assert controller.registros == []
+    assert "pelo menos 8" in dialog._error_labels["senha"].text()
     dialog.close()
 
 

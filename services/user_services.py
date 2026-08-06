@@ -14,6 +14,8 @@ class UserService:
     """
 
     MAX_ADMINS = 3
+    MIN_PASSWORD_LENGTH = 8
+    MAX_PASSWORD_LENGTH = 128
 
     def __init__(self):
         self.user_model = UserModel()
@@ -32,6 +34,25 @@ class UserService:
     def _ensure_admin_permission(self, usuario_logado: dict):
         if not usuario_logado or usuario_logado.get("Nivel_Acesso", "").lower() != "admin":
             raise PermissionError("Apenas administradores podem executar esta ação.")
+
+    @classmethod
+    def password_validation_error(cls, senha: str):
+        """Retorna uma mensagem segura e única para todos os fluxos de senha."""
+        if not isinstance(senha, str):
+            return "Senha inválida."
+        if len(senha) < cls.MIN_PASSWORD_LENGTH:
+            return f"A senha deve possuir pelo menos {cls.MIN_PASSWORD_LENGTH} caracteres."
+        if len(senha) > cls.MAX_PASSWORD_LENGTH:
+            return f"A senha deve possuir no máximo {cls.MAX_PASSWORD_LENGTH} caracteres."
+        if senha.isspace() or any(ord(char) < 32 or ord(char) == 127 for char in senha):
+            return "A senha contém caracteres de controle inválidos."
+        return None
+
+    @classmethod
+    def _validate_password_or_raise(cls, senha: str):
+        erro = cls.password_validation_error(senha)
+        if erro:
+            raise ValueError(erro)
 
     # ======================================================
     # AUTENTICAÇÃO
@@ -52,6 +73,8 @@ class UserService:
         try:
             if not user_data.get("Login") or not user_data.get("Email") or not user_data.get("Senha"):
                 raise ValueError("Dados obrigatórios ausentes.")
+
+            self._validate_password_or_raise(user_data.get("Senha"))
 
             if self.user_model.user_exists(
                 user_data.get("Login"),
@@ -124,6 +147,9 @@ class UserService:
 
             if not user_data.get("Nome") or not user_data.get("Login") or not user_data.get("Email"):
                 raise ValueError("Dados obrigatórios ausentes.")
+
+            if user_data.get("Senha"):
+                self._validate_password_or_raise(user_data.get("Senha"))
 
             existente = self.user_model.fetch_one(
                 """
@@ -300,8 +326,7 @@ class UserService:
 
     def change_password(self, id_usuario: int, nova_senha: str) -> bool:
         try:
-            if not nova_senha:
-                raise ValueError("Senha inválida.")
+            self._validate_password_or_raise(nova_senha)
 
             self.user_model.change_password(id_usuario, nova_senha)
             return True
@@ -312,21 +337,24 @@ class UserService:
 
     def reset_password_with_token(self, token: str, nova_senha: str) -> bool:
         try:
-            registro = self.password_reset_model.get_valid_token(token)
+            self._validate_password_or_raise(nova_senha)
 
-            if not registro:
-                return False
+            with self.user_model.unit_of_work(self.password_reset_model):
+                registro = self.password_reset_model.get_valid_token(token)
 
-            id_usuario = registro["ID_Usuario"]
+                if not registro:
+                    return False
 
-            self.user_model.change_password(id_usuario, nova_senha)
+                id_usuario = registro["ID_Usuario"]
 
-            # Marca token como usado
-            self.password_reset_model.mark_token_used(token)
+                self.user_model.change_password(id_usuario, nova_senha)
+
+                # Consumo e troca de senha são atômicos.
+                self.password_reset_model.mark_token_used(token)
 
             return True
 
-        except DatabaseError:
+        except (DatabaseError, ValueError):
             logger.exception("Erro ao redefinir senha via token")
             return False
 

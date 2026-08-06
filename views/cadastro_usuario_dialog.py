@@ -205,6 +205,11 @@ class CadastroUsuarioDialog(QDialog):
         self._campos_acesso = [
             "email", "login", "senha", "confirmar_senha", "nivel"
         ]
+
+        self.lbl_password_policy = QLabel()
+        self.lbl_password_policy.setObjectName("secondary")
+        self.lbl_password_policy.setWordWrap(True)
+        card_layout.addWidget(self.lbl_password_policy)
         return card
 
     def _criar_card(self):
@@ -349,6 +354,11 @@ class CadastroUsuarioDialog(QDialog):
             )
 
         self.lbl_obrigatorios.setText(TranslatorApp.get("* Campos obrigatórios"))
+        self.lbl_password_policy.setText(
+            TranslatorApp.get(
+                "Segurança: use de 8 a 128 caracteres. Frases-senha longas são recomendadas."
+            )
+        )
         self.btn_cancelar.setText(TranslatorApp.get("Cancelar"))
         self.btn_salvar.setText(TranslatorApp.get(texto_salvar))
         self.senha_toggle_action.setToolTip(TranslatorApp.get("Mostrar senha"))
@@ -448,6 +458,10 @@ class CadastroUsuarioDialog(QDialog):
         if self._modo == self.MODO_CADASTRO:
             if not senha:
                 invalido("senha", "Informe a senha.")
+            else:
+                erro_senha = self.controller.password_validation_error(senha)
+                if erro_senha:
+                    invalido("senha", erro_senha)
             if not confirmacao:
                 invalido("confirmar_senha", "Confirme a senha.")
             elif senha and senha != confirmacao:
@@ -455,6 +469,10 @@ class CadastroUsuarioDialog(QDialog):
         elif senha or confirmacao:
             if not senha:
                 invalido("senha", "Informe a nova senha.")
+            else:
+                erro_senha = self.controller.password_validation_error(senha)
+                if erro_senha:
+                    invalido("senha", erro_senha)
             if not confirmacao:
                 invalido("confirmar_senha", "Confirme a nova senha.")
             elif senha and senha != confirmacao:
