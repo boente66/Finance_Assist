@@ -35,13 +35,15 @@ class ImportWorker(QThread):
         controller,
         caminho_arquivo: str,
         id_conta: int,
-        parent: Optional[object] = None
+        parent: Optional[object] = None,
+        tipo_destino: str = "conta",
     ):
         super().__init__(parent)
 
         self.controller = controller
         self.caminho_arquivo = caminho_arquivo
         self.id_conta = id_conta
+        self.tipo_destino = tipo_destino
         self._cancelado = False
 
     def run(self):
@@ -51,11 +53,18 @@ class ImportWorker(QThread):
 
             self.progress.emit(0, "Iniciando importação...")
 
-            lancamentos = self.controller.importar_arquivo(
-                caminho_arquivo=self.caminho_arquivo,
-                id_conta=self.id_conta,
-                progress_callback=self._emit_progress
-            )
+            if self.tipo_destino == "cartao":
+                lancamentos = self.controller.importar_arquivo_fatura(
+                    caminho_arquivo=self.caminho_arquivo,
+                    id_cartao=self.id_conta,
+                    progress_callback=self._emit_progress,
+                )
+            else:
+                lancamentos = self.controller.importar_arquivo(
+                    caminho_arquivo=self.caminho_arquivo,
+                    id_conta=self.id_conta,
+                    progress_callback=self._emit_progress
+                )
 
             if self._cancelado:
                 return

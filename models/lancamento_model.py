@@ -100,6 +100,28 @@ class LancamentoModel(Database):
 
         return self.fetch_one(sql, (id_lancamento, id_usuario))
 
+    def get_import_candidates(
+        self,
+        id_cartao,
+        id_usuario,
+        data_inicio,
+        data_fim
+    ):
+        """Inclui pagos: o pagamento não muda a identidade da compra."""
+        if not data_inicio or not data_fim:
+            return []
+        return self.fetch_all("""
+            SELECT
+                ID_Lancamento, ID_Cartao, ID_Usuario, Data, Descricao, Valor,
+                Competencia_Mes, Competencia_Ano, Parcela_Atual,
+                Num_Parcelas, Paga
+            FROM lancamentos
+            WHERE ID_Cartao = ?
+              AND ID_Usuario = ?
+              AND date(Data) BETWEEN date(?) AND date(?)
+            ORDER BY date(Data), ID_Lancamento
+        """, (id_cartao, id_usuario, data_inicio, data_fim))
+
     # ============================================================
     # ATUALIZAR
     # ============================================================

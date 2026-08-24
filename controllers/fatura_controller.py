@@ -3,6 +3,7 @@ from datetime import datetime
 
 from core.session import Session
 from services.fatura_service import FaturaService
+from services.importacao_service import ImportacaoService
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class FaturaController:
 
     def __init__(self):
         self.service = FaturaService()
+        self.import_service = ImportacaoService()
 
     # ==================================================
     # USUÁRIO
@@ -44,6 +46,30 @@ class FaturaController:
         payload = dict(dados)
         payload["ID_Usuario"] = id_usuario
         return self.service.registrar_despesa_cartao(payload)
+
+    def importar_arquivo_fatura(
+        self,
+        caminho_arquivo,
+        id_cartao,
+        progress_callback=None,
+    ):
+        id_usuario = self.get_id_usuario()
+        cartao = self.service.buscar_cartao_por_id(id_cartao, id_usuario)
+        if not cartao:
+            raise PermissionError("Cartão não pertence ao usuário.")
+        return self.import_service.importar_fatura(
+            caminho_arquivo=caminho_arquivo,
+            id_usuario=id_usuario,
+            id_cartao=id_cartao,
+            dia_fechamento=cartao["Dia_Fechamento"],
+            resolver_competencia=self.service.aplicar_fatura,
+            progress_callback=progress_callback,
+        )
+
+    def salvar_lancamentos_importados(self, lista_lancamentos):
+        return self.service.salvar_lote_importado(
+            lista_lancamentos, self.get_id_usuario()
+        )
 
     # ==================================================
     # PAGAMENTO

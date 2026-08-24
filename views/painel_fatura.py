@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QDialog,
-    QToolButton, QMessageBox, QPushButton, QInputDialog
-    , QFrame
+    QToolButton, QMessageBox, QPushButton, QInputDialog,
+    QFrame, QProgressBar
 )
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtCore import Qt
@@ -65,6 +65,7 @@ class PainelFatura(QWidget):
         self.btn_lancar.setText(TranslatorApp.get("+ Lançar"))
         self.btn_pagar.setText(TranslatorApp.get("Pagar"))
         self.btn_exportar.setText(TranslatorApp.get("PDF"))
+        self.btn_importar.setText(TranslatorApp.get("Importar fatura"))
 
         self.lbl_status.setText(TranslatorApp.get("Status:"))
         self.lbl_mes.setText(TranslatorApp.get("Mês:"))
@@ -165,12 +166,15 @@ class PainelFatura(QWidget):
 
         self.btn_exportar = btn("PDF", self.exportar_pdf)
         self.btn_exportar.setIcon(self._icon("pdf"))
+        self.btn_importar = btn("Importar fatura", self.importar_fatura)
+        self.btn_importar.setIcon(self._icon("import"))
         self.btn_pagar.setObjectName("secondaryButton")
         self.btn_exportar.setObjectName("secondaryButton")
 
         self.toolbar.addWidget(self.btn_lancar)
         self.toolbar.addWidget(self.btn_pagar)
         self.toolbar.addWidget(self.btn_exportar)
+        self.toolbar.addWidget(self.btn_importar)
 
         self.filtro_combo = QComboBox()
         self.filtro_combo.addItem("Todos", "Todos")
@@ -213,6 +217,11 @@ class PainelFatura(QWidget):
         self.filters_layout.addWidget(self.ano_combo)
 
         layout.addLayout(self.filters_layout)
+
+        self.import_progress = QProgressBar()
+        self.import_progress.setObjectName("importProgress")
+        self.import_progress.hide()
+        layout.addWidget(self.import_progress)
 
         # TABELA
         self.table = QTableWidget(0, 5)
@@ -469,6 +478,83 @@ class PainelFatura(QWidget):
 
         if dialog.exec_() == QDialog.Accepted:
             self._carregar()
+
+    def importar_fatura(self):
+        if not self.cartao:
+            QMessageBox.warning(
+                self,
+                TranslatorApp.get("Aviso"),
+                TranslatorApp.get("Nenhum cartão selecionado."),
+            )
+            return
+        arquivo, _ = QFileDialog.getOpenFileName(
+            self,
+            TranslatorApp.get("Selecionar fatura"),
+            "",
+            "Faturas estruturadas (*.csv *.xlsx *.xls)",
+        )
+        if not arquivo:
+            return
+        try:
+            from workers.import_worker import ImportWorker
+
+            self.import_progress.setValue(0)
+            self.import_progress.show()
+            self.import_worker = ImportWorker(
+                controller=self.controller,
+                caminho_arquivo=arquivo,
+                id_conta=self.cartao["ID_Cartao"],
+                parent=self,
+                tipo_destino="cartao",
+            )
+            self.import_worker.progress.connect(
+                lambda valor, _texto: self.import_progress.setValue(valor)
+            )
+            self.import_worker.finished.connect(
+                self._on_importacao_fatura_finalizada
+            )
+            self.import_worker.error.connect(self._on_importacao_fatura_erro)
+            self.import_worker.start()
+        except Exception as exc:
+            self.import_progress.hide()
+            logger.exception("Erro ao iniciar importação de fatura")
+            QMessageBox.critical(self, TranslatorApp.get("Erro"), str(exc))
+
+    def _on_importacao_fatura_finalizada(self, lancamentos):
+        self.import_progress.hide()
+        if not lancamentos:
+            QMessageBox.warning(
+                self,
+                TranslatorApp.get("Aviso"),
+                TranslatorApp.get("Nenhum lançamento reconhecido no arquivo."),
+            )
+            return
+        try:
+            from views.importacaoTempeorariaDialog import ImportacaoTemporariaDialog
+
+            dialog = ImportacaoTemporariaDialog(
+                lancamentos=lancamentos,
+                parent=self,
+                tipo_destino="cartao",
+            )
+            if dialog.exec_() != QDialog.Accepted:
+                return
+            total = self.controller.salvar_lancamentos_importados(
+                dialog.get_lancamentos_confirmados()
+            )
+            QMessageBox.information(
+                self,
+                TranslatorApp.get("Sucesso"),
+                f"{total} {TranslatorApp.get('lançamento(s) salvo(s).')}",
+            )
+            self._carregar()
+        except Exception as exc:
+            logger.exception("Erro ao concluir importação de fatura")
+            QMessageBox.critical(self, TranslatorApp.get("Erro"), str(exc))
+
+    def _on_importacao_fatura_erro(self, mensagem):
+        self.import_progress.hide()
+        QMessageBox.critical(self, TranslatorApp.get("Erro"), mensagem)
 
     def pagar_fatura(self):
         if not self.cartao:

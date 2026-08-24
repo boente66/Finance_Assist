@@ -136,6 +136,25 @@ class TransactionModel(Database):
               AND t.ID_Usuario = ?
         """, (id_transacao, id_usuario))
 
+    def get_import_candidates(
+        self,
+        id_conta,
+        id_usuario,
+        data_inicio,
+        data_fim
+    ):
+        """Retorna somente o contexto necessário à reconciliação do período."""
+        if not data_inicio or not data_fim:
+            return []
+        return self.fetch_all("""
+            SELECT ID_Transacao, ID_Conta, ID_Usuario, Data, Descricao, Valor
+            FROM transacoes
+            WHERE ID_Conta = ?
+              AND ID_Usuario = ?
+              AND date(Data) BETWEEN date(?) AND date(?)
+            ORDER BY date(Data), ID_Transacao
+        """, (id_conta, id_usuario, data_inicio, data_fim))
+
     # ============================================================
     # UPDATE
     # ============================================================

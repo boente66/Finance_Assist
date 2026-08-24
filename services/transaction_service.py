@@ -5,6 +5,9 @@ from core.operation_result import operation_result
 from database.database import DatabaseError
 from models.transaction_model import TransactionModel
 from models.account_model import AccountModel
+from services.reconciliacao_importacao_service import (
+    ReconciliacaoImportacaoService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,7 @@ class TransactionService:
     def __init__(self, db_name=None):
         self.transaction_model = TransactionModel(db_name)
         self.account_model = AccountModel(db_name)
+        self.reconciliacao_service = ReconciliacaoImportacaoService()
         self._legacy_account_state = None
 
     # ============================================================
@@ -40,10 +44,10 @@ class TransactionService:
             self.transaction_model.connection
         )
 
-    def _begin(self):
+    def _begin(self, immediate=False):
         if self._legacy_account_state is not None:
             raise RuntimeError("Já existe uma transação ativa no serviço.")
-        self.transaction_model.begin()
+        self.transaction_model.begin(immediate=immediate)
         try:
             self._legacy_account_state = self._share_connection()
         except Exception:
@@ -167,10 +171,44 @@ class TransactionService:
 
         total_importadas = 0
 
-        self._begin()
+        self._begin(immediate=True)
 
         try:
+            reconciliados = []
+            contas = {}
             for item in lista_transacoes:
+                id_conta = item.get("ID_Conta")
+                if id_conta:
+                    contas.setdefault(id_conta, []).append(item)
+
+            for id_conta, itens_conta in contas.items():
+                self._validar_conta_usuario(id_conta, id_usuario)
+                inicio, fim = self.reconciliacao_service.limites_periodo(
+                    itens_conta
+                )
+                existentes = self.transaction_model.get_import_candidates(
+                    id_conta, id_usuario, inicio, fim
+                )
+                normalizados = []
+                for original in itens_conta:
+                    item = dict(original)
+                    item["ID_Usuario"] = id_usuario
+                    normalizados.append(item)
+                reconciliados.extend(self.reconciliacao_service.reconciliar(
+                    normalizados,
+                    existentes,
+                    ReconciliacaoImportacaoService.DOMINIO_CONTA,
+                ))
+
+            for item in reconciliados:
+                status = item.get("StatusImportacao")
+                if status == ReconciliacaoImportacaoService.DUPLICADO:
+                    continue
+                if (
+                    status == ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO
+                    and not item.get("_ConfirmadoPossivel")
+                ):
+                    continue
                 valor = float(item.get("Valor", 0))
 
                 tipo = item.get("Tipo")

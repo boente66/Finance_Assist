@@ -12,6 +12,8 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QHeaderView,
+    QLabel,
+    QFrame,
 )
 from PyQt5.QtCore import Qt
 
@@ -22,6 +24,9 @@ from views.editar_transacao_dialog import EditTransactionDialog
 from controllers.category_controller import CategoryController
 
 from core.translator_app import TranslatorApp
+from services.reconciliacao_importacao_service import (
+    ReconciliacaoImportacaoService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,17 +43,20 @@ class ImportacaoTemporariaDialog(QDialog):
     """
 
     COL_IMPORTAR = 0
-    COL_DATA = 1
-    COL_DESCRICAO = 2
-    COL_CATEGORIA = 3
-    COL_CONFIANCA = 4
-    COL_VALOR = 5
-    COL_TIPO = 6
+    COL_STATUS = 1
+    COL_DATA = 2
+    COL_DESCRICAO = 3
+    COL_CATEGORIA = 4
+    COL_CONFIANCA = 5
+    COL_VALOR = 6
+    COL_TIPO = 7
+    COL_CORRESPONDENCIA = 8
 
-    def __init__(self, lancamentos, parent=None):
+    def __init__(self, lancamentos, parent=None, tipo_destino="conta"):
         super().__init__(parent)
 
         self.lancamentos = lancamentos or []
+        self.tipo_destino = tipo_destino
         self.category_controller = CategoryController()
         self._categoria_cache = {}
 
@@ -69,7 +77,25 @@ class ImportacaoTemporariaDialog(QDialog):
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
-        self.table = QTableWidget(0, 7)
+        self.summary_card = QFrame()
+        self.summary_card.setObjectName("card")
+        summary_layout = QHBoxLayout(self.summary_card)
+        self.lbl_novos = QLabel()
+        self.lbl_novos.setObjectName("positivo")
+        self.lbl_duplicados = QLabel()
+        self.lbl_duplicados.setObjectName("muted")
+        self.lbl_possiveis = QLabel()
+        self.lbl_possiveis.setObjectName("warning")
+        self.lbl_selecionados = QLabel()
+        self.lbl_selecionados.setObjectName("cardValue")
+        for label in (
+            self.lbl_novos, self.lbl_duplicados,
+            self.lbl_possiveis, self.lbl_selecionados,
+        ):
+            summary_layout.addWidget(label)
+        layout.addWidget(self.summary_card)
+
+        self.table = QTableWidget(0, 9)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -121,13 +147,25 @@ class ImportacaoTemporariaDialog(QDialog):
 
         self.table.setHorizontalHeaderLabels([
             TranslatorApp.get("Importar"),
+            TranslatorApp.get("Status"),
             TranslatorApp.get("Data"),
             TranslatorApp.get("Descrição"),
             TranslatorApp.get("Categoria"),
             TranslatorApp.get("Confiança"),
             TranslatorApp.get("Valor"),
             TranslatorApp.get("Tipo"),
+            TranslatorApp.get("Correspondência encontrada"),
         ])
+        for row, item in enumerate(self.lancamentos):
+            status_item = self.table.item(row, self.COL_STATUS)
+            if status_item:
+                status_item.setText(self._texto_status(
+                    item.get(
+                        "StatusImportacao",
+                        ReconciliacaoImportacaoService.NOVO,
+                    )
+                ))
+        self._atualizar_resumo()
 
     # ======================================================
     # POPULAR TABELA
@@ -139,14 +177,24 @@ class ImportacaoTemporariaDialog(QDialog):
             self.table.insertRow(row)
 
             chk = QCheckBox()
-            chk.setChecked(True)
-            chk.setStyleSheet("margin-left: 20px;")
+            chk.setChecked(bool(lanc.get("Importar", True)))
+            if lanc.get("StatusImportacao") == ReconciliacaoImportacaoService.DUPLICADO:
+                chk.setEnabled(False)
+            chk.stateChanged.connect(self._atualizar_resumo)
 
             self.table.setCellWidget(
                 row,
                 self.COL_IMPORTAR,
                 chk
             )
+
+            status = lanc.get(
+                "StatusImportacao", ReconciliacaoImportacaoService.NOVO
+            )
+            status_item = self._set_item(
+                row, self.COL_STATUS, self._texto_status(status)
+            )
+            status_item.setToolTip(str(lanc.get("MotivoReconciliacao", "")))
 
             self._set_item(
                 row,
@@ -194,10 +242,61 @@ class ImportacaoTemporariaDialog(QDialog):
                 str(lanc.get("Tipo", ""))
             )
 
+            correspondencia = self._set_item(
+                row,
+                self.COL_CORRESPONDENCIA,
+                str(lanc.get("CorrespondenciaImportacao", "")),
+            )
+            correspondencia.setToolTip(
+                str(lanc.get("MotivoReconciliacao", ""))
+            )
+
+        self._atualizar_resumo()
+
     def _set_item(self, row, column, value):
         item = QTableWidgetItem(str(value))
         item.setFlags(item.flags() ^ Qt.ItemIsEditable)
         self.table.setItem(row, column, item)
+        return item
+
+    def _texto_status(self, status):
+        textos = {
+            ReconciliacaoImportacaoService.NOVO: "Novo",
+            ReconciliacaoImportacaoService.DUPLICADO: "Duplicado",
+            ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO: "Possível duplicado",
+        }
+        return TranslatorApp.get(textos.get(status, str(status)))
+
+    def _atualizar_resumo(self, *_):
+        contagens = {
+            ReconciliacaoImportacaoService.NOVO: 0,
+            ReconciliacaoImportacaoService.DUPLICADO: 0,
+            ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO: 0,
+        }
+        selecionados = 0
+        for row, item in enumerate(self.lancamentos):
+            status = item.get(
+                "StatusImportacao", ReconciliacaoImportacaoService.NOVO
+            )
+            contagens[status] = contagens.get(status, 0) + 1
+            checkbox = self.table.cellWidget(row, self.COL_IMPORTAR)
+            if checkbox and checkbox.isChecked():
+                selecionados += 1
+        self.lbl_novos.setText(
+            f"{TranslatorApp.get('Novos')}: {contagens[ReconciliacaoImportacaoService.NOVO]}"
+        )
+        self.lbl_duplicados.setText(
+            f"{TranslatorApp.get('Duplicados')}: {contagens[ReconciliacaoImportacaoService.DUPLICADO]}"
+        )
+        self.lbl_possiveis.setText(
+            f"{TranslatorApp.get('Possíveis')}: {contagens[ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO]}"
+        )
+        self.lbl_selecionados.setText(
+            f"{TranslatorApp.get('Selecionados')}: {selecionados}"
+        )
+        self.btn_confirmar.setText(
+            f"{TranslatorApp.get('Confirmar importação')} ({selecionados})"
+        )
 
     # ======================================================
     # FORMATADORES
@@ -306,6 +405,7 @@ class ImportacaoTemporariaDialog(QDialog):
             self.COL_TIPO,
             lanc.get("Tipo", "")
         )
+        self._atualizar_resumo()
 
     # ======================================================
     # CONFIRMAR
@@ -320,11 +420,23 @@ class ImportacaoTemporariaDialog(QDialog):
             )
 
             if chk and chk.isChecked():
-                selecionados.append(
-                    self.lancamentos[row]
-                )
+                item = dict(self.lancamentos[row])
+                status = item.get("StatusImportacao")
+                if status == ReconciliacaoImportacaoService.DUPLICADO:
+                    continue
+                if status == ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO:
+                    item["_ConfirmadoPossivel"] = True
+                selecionados.append(item)
 
         if not selecionados:
+            if self.lancamentos and all(
+                item.get("StatusImportacao")
+                == ReconciliacaoImportacaoService.DUPLICADO
+                for item in self.lancamentos
+            ):
+                self.lancamentos = []
+                self.accept()
+                return
             QMessageBox.warning(
                 self,
                 TranslatorApp.get("Aviso"),

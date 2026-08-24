@@ -6,6 +6,7 @@ from models.layouts.bradesco_layout import BradescoLayoutModel
 from models.layouts.itau_layout import ItauLayoutModel
 from models.layouts.datani_layout import DataniLayoutModel
 from models.layouts.picpay_layout import PicPayLayoutModel
+from models.layouts.fatura_cartao_layout import FaturaCartaoLayoutModel
 
 
 class ReconhecimentoService:
@@ -20,6 +21,7 @@ class ReconhecimentoService:
     INDICE_ITAU = 202
     INDICE_BANCO_BRASIL = 203
     INDICE_BRADESCO = 204
+    INDICE_FATURA_CARTAO = 301
 
     SCORE_MINIMO = 5
     MAX_LINHAS_TEXTO = 100
@@ -31,6 +33,7 @@ class ReconhecimentoService:
         self.itau_layout = ItauLayoutModel()
         self.bb_layout = BancoBrasilLayoutModel()
         self.bradesco_layout = BradescoLayoutModel()
+        self.fatura_cartao_layout = FaturaCartaoLayoutModel()
 
     # ======================================================
     # ENTRADA PRINCIPAL
@@ -42,6 +45,9 @@ class ReconhecimentoService:
         tipo = self._identificar_tipo_documento(conteudo)
 
         match tipo:
+            case "fatura":
+                return self.reconhecer_fatura(conteudo)
+
             case "migracao":
                 return self.reconhecer_migracao(conteudo)
 
@@ -57,8 +63,12 @@ class ReconhecimentoService:
     # IDENTIFICAR GRUPO DO DOCUMENTO
     # ======================================================
     def _identificar_tipo_documento(self, conteudo):
+        score_fatura = self._score_fatura_cartao(conteudo)
         score_migracao = self._score_migracao(conteudo)
         score_extrato = self._score_extrato(conteudo)
+
+        if score_fatura >= self.SCORE_MINIMO:
+            return "fatura"
 
         # Em caso de empate, prioriza extrato bancário.
         if score_extrato >= score_migracao and score_extrato >= self.SCORE_MINIMO:
@@ -68,6 +78,18 @@ class ReconhecimentoService:
             return "migracao"
 
         return None
+
+    def reconhecer_fatura(self, conteudo):
+        return self._melhor([
+            self._candidato(
+                indice=self.INDICE_FATURA_CARTAO,
+                nome="fatura_cartao_estruturada",
+                grupo="fatura",
+                tipo_documento="fatura_cartao",
+                layout=self.fatura_cartao_layout,
+                score=self._score_fatura_cartao(conteudo),
+            )
+        ], "Fatura de cartão estruturada não localizada.")
 
     # ======================================================
     # RECONHECER DENTRO DO GRUPO
@@ -143,6 +165,36 @@ class ReconhecimentoService:
             self._score_banco_do_brasil(conteudo),
             self._score_bradesco(conteudo),
         )
+
+    def _score_fatura_cartao(self, conteudo):
+        if not isinstance(conteudo, list) or not conteudo:
+            return 0
+        texto = self._conteudo_para_texto(conteudo)
+        colunas = self._colunas(conteudo)
+        colunas_compactas = {
+            re.sub(r"[^a-z0-9]+", "", coluna) for coluna in colunas
+        }
+        score = 0
+        if "fatura_cartao" in texto:
+            score += 6
+        tem_data = bool({
+            "data", "datacompra", "datadacompra",
+            "datalancamento", "datadelancamento",
+        } & colunas_compactas)
+        tem_descricao = bool(
+            {"descricao", "estabelecimento", "historico", "lancamento"}
+            & colunas_compactas
+        )
+        tem_valor = bool({"valor", "valorcompra"} & colunas_compactas)
+        if tem_data and tem_descricao and tem_valor:
+            score += 2
+        if any("parcela" in coluna for coluna in colunas_compactas):
+            score += 4
+        if any("competencia" in coluna for coluna in colunas_compactas):
+            score += 4
+        if "cartao" in colunas_compactas or "fatura" in colunas_compactas:
+            score += 3
+        return score
 
     # ======================================================
     # SCORES — DATANI / MIGRAÇÃO

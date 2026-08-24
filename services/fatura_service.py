@@ -13,6 +13,9 @@ from models.account_model import AccountModel
 from models.pagamento_fatura_model import PagamentoFaturaModel
 from core.operation_result import operation_result
 from database.database import DatabaseError
+from services.reconciliacao_importacao_service import (
+    ReconciliacaoImportacaoService,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -31,6 +34,7 @@ class FaturaService:
         self.category_model = CategoryModel(db_name)
         self.account_model = AccountModel(db_name)
         self.pagamento_model = PagamentoFaturaModel(db_name)
+        self.reconciliacao_service = ReconciliacaoImportacaoService()
 
         self._cache_fatura = {}
 
@@ -148,6 +152,71 @@ class FaturaService:
         except Exception:
             self.lancamento_model.rollback()
             raise
+
+    def salvar_lote_importado(self, lista_lancamentos, id_usuario):
+        """Persiste apenas compras novas após revalidação atômica."""
+        if not lista_lancamentos:
+            return 0
+
+        total = 0
+        with self.lancamento_model.unit_of_work(
+            self.credito_model,
+            self.lancamento_model.credito,
+            immediate=True,
+        ):
+            por_cartao = {}
+            for original in lista_lancamentos:
+                id_cartao = original.get("ID_Cartao")
+                if id_cartao:
+                    por_cartao.setdefault(id_cartao, []).append(original)
+
+            reconciliados = []
+            for id_cartao, itens in por_cartao.items():
+                if not self.credito_model.get_cartao_by_id(id_cartao, id_usuario):
+                    raise PermissionError("Cartão não pertence ao usuário.")
+                inicio, fim = self.reconciliacao_service.limites_periodo(itens)
+                existentes = self.lancamento_model.get_import_candidates(
+                    id_cartao, id_usuario, inicio, fim
+                )
+                normalizados = []
+                for original in itens:
+                    item = dict(original)
+                    item["ID_Usuario"] = id_usuario
+                    normalizados.append(item)
+                reconciliados.extend(self.reconciliacao_service.reconciliar(
+                    normalizados,
+                    existentes,
+                    ReconciliacaoImportacaoService.DOMINIO_CARTAO,
+                ))
+
+            for item in reconciliados:
+                status = item.get("StatusImportacao")
+                if status == ReconciliacaoImportacaoService.DUPLICADO:
+                    continue
+                if (
+                    status == ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO
+                    and not item.get("_ConfirmadoPossivel")
+                ):
+                    continue
+                self.lancamento_model.add_lancamento({
+                    "ID_Usuario": id_usuario,
+                    "ID_Cartao": item.get("ID_Cartao"),
+                    "Descricao": item.get("Descricao"),
+                    "Valor": abs(float(item.get("Valor", 0))),
+                    "Data": item.get("Data"),
+                    "Competencia_Mes": item.get("Competencia_Mes"),
+                    "Competencia_Ano": item.get("Competencia_Ano"),
+                    "ID_Categoria": item.get("ID_Categoria"),
+                    "ID_Favorecido": item.get("ID_Favorecido"),
+                    "Num_Parcelas": item.get("Num_Parcelas", 1),
+                    "Parcela_Atual": item.get("Parcela_Atual", 1),
+                    "Notas": item.get("Notas"),
+                    "Previsto": item.get("Previsto", 0),
+                })
+                total += 1
+
+        self._clear_cache()
+        return total
 
     # ============================================================
     # FATURA

@@ -121,13 +121,24 @@ class CsvService:
 
         categoria_pai, subcategoria = self._parse_categoria(categoria_raw)
 
-        return {
+        resultado = {
             "Data": data,
             "Descricao": descricao,
             "Valor": valor,
             "CategoriaPai": categoria_pai,
             "Subcategoria": subcategoria,
         }
+        campos_fatura = {
+            "parcela", "parcelas", "numero_parcela", "num_parcelas",
+            "parcela_atual", "competencia", "competencia_mes",
+            "competencia_ano", "fatura", "cartao",
+        }
+        if campos_fatura.intersection(dados):
+            resultado["TipoDocumento"] = "fatura_cartao"
+            for campo in campos_fatura:
+                if campo in dados:
+                    resultado[campo] = dados.get(campo)
+        return resultado
 
     def _parse_data(self, valor: str):
         if not valor:
