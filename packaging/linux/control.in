@@ -5,9 +5,10 @@ Priority: optional
 Architecture: @ARCH@
 Installed-Size: @INSTALLED_SIZE@
 Maintainer: Leonardo Boente <boente66@users.noreply.github.com>
-Depends: libc6, libgl1, libglib2.0-0, libx11-6, libxcb1, libxext6, libxrender1
-Homepage: https://github.com/boente66/ControleFinanceiro
+Depends: libc6, libdbus-1-3, libfontconfig1, libgl1, libglib2.0-0, libx11-6, libxcb1, libxcb-xinerama0, libxext6, libxkbcommon-x11-0, libxrender1
+Homepage: https://github.com/boente66/Finance_Assist
 Description: Finance Assist - versão de teste para Linux
  Aplicativo desktop para controle financeiro pessoal.
+ Compatível com Ubuntu 22.04 LTS ou posterior em arquitetura amd64.
  Este pacote é uma versão de teste destinada à validação no Linux e não deve
  ser considerado uma versão estável de produção.

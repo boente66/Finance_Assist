@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QCalendarWidget,
+    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QCalendarWidget,
     QPushButton, QLabel, QMessageBox
 )
 from PyQt5.QtCore import Qt
+from core.window_manager import WindowManager
 
 
 class DateRangeDialog(QDialog):
@@ -10,7 +11,8 @@ class DateRangeDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Selecionar intervalo de datas")
-        self.setMinimumWidth(600)
+        self.setMinimumSize(420, 360)
+        self.resize(760, 440)
 
         # --------------------------
         # Layout principal
@@ -18,14 +20,14 @@ class DateRangeDialog(QDialog):
         layout = QVBoxLayout(self)
 
         title = QLabel("Selecione a Data Inicial e Final")
+        title.setObjectName("dialogTitle")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title)
 
         # --------------------------
         # Calendários
         # --------------------------
-        cal_layout = QHBoxLayout()
+        self.cal_layout = QGridLayout()
 
         self.calendar_start = QCalendarWidget()
         self.calendar_start.setGridVisible(True)
@@ -33,10 +35,10 @@ class DateRangeDialog(QDialog):
         self.calendar_end = QCalendarWidget()
         self.calendar_end.setGridVisible(True)
 
-        cal_layout.addWidget(self.calendar_start)
-        cal_layout.addWidget(self.calendar_end)
+        self.cal_layout.addWidget(self.calendar_start, 0, 0)
+        self.cal_layout.addWidget(self.calendar_end, 0, 1)
 
-        layout.addLayout(cal_layout)
+        layout.addLayout(self.cal_layout)
 
         # --------------------------
         # Botões
@@ -58,6 +60,25 @@ class DateRangeDialog(QDialog):
         # Resultado
         self.data_inicial = None
         self.data_final = None
+
+    def _aplicar_layout_responsivo(self):
+        compacto = self.width() < 650
+        self.cal_layout.removeWidget(self.calendar_start)
+        self.cal_layout.removeWidget(self.calendar_end)
+        self.cal_layout.addWidget(self.calendar_start, 0, 0)
+        self.cal_layout.addWidget(
+            self.calendar_end,
+            1 if compacto else 0,
+            0 if compacto else 1,
+        )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._aplicar_layout_responsivo()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        WindowManager.fit_dialog(self, self.parentWidget())
 
     # ============================================
     # Validação e retorno

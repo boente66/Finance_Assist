@@ -2,7 +2,7 @@
   <img src="assets/icons/finance_assist.svg" alt="Logotipo do Finance Assist" width="88">
   <h1>Finance Assist</h1>
   <p><strong>Gestão financeira pessoal em uma aplicação desktop organizada, segura e executada localmente.</strong></p>
-  <p>Versão atual: <code>2.1.0-test.1</code> · Estágio: teste para Linux</p>
+  <p>Versão atual: <code>2.1.0-test.2</code> · Estágio: teste multiplataforma</p>
 </div>
 
 > [!IMPORTANT]
@@ -37,16 +37,20 @@ THE QT COMPANY, 2025).
 | Item | Situação atual |
 |---|---|
 | Nome comercial | Finance Assist |
-| Versão da aplicação | `2.1.0-test.1` |
-| Versão do pacote Debian | `2.1.0~test1` |
+| Versão da aplicação | `2.1.0-test.2` |
+| Versão do pacote Debian | `2.1.0~test2` |
 | Branch principal | `main` |
 | Repositório oficial | [boente66/Finance_Assist](https://github.com/boente66/Finance_Assist) |
-| Distribuição publicada | pacote Debian de teste para Linux `amd64` |
-| Windows e macOS | código potencialmente portável, mas sem pacote oficial homologado nesta versão |
+| Distribuição publicada | DEB Ubuntu `amd64` e ZIP Windows `x64`, ambos de teste |
+| Sistemas-alvo | Ubuntu 22.04 LTS ou posterior; Windows 11 suportado pela Microsoft |
+| Windows 10 | pacote tecnicamente executável, porém o sistema encerrou suporte oficial em 14/10/2025 |
+| macOS | sem pacote oficial nesta versão |
 | Licença | proprietária, source-available e limitada a uso não comercial |
 
 As notas específicas da versão estão em
-[`docs/releases/v2.1.0-test.1.md`](docs/releases/v2.1.0-test.1.md).
+[`docs/releases/v2.1.0-test.2.md`](docs/releases/v2.1.0-test.2.md). A auditoria
+de escala visual está em
+[`docs/interface/AUDITORIA_ESCALA_VISUAL.md`](docs/interface/AUDITORIA_ESCALA_VISUAL.md).
 
 ## 3. Funcionalidades
 
@@ -283,21 +287,27 @@ python run.py
 > Não execute o projeto com um banco de produção durante desenvolvimento ou
 > teste. Configure um arquivo SQLite separado e mantenha cópias de segurança.
 
-## 9. Instalação do pacote Linux de teste
+## 9. Pacotes de teste
+
+Os binários são gerados automaticamente em ambientes limpos pelo fluxo
+`Build multiplataforma de teste`. O empacotamento não inclui banco SQLite,
+backups, logs, caches, configuração local nem ambiente virtual.
+
+### 9.1 Ubuntu 22.04 LTS ou posterior
 
 Baixe o `.deb` e o checksum correspondente no
-[Release v2.1.0-test.1](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.1).
+[Release v2.1.0-test.2](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.2).
 
 Confira a integridade do arquivo:
 
 ```bash
-sha256sum -c finance-assist_2.1.0-test.1_amd64.deb.sha256
+sha256sum -c finance-assist_2.1.0-test.2_amd64.deb.sha256
 ```
 
 Instale o pacote:
 
 ```bash
-sudo apt install ./finance-assist_2.1.0-test.1_amd64.deb
+sudo apt install ./finance-assist_2.1.0-test.2_amd64.deb
 ```
 
 Depois da instalação, procure por **Finance Assist (Teste)** no menu de
@@ -307,9 +317,25 @@ aplicativos ou execute:
 finance-assist-test
 ```
 
-O pacote atual foi preparado para distribuições compatíveis com Debian em
-arquitetura `amd64`. Compatibilidade com cada distribuição, compositor e ambiente
-gráfico deve ser homologada separadamente.
+O pacote é compilado no Ubuntu 22.04 LTS para arquitetura `amd64`. Versões mais
+recentes do Ubuntu permanecem alvo de teste; diferenças de compositor, tema e
+ambiente gráfico ainda exigem homologação local.
+
+### 9.2 Windows
+
+Baixe `finance-assist_2.1.0-test.2_windows-x64.zip`, verifique o arquivo
+`.sha256`, extraia a pasta e execute `FinanceAssist-test.exe`. O artefato é
+compilado em Windows Server 2022 e tem como alvo Windows 11 `x64`. O Windows 10
+encerrou o suporte oficial da Microsoft em 14 de outubro de 2025; por isso,
+eventual funcionamento nesse sistema não representa suporte ou homologação.
+
+No PowerShell, confira a integridade com:
+
+```powershell
+Get-FileHash .\finance-assist_2.1.0-test.2_windows-x64.zip -Algorithm SHA256
+```
+
+Compare o resultado com o conteúdo do arquivo de checksum publicado na release.
 
 ## 10. Testes e qualidade
 
@@ -344,7 +370,8 @@ git diff --check
 - backup, restauração e permissões;
 - armazenamento e migração de senhas;
 - temas, responsividade, login, perfil e cadastro de usuários;
-- metadados do pacote Linux.
+- escala visual, limites de temas e adaptação de diálogos;
+- metadados dos pacotes Linux e Windows.
 
 ## 11. Estrutura resumida
 
@@ -357,6 +384,7 @@ Finance_Assist/
 ├── docs/                   # relatórios técnicos e notas de versão
 ├── models/                 # persistência e acesso aos dados
 ├── packaging/linux/        # arquivos do pacote Debian
+├── packaging/windows/      # empacotamento portátil para Windows
 ├── services/               # regras de negócio e integrações
 ├── tests/                  # testes de integração e interface
 ├── utilitarios/            # funções auxiliares

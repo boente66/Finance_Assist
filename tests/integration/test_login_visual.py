@@ -35,8 +35,8 @@ def test_login_adota_composicao_lateral_e_componentes_do_modelo(app):
     assert dialog.btn_login.objectName() == "loginPrimary"
     assert dialog.btn_cadastrar.objectName() == "loginSecondary"
     assert dialog.btn_recuperar.objectName() == "linkButton"
-    assert dialog.minimumWidth() == 720
-    assert dialog.minimumHeight() == 540
+    assert dialog.minimumWidth() == 600
+    assert dialog.minimumHeight() == 500
     dialog.close()
 
 

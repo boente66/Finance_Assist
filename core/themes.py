@@ -30,23 +30,23 @@ REQUIRED_LAYOUT = {
 
 _BASE_FONTS = {
     "family": "DejaVu Sans",
-    "base_size": 10,
-    "title_size": 22,
-    "subtitle_size": 11,
-    "table_size": 10,
+    "base_size": 9,
+    "title_size": 18,
+    "subtitle_size": 10,
+    "table_size": 9,
     "weight": 400,
-    "line_spacing": 1.25,
+    "line_spacing": 1.15,
 }
 
 _BASE_LAYOUT = {
-    "radius": 10,
+    "radius": 8,
     "shadow": 1,
-    "padding": 12,
+    "padding": 10,
     "density": "confortavel",
-    "button_height": 36,
-    "field_height": 36,
-    "table_row_height": 38,
-    "sidebar_width": 250,
+    "button_height": 34,
+    "field_height": 34,
+    "table_row_height": 34,
+    "sidebar_width": 240,
     "divider_contrast": 35,
 }
 
@@ -163,7 +163,21 @@ def validate_theme_config(config):
 def build_stylesheet(config):
     validate_theme_config(config)
     c, f, l = config["cores"], config["fontes"], config["layout"]
-    radius = int(l["radius"])
+
+    def bounded(value, minimum, maximum, fallback):
+        try:
+            return max(minimum, min(maximum, int(value)))
+        except (TypeError, ValueError):
+            return fallback
+
+    base_size = bounded(f["base_size"], 8, 12, 9)
+    title_size = bounded(f["title_size"], 15, 20, 18)
+    subtitle_size = bounded(f["subtitle_size"], 8, 11, 10)
+    table_size = bounded(f["table_size"], 8, 11, 9)
+    radius = bounded(l["radius"], 4, 14, 8)
+    button_height = bounded(l["button_height"], 30, 42, 34)
+    field_height = bounded(l["field_height"], 30, 42, 34)
+    table_row_height = bounded(l["table_row_height"], 30, 44, 34)
     density_factor = {"compacta": 0.8, "confortavel": 1.0, "ampla": 1.2}.get(
         l["density"], 1.0
     )
@@ -174,7 +188,7 @@ def build_stylesheet(config):
     return f"""
 QWidget {{
     background-color: {c['background']}; color: {c['text_primary']};
-    font-family: \"{f['family']}\"; font-size: {int(f['base_size'])}pt;
+    font-family: \"{f['family']}\"; font-size: {base_size}pt;
     font-weight: {int(f['weight'])};
 }}
 QLabel {{ background: transparent; border: 0; }}
@@ -187,13 +201,13 @@ QScrollArea#sidebarScroll QScrollBar::handle:vertical {{ background: rgba(255,25
 QScrollArea#sidebarScroll QScrollBar::handle:vertical:hover {{ background: rgba(255,255,255,0.68); }}
 QWidget#sidebarBrand {{ background: transparent; border: 0; }}
 QLabel#brandIcon {{ background: transparent; border: 0; min-width: 46px; min-height: 46px; }}
-QLabel#brandTitle {{ color: white; font-size: 16pt; font-weight: 700; }}
+QLabel#brandTitle {{ color: white; font-size: 14pt; font-weight: 700; }}
 QLabel#sidebarUser, QWidget#sidebar QLabel {{ color: #F4F7FC; }}
 QFrame#sidebarUserCard {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: {radius}px; margin: 4px 10px; }}
 QLabel#sidebarAvatar {{ background: {c['sidebar_active']}; color: white; border-radius: 18px; min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; font-weight: 700; }}
 QLabel#sidebarUser {{ color: white; font-weight: 700; }}
 QLabel#sidebarUserDetail {{ color: #B8C7D9; font-size: 8pt; }}
-QLabel#sidebarUserToggle {{ color: #D7E3F0; font-size: 13pt; }}
+QLabel#sidebarUserToggle {{ color: #D7E3F0; font-size: 11pt; }}
 QPushButton#menuButton {{ background: transparent; color: #E9F0FA; border: 0; border-radius: {radius}px; text-align: left; padding: 10px 16px; min-height: 26px; }}
 QPushButton#menuButton[compact="true"] {{ text-align: center; padding: 10px; min-width: 34px; }}
 QPushButton#menuButton:hover {{ background: rgba(255,255,255,0.09); }}
@@ -203,25 +217,25 @@ QPushButton#sidebarToggle:hover {{ background: rgba(255,255,255,0.10); }}
 QFrame#card, QGroupBox, QWidget#surface {{ background-color: {c['surface']}; border: {surface_border}px solid {c['border']}; border-radius: {radius}px; }}
 QGroupBox {{ margin-top: 12px; padding: {pad}px; font-weight: 600; }}
 QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 5px; }}
-QLabel#pageTitle {{ font-size: {int(f['title_size'])}pt; font-weight: 700; color: {c['text_primary']}; }}
-QLabel#pageSubtitle, QLabel#secondary, QLabel#muted {{ color: {c['text_secondary']}; font-size: {int(f['subtitle_size'])}pt; }}
+QLabel#pageTitle {{ font-size: {title_size}pt; font-weight: 700; color: {c['text_primary']}; }}
+QLabel#pageSubtitle, QLabel#secondary, QLabel#muted {{ color: {c['text_secondary']}; font-size: {subtitle_size}pt; }}
 QLabel#cardTitle {{ color: {c['text_secondary']}; font-weight: 600; }}
-QLabel#cardValue {{ color: {c['primary']}; font-size: 18pt; font-weight: 700; }}
+QLabel#cardValue {{ color: {c['primary']}; font-size: 15pt; font-weight: 700; }}
 QLabel#positivo {{ color: {c['success']}; font-weight: 700; }}
 QLabel#negativo {{ color: {c['danger']}; font-weight: 700; }}
 QLabel#warning {{ color: {c['warning']}; font-weight: 700; }}
-QPushButton, QToolButton {{ background-color: {c['button_background']}; color: white; border: 1px solid {c['button_background']}; border-radius: {radius - 2}px; padding: 6px 14px; min-height: {int(l['button_height'])}px; }}
+QPushButton, QToolButton {{ background-color: {c['button_background']}; color: white; border: 1px solid {c['button_background']}; border-radius: {radius - 2}px; padding: 5px 12px; min-height: {button_height}px; }}
 QPushButton:hover, QToolButton:hover {{ background-color: {c['primary_hover']}; border-color: {c['primary_hover']}; }}
 QPushButton:disabled, QToolButton:disabled {{ background: {c['disabled_background']}; color: {c['disabled_text']}; border-color: {c['border']}; }}
 QPushButton#secondaryButton, QToolButton#secondaryButton {{ background: {c['surface']}; color: {c['text_primary']}; border-color: {c['border']}; }}
 QPushButton#dangerButton, QToolButton#dangerButton {{ background: transparent; color: {c['danger']}; border-color: {c['danger']}; }}
 QPushButton#filterButton:checked {{ background: {c['primary']}; color: white; }}
-QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{ background: {c['input_background']}; color: {c['text_primary']}; border: 1px solid {c['border']}; border-radius: {radius - 3}px; padding: 5px 9px; min-height: {int(l['field_height'])}px; selection-background-color: {c['selection']}; }}
+QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{ background: {c['input_background']}; color: {c['text_primary']}; border: 1px solid {c['border']}; border-radius: {radius - 3}px; padding: 4px 8px; min-height: {field_height}px; selection-background-color: {c['selection']}; }}
 QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {{ border: 2px solid {c['focus']}; }}
 QComboBox QAbstractItemView {{ background: {c['surface']}; color: {c['text_primary']}; selection-background-color: {c['selection']}; }}
-QTableWidget, QTableView {{ background: {c['surface']}; alternate-background-color: {c['table_alternate']}; color: {c['text_primary']}; border: 1px solid {c['border']}; border-radius: {radius}px; gridline-color: {c['border']}; font-size: {int(f['table_size'])}pt; }}
-QHeaderView::section {{ background: {c['table_header']}; color: {c['text_primary']}; border: 0; border-bottom: 1px solid {c['border']}; padding: 9px; font-weight: 600; min-height: {int(l['table_row_height'])}px; }}
-QTableWidget::item, QTableView::item {{ padding: {line_pad}px; min-height: {int(l['table_row_height'])}px; }}
+QTableWidget, QTableView {{ background: {c['surface']}; alternate-background-color: {c['table_alternate']}; color: {c['text_primary']}; border: 1px solid {c['border']}; border-radius: {radius}px; gridline-color: {c['border']}; font-size: {table_size}pt; }}
+QHeaderView::section {{ background: {c['table_header']}; color: {c['text_primary']}; border: 0; border-bottom: 1px solid {c['border']}; padding: 7px; font-weight: 600; min-height: {table_row_height}px; }}
+QTableWidget::item, QTableView::item {{ padding: {line_pad}px; min-height: {table_row_height}px; }}
 QTableWidget::item:selected, QTableView::item:selected {{ background: {c['selection']}; color: {c['text_primary']}; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; }}
 QScrollBar::handle:vertical {{ background: {c['border']}; border-radius: 5px; min-height: 24px; }}
@@ -244,29 +258,29 @@ QFrame#loginCard {{
 }}
 QLabel#loginDialogTitle {{
     background: transparent; color: {c['text_secondary']}; border: 0;
-    min-height: 34px; font-size: 13pt; font-weight: 500;
+    min-height: 30px; font-size: 11pt; font-weight: 500;
 }}
 QWidget#loginContent {{ background-color: {c['surface']}; border: 0; }}
 QWidget#loginContent QLabel {{ background: transparent; border: 0; }}
 QLabel#loginLogo {{
     background-color: transparent; border: 0;
-    min-width: 68px; min-height: 68px;
+    min-width: 60px; min-height: 60px;
 }}
 QLabel#loginBrandTitle {{
-    color: {c['text_primary']}; font-size: 25pt; font-weight: 700;
+    color: {c['text_primary']}; font-size: 20pt; font-weight: 700;
 }}
-QLabel#loginBrandSubtitle {{ color: {c['text_secondary']}; font-size: 12pt; }}
+QLabel#loginBrandSubtitle {{ color: {c['text_secondary']}; font-size: 10pt; }}
 QFrame#loginAccent {{ background-color: {c['sidebar_active']}; border: 0; border-radius: 1px; }}
-QLabel#loginFieldLabel {{ color: {c['text_primary']}; font-size: 11pt; font-weight: 700; }}
+QLabel#loginFieldLabel {{ color: {c['text_primary']}; font-size: 10pt; font-weight: 700; }}
 QWidget#loginField {{
     background-color: {c['input_background']}; border: 1px solid {c['border']};
-    border-radius: {radius - 2}px; min-height: 52px;
+    border-radius: {radius - 2}px; min-height: 46px;
 }}
 QWidget#loginField[invalid=\"true\"] {{ border: 2px solid {c['danger']}; }}
 QLabel#loginFieldIcon {{ background: transparent; border: 0; min-width: 28px; }}
 QLineEdit#loginInput {{
     background: transparent; color: {c['text_primary']}; border: 0;
-    padding: 4px; min-height: 42px; font-size: 11pt;
+    padding: 4px; min-height: 36px; font-size: 10pt;
 }}
 QLineEdit#loginInput:focus {{ background: {c['surface_alt']}; }}
 QToolButton#loginIconButton {{
@@ -277,13 +291,13 @@ QToolButton#loginIconButton:hover {{ background: {c['surface_alt']}; border: 0; 
 QPushButton#loginPrimary {{
     background-color: {c['sidebar_active']}; color: white;
     border: 1px solid {c['sidebar_active']}; border-radius: {radius - 2}px;
-    min-height: 48px; font-size: 12pt; font-weight: 700;
+    min-height: 42px; font-size: 10pt; font-weight: 700;
 }}
 QPushButton#loginPrimary:hover {{ background-color: {c['primary_hover']}; border-color: {c['primary_hover']}; }}
 QPushButton#loginSecondary {{
     background-color: {c['surface']}; color: {c['primary']};
     border: 1px solid {c['primary']}; border-radius: {radius - 2}px;
-    min-height: 48px; font-size: 12pt; font-weight: 700;
+    min-height: 42px; font-size: 10pt; font-weight: 700;
 }}
 QPushButton#loginSecondary:hover {{ background-color: {c['surface_alt']}; color: {c['primary_hover']}; border-color: {c['primary_hover']}; }}
 QPushButton#linkButton {{
@@ -292,22 +306,22 @@ QPushButton#linkButton {{
 }}
 QPushButton#linkButton:hover {{ color: {c['primary_hover']}; text-decoration: underline; }}
 QFrame#loginFooter {{ background-color: {c['surface']}; border-top: 1px solid {c['border']}; }}
-QLabel#loginBenefitIcon {{ color: {c['primary']}; font-size: 20pt; font-weight: 700; min-width: 32px; }}
-QLabel#loginBenefitTitle {{ color: {c['text_primary']}; font-size: 10pt; font-weight: 700; }}
+QLabel#loginBenefitIcon {{ color: {c['primary']}; font-size: 17pt; font-weight: 700; min-width: 28px; }}
+QLabel#loginBenefitTitle {{ color: {c['text_primary']}; font-size: 9pt; font-weight: 700; }}
 QLabel#loginBenefitDetail {{ color: {c['text_secondary']}; font-size: 8pt; }}
 
 /* Dashboard */
 QFrame#metricCard {{ background: {c['surface']}; border: 1px solid {c['border']}; border-radius: {radius}px; }}
 QLabel#metricLabel {{ color: {c['text_secondary']}; font-size: 9pt; font-weight: 600; }}
-QLabel#metricValue {{ color: {c['text_primary']}; font-size: 16pt; font-weight: 700; }}
-QLabel#metricValuePositive {{ color: {c['success']}; font-size: 16pt; font-weight: 700; }}
-QLabel#metricValueNegative {{ color: {c['danger']}; font-size: 16pt; font-weight: 700; }}
-QLabel#metricValueWarning {{ color: {c['warning']}; font-size: 16pt; font-weight: 700; }}
+QLabel#metricValue {{ color: {c['text_primary']}; font-size: 14pt; font-weight: 700; }}
+QLabel#metricValuePositive {{ color: {c['success']}; font-size: 14pt; font-weight: 700; }}
+QLabel#metricValueNegative {{ color: {c['danger']}; font-size: 14pt; font-weight: 700; }}
+QLabel#metricValueWarning {{ color: {c['warning']}; font-size: 14pt; font-weight: 700; }}
 QLabel#metricHint {{ color: {c['text_secondary']}; font-size: 8pt; }}
-QLabel#metricIcon {{ background: {c['surface_alt']}; color: {c['primary']}; border-radius: 18px; min-width: 38px; min-height: 38px; font-size: 16pt; font-weight: 700; }}
-QLabel#dashboardGreeting {{ color: {c['text_primary']}; font-size: {int(f['title_size'])}pt; font-weight: 700; }}
+QLabel#metricIcon {{ background: {c['surface_alt']}; color: {c['primary']}; border-radius: 16px; min-width: 34px; min-height: 34px; font-size: 14pt; font-weight: 700; }}
+QLabel#dashboardGreeting {{ color: {c['text_primary']}; font-size: {title_size}pt; font-weight: 700; }}
 QFrame#dashboardPanel {{ background: {c['surface']}; border: 1px solid {c['border']}; border-radius: {radius}px; }}
-QLabel#panelTitle {{ color: {c['text_primary']}; font-size: 12pt; font-weight: 700; }}
+QLabel#panelTitle {{ color: {c['text_primary']}; font-size: 11pt; font-weight: 700; }}
 QLabel#listAmountPositive {{ color: {c['success']}; font-weight: 700; }}
 QLabel#listAmountNegative {{ color: {c['danger']}; font-weight: 700; }}
 QFrame#dashboardRow {{ background: transparent; border-bottom: 1px solid {c['border']}; }}
@@ -315,20 +329,20 @@ QFrame#financeTip {{ background: {c['surface_alt']}; border: 1px solid {c['borde
 
 /* Perfil */
 QScrollArea#profileScroll, QWidget#profilePage {{ background: {c['background']}; border: 0; }}
-QLabel#profileHeaderIcon {{ background: {c['surface_alt']}; color: {c['text_primary']}; border-radius: 25px; min-width: 50px; max-width: 50px; min-height: 50px; max-height: 50px; font-size: 25pt; }}
+QLabel#profileHeaderIcon {{ background: {c['surface_alt']}; color: {c['text_primary']}; border-radius: 22px; min-width: 44px; max-width: 44px; min-height: 44px; max-height: 44px; font-size: 20pt; }}
 QFrame#profileHero, QFrame#profilePanel {{ background: {c['surface']}; border: 1px solid {c['border']}; border-radius: {radius}px; }}
-QLabel#profileAvatar {{ background: {c['primary']}; color: white; border-radius: 58px; min-width: 116px; max-width: 116px; min-height: 116px; max-height: 116px; font-size: 30pt; font-weight: 700; }}
-QLabel#profileName {{ color: {c['text_primary']}; font-size: 18pt; font-weight: 700; }}
+QLabel#profileAvatar {{ background: {c['primary']}; color: white; border-radius: 48px; min-width: 96px; max-width: 96px; min-height: 96px; max-height: 96px; font-size: 24pt; font-weight: 700; }}
+QLabel#profileName {{ color: {c['text_primary']}; font-size: 16pt; font-weight: 700; }}
 QLabel#profileRole {{ color: {c['primary']}; font-weight: 700; }}
 QFrame#profileDetailRow {{ background: transparent; border: 0; border-bottom: 1px solid {c['border']}; }}
 QLabel#profileDetailName {{ color: {c['text_secondary']}; }}
 QLabel#profileDetailValue {{ color: {c['text_primary']}; }}
 QLabel#profileHint {{ color: {c['text_secondary']}; padding-top: 10px; }}
-QLabel#profileSecurityIcon {{ background: {c['surface_alt']}; color: {c['primary']}; border-radius: 22px; min-width: 44px; max-width: 44px; min-height: 44px; max-height: 44px; font-size: 18pt; }}
+QLabel#profileSecurityIcon {{ background: {c['surface_alt']}; color: {c['primary']}; border-radius: 20px; min-width: 40px; max-width: 40px; min-height: 40px; max-height: 40px; font-size: 16pt; }}
 QLabel#profileSecurityTitle {{ color: {c['text_primary']}; font-weight: 700; }}
 QFrame#profileFooter {{ background: transparent; border-top: 1px solid {c['border']}; }}
 QDialog#profileDialog {{ background: {c['background']}; }}
-QLabel#dialogTitle {{ color: {c['text_primary']}; font-size: 16pt; font-weight: 700; }}
+QLabel#dialogTitle {{ color: {c['text_primary']}; font-size: 14pt; font-weight: 700; }}
 """
 
 

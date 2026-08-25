@@ -12,7 +12,10 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['sentence_transformers', 'transformers', 'torch', 'sklearn', 'argostranslate'],
+    excludes=[
+        'sentence_transformers', 'transformers', 'torch', 'sklearn',
+        'argostranslate', 'pytest', '_pytest',
+    ],
     noarchive=False,
     optimize=0,
 )
@@ -24,7 +27,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='ControleFinanceiro-teste',
+    name='FinanceAssist-test',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_versao_de_teste_possui_formatos_coerentes():
-    assert APP_VERSION == "2.1.0-test.1"
-    assert DEBIAN_VERSION == "2.1.0~test1"
+    assert APP_VERSION == "2.1.0-test.2"
+    assert DEBIAN_VERSION == "2.1.0~test2"
 
 
 def test_metadados_debian_declaram_pacote_de_teste():
@@ -18,6 +18,7 @@ def test_metadados_debian_declaram_pacote_de_teste():
     assert "versão de teste" in control
     assert "Name=Finance Assist (Teste)" in desktop
     assert "Exec=/usr/bin/finance-assist-test" in desktop
+    assert "Ubuntu 22.04 LTS ou posterior" in control
 
 
 def test_script_nao_embute_banco_backup_ou_ambiente_virtual():
@@ -26,3 +27,4 @@ def test_script_nao_embute_banco_backup_ou_ambiente_virtual():
     assert "backup_dir" not in script
     assert "install -m 0644 \"$PROJECT_ROOT/LICENSE\"" in script
     assert "assets/icons/finance_assist.svg" in script
+    assert "dist/FinanceAssist-test" in script

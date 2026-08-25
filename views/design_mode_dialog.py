@@ -79,17 +79,17 @@ class DesignModeDialog(QDialog):
 
         self.spin_controls = {}
         numeric = (
-            ("base_size", "Tamanho base", "fontes", 8, 24),
-            ("title_size", "Tamanho de títulos", "fontes", 12, 36),
-            ("subtitle_size", "Tamanho de subtítulos", "fontes", 8, 24),
-            ("table_size", "Tamanho de tabelas", "fontes", 8, 24),
+            ("base_size", "Tamanho base", "fontes", 8, 12),
+            ("title_size", "Tamanho de títulos", "fontes", 15, 20),
+            ("subtitle_size", "Tamanho de subtítulos", "fontes", 8, 11),
+            ("table_size", "Tamanho de tabelas", "fontes", 8, 11),
             ("weight", "Peso da fonte", "fontes", 300, 800),
-            ("radius", "Raio das bordas", "layout", 0, 24),
+            ("radius", "Raio das bordas", "layout", 4, 14),
             ("shadow", "Intensidade de sombra", "layout", 0, 10),
             ("padding", "Espaçamento interno", "layout", 4, 30),
-            ("button_height", "Altura dos botões", "layout", 28, 64),
-            ("field_height", "Altura dos campos", "layout", 28, 64),
-            ("table_row_height", "Altura das linhas", "layout", 28, 72),
+            ("button_height", "Altura dos botões", "layout", 30, 42),
+            ("field_height", "Altura dos campos", "layout", 30, 42),
+            ("table_row_height", "Altura das linhas", "layout", 30, 44),
             ("sidebar_width", "Largura do menu", "layout", 190, 360),
             ("divider_contrast", "Contraste de divisores", "layout", 0, 100),
         )

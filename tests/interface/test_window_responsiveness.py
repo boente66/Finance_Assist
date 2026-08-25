@@ -250,8 +250,14 @@ def test_dialogo_nao_ultrapassa_area_disponivel(app):
 
 def test_login_permanece_compacto_e_minimizavel(app):
     dialog = LoginDialog(controller=LoginController())
+    dialog.resize(600, 500)
+    dialog.show()
+    app.processEvents()
     WindowManager.fit_dialog(dialog)
-    assert dialog.minimumWidth() == 720
+    assert dialog.minimumWidth() == 600
+    assert dialog.minimumHeight() == 500
+    assert not dialog.hero.isVisibleTo(dialog)
+    assert not dialog.footer.isVisibleTo(dialog)
     assert dialog.windowFlags() & Qt.WindowMinimizeButtonHint
     assert not dialog.windowFlags() & Qt.WindowMaximizeButtonHint
     dialog.close()

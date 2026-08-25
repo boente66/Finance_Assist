@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
 from controllers.account_controller import AccountController
 from core.session import Session
 from core.translator_app import TranslatorApp
+from core.window_manager import WindowManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ class CriarContaDialog(QDialog):
         # 🔥 título base (auto traduzido)
         self.setWindowTitle("Criar Conta")
 
-        self.setFixedSize(360, 260)
+        self.setMinimumSize(340, 260)
+        self.resize(420, 300)
 
         self._init_ui()
 
@@ -167,6 +169,10 @@ class CriarContaDialog(QDialog):
                 TranslatorApp.get("Erro"),
                 TranslatorApp.get("Não foi possível criar a conta."),
             )
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        WindowManager.fit_dialog(self, self.parentWidget())
     # ======================================================
     # CICLO DE VIDA
     # ======================================================

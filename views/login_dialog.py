@@ -38,6 +38,7 @@ class FinanceHeroWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         rect = self.rect()
+        font_family = ThemeManager.get_theme_config()["fontes"]["family"]
 
         background = QLinearGradient(rect.topLeft(), rect.bottomRight())
         background.setColorAt(0, QColor("#061A33"))
@@ -59,14 +60,14 @@ class FinanceHeroWidget(QWidget):
 
         margin = max(34, int(rect.width() * .09))
         painter.setPen(QColor("#F7FAFC"))
-        painter.setFont(QFont("Sans Serif", 19, QFont.Bold))
+        painter.setFont(QFont(font_family, 16, QFont.Bold))
         painter.drawText(QRectF(margin, 72, rect.width() - margin * 2, 34),
                          Qt.AlignLeft | Qt.AlignVCenter, "Tenha controle total")
         painter.setPen(QColor("#1DD0D8"))
         painter.drawText(QRectF(margin, 104, rect.width() - margin * 2, 40),
                          Qt.AlignLeft | Qt.AlignVCenter, "das suas finanças")
         painter.setPen(QColor("#D9E6F3"))
-        painter.setFont(QFont("Sans Serif", 11))
+        painter.setFont(QFont(font_family, 10))
         painter.drawText(QRectF(margin, 158, rect.width() - margin * 2, 82),
                          Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap,
                          "Organize seus gastos, planeje seus objetivos e alcance "
@@ -78,9 +79,9 @@ class FinanceHeroWidget(QWidget):
         painter.setPen(QPen(QColor(40, 137, 188, 150), 1))
         painter.drawRoundedRect(chart, 18, 18)
         painter.setPen(QColor("#E7F2FA"))
-        painter.setFont(QFont("Sans Serif", 10, QFont.Bold))
+        painter.setFont(QFont(font_family, 9, QFont.Bold))
         painter.drawText(chart.adjusted(22, 16, -20, -10), Qt.AlignTop, "Resumo financeiro")
-        painter.setFont(QFont("Sans Serif", 9))
+        painter.setFont(QFont(font_family, 8))
         painter.setPen(QColor("#82E6E9"))
         painter.drawText(chart.adjusted(22, 48, -20, -10), Qt.AlignTop, "Receitas  •  Planejamento  •  Metas")
 
@@ -110,9 +111,9 @@ class FinanceHeroWidget(QWidget):
         painter.setPen(QPen(QColor(164, 238, 242, 170), 1))
         painter.drawRoundedRect(card, 14, 14)
         painter.setPen(QColor("#FFFFFF"))
-        painter.setFont(QFont("Sans Serif", 10, QFont.Bold))
+        painter.setFont(QFont(font_family, 9, QFont.Bold))
         painter.drawText(card.adjusted(18, 14, -12, -10), Qt.AlignTop, "FINANCE ASSIST")
-        painter.setFont(QFont("Monospace", 9))
+        painter.setFont(QFont("Monospace", 8))
         painter.drawText(card.adjusted(18, 46, -12, -10), Qt.AlignTop, "••••  ••••  ••••  3456")
 
 
@@ -128,8 +129,8 @@ class LoginDialog(QDialog):
         self.setObjectName("loginRoot")
         self.setWindowIcon(self._icon("finance_assist"))
         self.setModal(True)
-        self.setMinimumSize(720, 540)
-        self.resize(1120, 720)
+        self.setMinimumSize(600, 500)
+        self.resize(1040, 680)
         self.setWindowFlag(Qt.WindowMinimizeButtonHint, True)
         self.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
         self.setSizeGripEnabled(True)
@@ -163,16 +164,16 @@ class LoginDialog(QDialog):
         self.hero = FinanceHeroWidget()
         body.addWidget(self.hero, 44)
 
-        form_area = QWidget()
-        form_area.setObjectName("loginFormArea")
-        center = QHBoxLayout(form_area)
-        center.setContentsMargins(40, 40, 40, 40)
-        center.addStretch(1)
+        self.form_area = QWidget()
+        self.form_area.setObjectName("loginFormArea")
+        self.form_center = QHBoxLayout(self.form_area)
+        self.form_center.setContentsMargins(32, 28, 32, 28)
+        self.form_center.addStretch(1)
 
         self.card = QFrame()
         self.card.setObjectName("loginCard")
-        self.card.setMinimumWidth(420)
-        self.card.setMaximumWidth(590)
+        self.card.setMinimumWidth(380)
+        self.card.setMaximumWidth(540)
         self.card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         shadow = QGraphicsDropShadowEffect(self.card)
         shadow.setBlurRadius(30)
@@ -187,15 +188,15 @@ class LoginDialog(QDialog):
         content = QWidget()
         content.setObjectName("loginContent")
         form = QVBoxLayout(content)
-        form.setContentsMargins(36, 28, 36, 0)
-        form.setSpacing(13)
+        form.setContentsMargins(32, 24, 32, 0)
+        form.setSpacing(11)
 
         brand = QHBoxLayout()
         brand.setSpacing(18)
         self.logo_label = QLabel()
         self.logo_label.setObjectName("loginLogo")
         self.logo_label.setAlignment(Qt.AlignCenter)
-        self.logo_label.setPixmap(self._brand_pixmap(68))
+        self.logo_label.setPixmap(self._brand_pixmap(60))
         brand_text = QVBoxLayout()
         brand_text.setSpacing(3)
         self.brand_title = QLabel()
@@ -269,14 +270,14 @@ class LoginDialog(QDialog):
         form.addWidget(self.btn_recuperar, 0, Qt.AlignCenter)
 
         card_layout.addWidget(content)
-        center.addWidget(self.card)
-        center.addStretch(1)
-        body.addWidget(form_area, 56)
+        self.form_center.addWidget(self.card)
+        self.form_center.addStretch(1)
+        body.addWidget(self.form_area, 56)
         root.addLayout(body, 1)
 
-        footer = QFrame()
-        footer.setObjectName("loginFooter")
-        footer_layout = QHBoxLayout(footer)
+        self.footer = QFrame()
+        self.footer.setObjectName("loginFooter")
+        footer_layout = QHBoxLayout(self.footer)
         footer_layout.setContentsMargins(42, 14, 42, 14)
         for symbol, title, detail in (
             ("✓", "Seus dados protegidos", "Segurança e privacidade em primeiro lugar"),
@@ -298,7 +299,22 @@ class LoginDialog(QDialog):
             item.addLayout(copy)
             footer_layout.addLayout(item)
             footer_layout.addStretch(1)
-        root.addWidget(footer)
+        root.addWidget(self.footer)
+
+        self._apply_responsive_layout()
+
+    def _apply_responsive_layout(self):
+        compact = self.width() < 900
+        self.hero.setVisible(not compact)
+        self.footer.setVisible(self.height() >= 600)
+        margin = 18 if compact else 32
+        self.form_center.setContentsMargins(margin, 20, margin, 20)
+        self.card.setMinimumWidth(360 if compact else 380)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "hero"):
+            self._apply_responsive_layout()
 
     def _create_field(self, icon_name, password=False):
         container = QWidget()
