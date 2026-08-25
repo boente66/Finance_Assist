@@ -10,7 +10,13 @@ def test_workflow_gera_artefatos_linux_e_windows():
     assert "runs-on: windows-2022" in workflow
     assert "packaging/linux/build_deb.sh" in workflow
     assert "packaging\\windows\\build_windows.ps1" in workflow
+    assert "$PSNativeCommandUseErrorActionPreference = $true" in workflow
     assert workflow.count("actions/upload-artifact@v4") == 2
+
+
+def test_dependencia_qt_nativa_respeita_plataforma():
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    assert 'PyQt5-Qt5==5.15.17; platform_system != "Windows"' in requirements
 
 
 def test_pacote_windows_e_portavel_e_nao_embute_dados_locais():
