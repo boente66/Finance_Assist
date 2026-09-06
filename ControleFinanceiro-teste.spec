@@ -1,21 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
+import json
+from pathlib import Path
 
-hiddenimports = collect_submodules('views')
+root = Path(SPECPATH)
+# Enumerate source files without importing the package in PyInstaller's process.
+# Its sys.path can omit the project when invoked through the venv entry point.
+hiddenimports = sorted('views.' + p.stem for p in (root / 'views').glob('*.py') if p.stem != '__init__')
+if not hiddenimports or 'views.resumo_financeiro_view' not in hiddenimports:
+    raise RuntimeError('Inventário de views incompleto')
+manifest = Path(workpath) / 'view-manifest.json'
+manifest.parent.mkdir(parents=True, exist_ok=True)
+manifest.write_text(json.dumps(hiddenimports), encoding='utf-8')
 
 a = Analysis(
     ['run.py'],
-    pathex=[],
+    pathex=[str(root)],
     binaries=[],
-    datas=[('assets', 'assets')],
+    datas=[('assets', 'assets'), (str(manifest), '.')],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[
-        'sentence_transformers', 'transformers', 'torch', 'sklearn',
-        'argostranslate', 'pytest', '_pytest',
-    ],
+    excludes=['pytest', '_pytest'],
     noarchive=False,
     optimize=0,
 )

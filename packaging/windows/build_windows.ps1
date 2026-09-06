@@ -19,6 +19,14 @@ try {
         throw "Executável de teste não foi gerado: $Executable"
     }
 
+    & $Python packaging/verify_archive.py $Executable
+    if ($LASTEXITCODE -ne 0) { throw "Inventário de views incompleto." }
+    $Report = Join-Path $ProjectRoot "dist\views-windows.json"
+    $Probe = Start-Process -FilePath $Executable -ArgumentList @("--self-test-views", "--self-test-report", "`"$Report`"") -PassThru
+    if (-not $Probe.WaitForExit(600000)) { $Probe.Kill(); throw "Timeout na verificação das views." }
+    if ($Probe.ExitCode -ne 0) { throw "Falha na verificação das views: $Report" }
+    if (-not (Get-Content -Raw $Report | ConvertFrom-Json).ok) { throw "Relatório de views reprovado." }
+
     $Version = & $Python -c "from core.version import APP_VERSION; print(APP_VERSION)"
     if ($LASTEXITCODE -ne 0) { throw "Não foi possível obter a versão." }
     New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null

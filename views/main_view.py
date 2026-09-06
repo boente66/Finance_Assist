@@ -627,7 +627,15 @@ class MainView(QMainWindow):
             self._handle_menu_click(btn, view_cls)
 
     def _handle_menu_click(self, clicked_button, view_cls):
-        resolved_view = self._resolve_view_class(view_cls)
+        try:
+            resolved_view = self._resolve_view_class(view_cls)
+        except Exception:
+            logger.exception("Erro ao resolver view %s", view_cls)
+            self.statusBar().showMessage(
+                TranslatorApp.get("Não foi possível abrir esta tela. Consulte o log do aplicativo."),
+                15000,
+            )
+            return
 
         if self._current_view_class == resolved_view:
             return

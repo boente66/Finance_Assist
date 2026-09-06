@@ -1,13 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
+from pathlib import Path
 
-hiddenimports = []
-hiddenimports += collect_submodules('views')
+root = Path(SPECPATH)
+hiddenimports = sorted('views.' + p.stem for p in (root / 'views').glob('*.py') if p.stem != '__init__')
 
 
 a = Analysis(
     ['run.py'],
-    pathex=[],
+    pathex=[str(root)],
     binaries=[],
     datas=[('assets', 'assets')],
     hiddenimports=hiddenimports,

@@ -32,6 +32,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install pytest
       - name: Suíte completa isolada
@@ -59,6 +60,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install pytest
       - name: Testes de empacotamento
@@ -117,6 +119,12 @@ jobs:
           set -e
           test "${APP_STATUS}" -eq 124
           TEST_DB="${EXISTING_HOME}/.financeassist/financeiro.db" python3 -c 'import os, sqlite3; db=sqlite3.connect(os.environ["TEST_DB"]); assert db.execute("SELECT valor FROM preservado_atualizacao").fetchone()[0] == "MANTER"; assert db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0; assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"; db.close()'
+      - name: Testar todas as views do executável instalado
+        run: |
+          timeout 600s finance-assist-test --self-test-views --self-test-report "${RUNNER_TEMP}/views.json"
+          python3 -c 'import json, os; r=json.load(open(os.environ["RUNNER_TEMP"] + "/views.json")); assert r["ok"]; assert "views.resumo_financeiro_view.ResumoFinanceiroView" in r["checked"]'
+          pdftoppm -v
+          tesseract --list-langs | grep -x por
 
   windows-zip:
     name: Windows x64 - ZIP de teste
@@ -135,6 +143,7 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           python -m venv .venv
           .venv\Scripts\python.exe -m pip install --upgrade pip
+          .venv\Scripts\python.exe -m pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           .venv\Scripts\python.exe -m pip install -r requirements.txt
           .venv\Scripts\python.exe -m pip install pytest
       - name: Testes de empacotamento

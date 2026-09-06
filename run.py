@@ -2,10 +2,21 @@
 import sys
 import logging
 import traceback
+import os
+import tempfile
+
+# Establish isolation before importing any configuration, controller or model.
+_self_test_data = None
+if '--self-test-views' in sys.argv:
+    _self_test_data = tempfile.TemporaryDirectory(prefix='finance-assist-view-check-')
+    os.environ['FINANCE_ASSIST_ENV'] = 'test'
+    os.environ['FINANCE_ASSIST_DATA_DIR'] = _self_test_data.name
+    os.environ['FINANCE_ASSIST_DB_PATH'] = os.path.join(_self_test_data.name, 'test.db')
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
 
-from core.config import carregar_config
+from core.config import carregar_config, DATA_DIR
 from core.session import Session
 from core.themes import get_theme
 from core.translator_app import TranslatorApp
@@ -17,7 +28,7 @@ from views.main_view import MainView
 
 logging.basicConfig(
     level=logging.DEBUG,
-    filename="finance-assist.log",
+    filename=os.path.join(DATA_DIR, "finance-assist.log"),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
@@ -115,4 +126,10 @@ def main():
 
 
 if __name__ == "__main__":
+    if _self_test_data is not None:
+        from core.packaged_view_check import run_check
+        try:
+            sys.exit(run_check())
+        finally:
+            _self_test_data.cleanup()
     sys.exit(main())

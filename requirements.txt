@@ -19,6 +19,7 @@ argostranslate==1.11.0
 sentence-transformers==5.1.0
 scikit-learn==1.7.1
 cryptography==48.0.0
+typing_extensions==4.16.0
 
 # Build / packaging
 pyinstaller==6.19.0

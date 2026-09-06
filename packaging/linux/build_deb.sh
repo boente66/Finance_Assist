@@ -36,6 +36,9 @@ if [[ ! -x "$EXECUTABLE" ]]; then
     exit 1
 fi
 
+"$PYTHON_BIN" packaging/verify_archive.py "$EXECUTABLE"
+timeout 600s "$EXECUTABLE" --self-test-views --self-test-report "$PROJECT_ROOT/dist/views-linux.json"
+
 install -d \
     "$PACKAGE_ROOT/DEBIAN" \
     "$PACKAGE_ROOT/opt/finance-assist" \
