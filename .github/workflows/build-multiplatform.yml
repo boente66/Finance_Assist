@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   linux-compatibility:
-    name: Ubuntu ${{ matrix.ubuntu }} - compatibilidade
+    name: Ubuntu ${{ matrix.ubuntu }} - código
     runs-on: ubuntu-${{ matrix.ubuntu }}
     timeout-minutes: 45
     strategy:
@@ -72,6 +72,51 @@ jobs:
             dist/*.deb
             dist/*.deb.sha256
           if-no-files-found: error
+
+  linux-deb-install:
+    name: Ubuntu ${{ matrix.ubuntu }} - instalar DEB
+    needs: linux-deb
+    runs-on: ubuntu-${{ matrix.ubuntu }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ["22.04", "24.04", "26.04"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          name: finance-assist-linux-ubuntu-22.04-amd64
+          path: deb-artifact
+      - name: Criar banco sentinela no checkout
+        run: |
+          python3 -c 'import sqlite3; db=sqlite3.connect("financeiro.db"); db.execute("CREATE TABLE sentinela_origem (valor TEXT)"); db.execute("INSERT INTO sentinela_origem VALUES (\"NAO_COPIAR\")"); db.commit(); db.close()'
+          EXISTING_DB="${RUNNER_TEMP}/finance-assist-existing-home/.financeassist/financeiro.db"
+          mkdir -p "$(dirname "${EXISTING_DB}")"
+          TEST_DB="${EXISTING_DB}" python3 -c 'import os, sqlite3; db=sqlite3.connect(os.environ["TEST_DB"]); db.execute("CREATE TABLE preservado_atualizacao (valor TEXT NOT NULL)"); db.execute("INSERT INTO preservado_atualizacao VALUES (\"MANTER\")"); db.commit(); db.close()'
+      - name: Instalar exatamente o DEB gerado no Ubuntu 22.04
+        run: |
+          cd deb-artifact
+          sha256sum -c finance-assist_*.deb.sha256
+          sudo apt install -y ./finance-assist_*.deb
+      - name: Validar inicialização e banco limpo
+        run: |
+          CLEAN_HOME="${RUNNER_TEMP}/finance-assist-clean-home"
+          mkdir -p "${CLEAN_HOME}"
+          set +e
+          timeout 15s env HOME="${CLEAN_HOME}" QT_QPA_PLATFORM=offscreen finance-assist-test
+          APP_STATUS=$?
+          set -e
+          test "${APP_STATUS}" -eq 124
+          test -f "${CLEAN_HOME}/.financeassist/financeiro.db"
+          TEST_DB="${CLEAN_HOME}/.financeassist/financeiro.db" python3 -c 'import os, sqlite3; db=sqlite3.connect(os.environ["TEST_DB"]); tables={row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type=\"table\"")}; assert "usuarios" in tables; assert "sentinela_origem" not in tables; assert db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0; assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"; db.close()'
+          EXISTING_HOME="${RUNNER_TEMP}/finance-assist-existing-home"
+          set +e
+          timeout 15s env HOME="${EXISTING_HOME}" QT_QPA_PLATFORM=offscreen finance-assist-test
+          APP_STATUS=$?
+          set -e
+          test "${APP_STATUS}" -eq 124
+          TEST_DB="${EXISTING_HOME}/.financeassist/financeiro.db" python3 -c 'import os, sqlite3; db=sqlite3.connect(os.environ["TEST_DB"]); assert db.execute("SELECT valor FROM preservado_atualizacao").fetchone()[0] == "MANTER"; assert db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0; assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"; db.close()'
 
   windows-zip:
     name: Windows x64 - ZIP de teste

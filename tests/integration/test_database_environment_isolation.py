@@ -5,7 +5,6 @@ from core.config import (
     DATA_DIR,
     DB_PATH,
     RUNTIME_ENVIRONMENT,
-    clone_database_if_missing,
     get_app_data_dir,
 )
 from database.database import Database
@@ -44,23 +43,36 @@ def test_session_preserva_caminho_configurado(tmp_path):
     assert Session.get_config("db_path") == custom_path
 
 
-def test_copia_legado_uma_vez_sem_sobrescrever_destino(tmp_path):
+def test_desenvolvimento_novo_nao_copia_banco_legado(tmp_path):
     import sqlite3
 
     source = tmp_path / "financeiro.db"
-    destination = tmp_path / "development" / "financeiro.db"
+    development_dir = Path(
+        get_app_data_dir(
+            "development",
+            environ={},
+            home=tmp_path,
+            base_dir=tmp_path,
+        )
+    )
+    destination = development_dir / "financeiro.db"
     with sqlite3.connect(source) as connection:
         connection.execute("CREATE TABLE marcador (valor TEXT NOT NULL)")
         connection.execute("INSERT INTO marcador VALUES ('legado')")
 
-    assert clone_database_if_missing(source, destination) is True
-    with sqlite3.connect(destination) as connection:
-        assert connection.execute("SELECT valor FROM marcador").fetchone()[0] == "legado"
-        connection.execute("UPDATE marcador SET valor = 'desenvolvimento'")
+    database = Database(str(destination))
+    try:
+        marker = database.fetch_one(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'marcador'"
+        )
+        users = database.fetch_one("SELECT COUNT(*) AS total FROM usuarios")
+        assert marker is None
+        assert users["total"] == 0
+    finally:
+        database.close()
 
-    assert clone_database_if_missing(source, destination) is False
-    with sqlite3.connect(destination) as connection:
-        assert connection.execute("SELECT valor FROM marcador").fetchone()[0] == "desenvolvimento"
+    with sqlite3.connect(source) as connection:
+        assert connection.execute("SELECT valor FROM marcador").fetchone()[0] == "legado"
 
 
 def test_inicializacao_padrao_e_backup_usam_banco_de_teste():

@@ -2,7 +2,7 @@
 
 **Projeto:** Finance Assist
 
-**Versão avaliada:** 2.1.0-test.3
+**Versão avaliada:** 2.1.0-test.4
 
 **Data:** 6 set. 2026
 
@@ -40,10 +40,10 @@ Overrides explícitos permanecem disponíveis por `FINANCE_ASSIST_DATA_DIR` e
 `FINANCE_ASSIST_DB_PATH`. Caminhos relativos são resolvidos dentro do diretório
 do ambiente, e não em função do diretório corrente do terminal.
 
-Na primeira execução por código-fonte, um `financeiro.db` legado da raiz é
-copiado com a API de backup do SQLite para o novo perfil de desenvolvimento. A
-cópia ocorre apenas quando o destino ainda não existe; assim, preserva os dados
-anteriores sem manter desenvolvimento e legado ligados ao mesmo arquivo.
+Uma execução nova por código-fonte cria o banco exclusivamente pelo schema e
+pelas migrations no perfil de desenvolvimento. O `financeiro.db` da raiz não é
+lido, migrado, clonado ou usado implicitamente. Bancos de produção existentes
+continuam no caminho histórico do pacote e não são removidos em atualizações.
 
 ## 4. Atualização e migrations
 
@@ -74,14 +74,18 @@ configuração Personalizada.
 
 ## 6. Compatibilidade Linux
 
-O DEB `amd64` permanece compilado no Ubuntu 22.04. A suíte completa passa a ser
-executada separadamente em Ubuntu 24.04 e 26.04 com Python 3.12, Qt offscreen e
-banco temporário. Essa estratégia verifica versões novas sem elevar
-desnecessariamente a versão mínima das bibliotecas do binário.
+O DEB `amd64` permanece compilado no Ubuntu 22.04. O mesmo artefato é transferido
+entre jobs e instalado por `apt` em Ubuntu 22.04, 24.04 e 26.04. Cada instalação
+inicia o executável com HOME limpa e confirma schema íntegro, zero usuários e
+ausência da tabela sentinela criada no checkout. A dependência GLib aceita tanto
+`libglib2.0-0` quanto sua variante `libglib2.0-0t64`. Um segundo HOME contendo
+banco sentinela anterior à instalação comprova que o pacote e as migrations
+mantêm dados preexistentes.
 
 ## 7. Evidências locais
 
-- testes focados: 28 aprovados;
+- testes focados iniciais da revisão: 25 aprovados;
+- regressão final de isolamento e empacotamento: 13 aprovados;
 - integração: 179 testes coletados e incluídos na suíte final;
 - suíte completa: 205 aprovados;
 - compilação de sintaxe: aprovada;

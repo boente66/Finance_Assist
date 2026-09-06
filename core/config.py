@@ -2,10 +2,8 @@
 """Configuração persistente e separação segura dos ambientes de execução."""
 
 import os
-import sqlite3
 import sys
 import tempfile
-import uuid
 from pathlib import Path
 
 from database.json_database import JsonDatabase
@@ -120,31 +118,6 @@ def _normalizar_config(config: dict) -> dict:
     return cfg
 
 
-def clone_database_if_missing(source, destination):
-    """Clona um SQLite legado sem sobrescrever um destino já inicializado."""
-    source = Path(source).expanduser().resolve()
-    destination = Path(destination).expanduser().resolve()
-    if not source.is_file() or destination.exists() or source == destination:
-        return False
-
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_name(
-        f".{destination.name}.migrating-{os.getpid()}-{uuid.uuid4().hex}"
-    )
-    try:
-        with sqlite3.connect(str(source)) as origin:
-            with sqlite3.connect(str(temporary)) as target:
-                origin.backup(target)
-        try:
-            os.link(temporary, destination)
-            return True
-        except FileExistsError:
-            return False
-    finally:
-        if temporary.exists():
-            temporary.unlink()
-
-
 def carregar_config():
     try:
         return _normalizar_config(_config_db.load())
@@ -164,13 +137,7 @@ def get_db_path():
     override = str(os.environ.get(DB_PATH_VARIABLE, "")).strip()
     if override:
         return _normalizar_db_path(override)
-    resolved = carregar_config().get("db_path", DEFAULT_DB_PATH)
-    if RUNTIME_ENVIRONMENT == "development" and resolved == DEFAULT_DB_PATH:
-        clone_database_if_missing(
-            os.path.join(BASE_DIR, DB_NAME),
-            resolved,
-        )
-    return resolved
+    return carregar_config().get("db_path", DEFAULT_DB_PATH)
 
 
 DB_PATH = get_db_path()

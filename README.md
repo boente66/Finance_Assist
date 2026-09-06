@@ -2,7 +2,7 @@
   <img src="assets/icons/finance_assist.svg" alt="Logotipo do Finance Assist" width="88">
   <h1>Finance Assist</h1>
   <p><strong>Gestão financeira pessoal em uma aplicação desktop organizada, segura e executada localmente.</strong></p>
-  <p>Versão atual: <code>2.1.0-test.3</code> · Estágio: teste multiplataforma</p>
+  <p>Versão atual: <code>2.1.0-test.4</code> · Estágio: teste multiplataforma</p>
 </div>
 
 > [!IMPORTANT]
@@ -37,8 +37,8 @@ THE QT COMPANY, 2025).
 | Item | Situação atual |
 |---|---|
 | Nome comercial | Finance Assist |
-| Versão da aplicação | `2.1.0-test.3` |
-| Versão do pacote Debian | `2.1.0~test3` |
+| Versão da aplicação | `2.1.0-test.4` |
+| Versão do pacote Debian | `2.1.0~test4` |
 | Branch principal | `main` |
 | Repositório oficial | [boente66/Finance_Assist](https://github.com/boente66/Finance_Assist) |
 | Distribuição publicada | DEB Ubuntu `amd64` e ZIP Windows `x64`, ambos de teste |
@@ -48,7 +48,7 @@ THE QT COMPANY, 2025).
 | Licença | proprietária, source-available e limitada a uso não comercial |
 
 As notas específicas da versão estão em
-[`docs/releases/v2.1.0-test.3.md`](docs/releases/v2.1.0-test.3.md). O relatório
+[`docs/releases/v2.1.0-test.4.md`](docs/releases/v2.1.0-test.4.md). O relatório
 de compatibilidade e banco está em
 [`docs/RELATORIO_COMPATIBILIDADE_E_DADOS.md`](docs/RELATORIO_COMPATIBILIDADE_E_DADOS.md).
 A auditoria
@@ -301,18 +301,18 @@ backups, logs, caches, configuração local nem ambiente virtual.
 ### 9.1 Ubuntu 22.04, 24.04 e 26.04 LTS
 
 Baixe o `.deb` e o checksum correspondente no
-[Release v2.1.0-test.3](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.3).
+[Release v2.1.0-test.4](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.4).
 
 Confira a integridade do arquivo:
 
 ```bash
-sha256sum -c finance-assist_2.1.0-test.3_amd64.deb.sha256
+sha256sum -c finance-assist_2.1.0-test.4_amd64.deb.sha256
 ```
 
 Instale o pacote:
 
 ```bash
-sudo apt install ./finance-assist_2.1.0-test.3_amd64.deb
+sudo apt install ./finance-assist_2.1.0-test.4_amd64.deb
 ```
 
 Depois da instalação, procure por **Finance Assist (Teste)** no menu de
@@ -323,13 +323,14 @@ finance-assist-test
 ```
 
 O pacote é compilado no Ubuntu 22.04 LTS para preservar compatibilidade binária
-progressiva. A automação executa a suíte completa, com Qt offscreen e banco
-isolado, também em runners Ubuntu 24.04 e 26.04. Diferenças de compositor, DPI e
+progressiva. A automação instala exatamente esse mesmo DEB com `apt` em runners
+Ubuntu 22.04, 24.04 e 26.04, inicia o executável com HOME limpa e confirma que o
+banco criado não contém dados do checkout. Diferenças de compositor, DPI e
 ambiente gráfico ainda exigem homologação visual local.
 
 ### 9.2 Windows
 
-Baixe `finance-assist_2.1.0-test.3_windows-x64.zip`, verifique o arquivo
+Baixe `finance-assist_2.1.0-test.4_windows-x64.zip`, verifique o arquivo
 `.sha256`, extraia a pasta e execute `FinanceAssist-test.exe`. O artefato é
 compilado em Windows Server 2022 e tem como alvo Windows 11 `x64`. O Windows 10
 encerrou o suporte oficial da Microsoft em 14 de outubro de 2025; por isso,
@@ -338,7 +339,7 @@ eventual funcionamento nesse sistema não representa suporte ou homologação.
 No PowerShell, confira a integridade com:
 
 ```powershell
-Get-FileHash .\finance-assist_2.1.0-test.3_windows-x64.zip -Algorithm SHA256
+Get-FileHash .\finance-assist_2.1.0-test.4_windows-x64.zip -Algorithm SHA256
 ```
 
 Compare o resultado com o conteúdo do arquivo de checksum publicado na release.
