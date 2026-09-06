@@ -14,7 +14,9 @@ def test_workflow_gera_artefatos_linux_e_windows():
     assert "packaging/linux/build_deb.sh" in workflow
     assert "packaging\\windows\\build_windows.ps1" in workflow
     assert "$PSNativeCommandUseErrorActionPreference = $true" in workflow
-    assert workflow.count("actions/upload-artifact@v4") == 2
+    assert workflow.count("actions/checkout@v5") == 3
+    assert workflow.count("actions/setup-python@v6") == 3
+    assert workflow.count("actions/upload-artifact@v6") == 2
 
 
 def test_dependencia_qt_nativa_respeita_plataforma():

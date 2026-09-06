@@ -19,8 +19,8 @@ jobs:
       matrix:
         ubuntu: ["24.04", "26.04"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -46,8 +46,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -65,7 +65,7 @@ jobs:
         run: .venv/bin/python -m pytest -q tests/integration/test_linux_package_metadata.py tests/integration/test_multiplatform_package_metadata.py
       - name: Gerar DEB
         run: packaging/linux/build_deb.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: finance-assist-linux-ubuntu-22.04-amd64
           path: |
@@ -78,8 +78,8 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -98,7 +98,7 @@ jobs:
       - name: Gerar pacote Windows
         shell: pwsh
         run: packaging\windows\build_windows.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: finance-assist-windows-x64
           path: |
