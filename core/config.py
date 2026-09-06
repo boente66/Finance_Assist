@@ -1,172 +1,176 @@
 # -*- coding: utf-8 -*-
+"""Configuração persistente e separação segura dos ambientes de execução."""
+
 import os
+import sqlite3
 import sys
+import tempfile
+import uuid
+from pathlib import Path
 
 from database.json_database import JsonDatabase
 
 
-# ==========================================================
-# IDENTIFICAÇÃO DO AMBIENTE
-# ==========================================================
-def get_base_path():
-    """
-    Retorna a pasta base da aplicação.
+RUNTIME_ENV_VARIABLE = "FINANCE_ASSIST_ENV"
+DATA_DIR_VARIABLE = "FINANCE_ASSIST_DATA_DIR"
+DB_PATH_VARIABLE = "FINANCE_ASSIST_DB_PATH"
+VALID_RUNTIME_ENVIRONMENTS = {"production", "development", "test"}
 
-    - Em desenvolvimento: raiz do projeto.
-    - Em executável: pasta onde está o binário.
-    """
+
+def get_base_path():
+    """Retorna a raiz dos recursos da aplicação."""
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    return os.path.dirname(
-        os.path.dirname(
-            os.path.abspath(__file__)
-        )
-    )
+
+def get_runtime_environment(environ=None, frozen=None):
+    """Resolve o perfil sem permitir que testes usem dados de produção."""
+    environ = os.environ if environ is None else environ
+    configured = str(environ.get(RUNTIME_ENV_VARIABLE, "")).strip().lower()
+    if configured:
+        if configured not in VALID_RUNTIME_ENVIRONMENTS:
+            raise ValueError(
+                f"{RUNTIME_ENV_VARIABLE} deve ser production, development ou test."
+            )
+        return configured
+
+    frozen = getattr(sys, "frozen", False) if frozen is None else frozen
+    if frozen:
+        return "production"
+    if "pytest" in sys.modules or environ.get("PYTEST_CURRENT_TEST"):
+        return "test"
+    return "development"
+
+
+def get_app_data_dir(
+    runtime_environment=None,
+    environ=None,
+    home=None,
+    base_dir=None,
+):
+    """Retorna um diretório gravável e exclusivo para cada ambiente."""
+    environ = os.environ if environ is None else environ
+    override = str(environ.get(DATA_DIR_VARIABLE, "")).strip()
+    if override:
+        path = Path(override).expanduser()
+    else:
+        environment = runtime_environment or get_runtime_environment(environ)
+        home = Path(home or Path.home())
+        if environment == "production":
+            # Caminho histórico do aplicativo empacotado: preserva upgrades.
+            path = home / ".financeassist"
+        elif environment == "development":
+            path = Path(base_dir or get_base_path()) / ".financeassist-development"
+        else:
+            path = Path(tempfile.gettempdir()) / "finance-assist-tests" / str(os.getpid())
+
+    path = path.resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 BASE_DIR = get_base_path()
+RUNTIME_ENVIRONMENT = get_runtime_environment()
+DATA_DIR = get_app_data_dir(RUNTIME_ENVIRONMENT)
 
 
-# ==========================================================
-# DIRETÓRIO DE DADOS DO USUÁRIO
-# ==========================================================
-def get_app_data_dir():
-    """
-    Diretório gravável do usuário.
-
-    Usado principalmente quando o sistema estiver empacotado
-    em .deb ou executável.
-    """
-    home = os.path.expanduser("~")
-    app_dir = os.path.join(home, ".financeassist")
-
-    os.makedirs(app_dir, exist_ok=True)
-
-    return app_dir
-
-
-if getattr(sys, "frozen", False):
-    DATA_DIR = get_app_data_dir()
-else:
-    DATA_DIR = BASE_DIR
-
-
-# ==========================================================
-# NORMALIZAÇÃO DE IDIOMA
-# ==========================================================
 IDIOMA_MAP = {
-    "Português": "pt",
-    "Inglês": "en",
-    "Espanhol": "es",
-    "pt": "pt",
-    "pt_BR": "pt",
-    "pt-BR": "pt",
-    "en": "en",
-    "en_US": "en",
-    "en-US": "en",
-    "es": "es",
-    "es_ES": "es",
-    "es-ES": "es",
+    "Português": "pt", "Inglês": "en", "Espanhol": "es",
+    "pt": "pt", "pt_BR": "pt", "pt-BR": "pt",
+    "en": "en", "en_US": "en", "en-US": "en",
+    "es": "es", "es_ES": "es", "es-ES": "es",
 }
 
 
-def _normalize_idioma(valor):
+def normalizar_idioma(valor):
     return IDIOMA_MAP.get(valor, "pt")
 
 
-# ==========================================================
-# CONFIG PADRÃO
-# ==========================================================
 DB_NAME = "financeiro.db"
 DEFAULT_DB_PATH = os.path.join(DATA_DIR, DB_NAME)
-
+CONFIG_PATH = os.path.join(DATA_DIR, "configuracoes.json")
 DEFAULTS = {
     "idioma": "pt",
-    "tema": "Claro",
+    "tema": "Primavera",
     "moeda": "BRL",
     "db_path": DEFAULT_DB_PATH,
 }
 
-CONFIG_PATH = os.path.join(DATA_DIR, "configuracoes.json")
+_config_db = JsonDatabase(file_path=CONFIG_PATH, default_data=DEFAULTS)
 
 
-# ==========================================================
-# PERSISTÊNCIA JSON
-# ==========================================================
-_config_db = JsonDatabase(
-    file_path=CONFIG_PATH,
-    default_data=DEFAULTS
-)
+def _normalizar_db_path(value):
+    if value == ":memory:":
+        return value
+    path = Path(str(value or DEFAULT_DB_PATH)).expanduser()
+    if not path.is_absolute():
+        path = Path(DATA_DIR) / path
+    return str(path.resolve())
 
 
-# ==========================================================
-# NORMALIZAÇÃO DE CONFIG
-# ==========================================================
 def _normalizar_config(config: dict) -> dict:
     cfg = DEFAULTS.copy()
-
     if isinstance(config, dict):
         cfg.update(config)
-
-    cfg["idioma"] = _normalize_idioma(
-        cfg.get("idioma")
-    )
-
-    if not cfg.get("tema"):
-        cfg["tema"] = "Claro"
-
-    if not cfg.get("moeda"):
-        cfg["moeda"] = "BRL"
-
-    if not cfg.get("db_path"):
-        cfg["db_path"] = DEFAULT_DB_PATH
-
-    cfg["db_path"] = os.path.expanduser(
-        str(cfg["db_path"])
-    )
-
+    cfg["idioma"] = normalizar_idioma(cfg.get("idioma"))
+    cfg["tema"] = cfg.get("tema") or "Primavera"
+    cfg["moeda"] = cfg.get("moeda") or "BRL"
+    cfg["db_path"] = _normalizar_db_path(cfg.get("db_path"))
     return cfg
 
 
-# ==========================================================
-# CARREGAR CONFIG
-# ==========================================================
+def clone_database_if_missing(source, destination):
+    """Clona um SQLite legado sem sobrescrever um destino já inicializado."""
+    source = Path(source).expanduser().resolve()
+    destination = Path(destination).expanduser().resolve()
+    if not source.is_file() or destination.exists() or source == destination:
+        return False
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(
+        f".{destination.name}.migrating-{os.getpid()}-{uuid.uuid4().hex}"
+    )
+    try:
+        with sqlite3.connect(str(source)) as origin:
+            with sqlite3.connect(str(temporary)) as target:
+                origin.backup(target)
+        try:
+            os.link(temporary, destination)
+            return True
+        except FileExistsError:
+            return False
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def carregar_config():
     try:
-        data = _config_db.load()
-        return _normalizar_config(data)
-
+        return _normalizar_config(_config_db.load())
     except Exception:
         return DEFAULTS.copy()
 
 
-# ==========================================================
-# SALVAR CONFIG
-# ==========================================================
 def salvar_config(config: dict):
     try:
-        cfg = _normalizar_config(config)
-        return _config_db.save(cfg)
-
+        return _config_db.save(_normalizar_config(config))
     except Exception:
         return False
 
 
-# ==========================================================
-# BANCO
-# ==========================================================
 def get_db_path():
-    """
-    Retorna o caminho atual do banco.
-
-    Permite usar:
-    - padrão local da aplicação
-    - caminho customizado no configuracoes.json
-    - OneDrive / pasta externa
-    """
-    config = carregar_config()
-    return config.get("db_path", DEFAULT_DB_PATH)
+    """Obtém o banco do ambiente atual ou um override explícito."""
+    override = str(os.environ.get(DB_PATH_VARIABLE, "")).strip()
+    if override:
+        return _normalizar_db_path(override)
+    resolved = carregar_config().get("db_path", DEFAULT_DB_PATH)
+    if RUNTIME_ENVIRONMENT == "development" and resolved == DEFAULT_DB_PATH:
+        clone_database_if_missing(
+            os.path.join(BASE_DIR, DB_NAME),
+            resolved,
+        )
+    return resolved
 
 
 DB_PATH = get_db_path()

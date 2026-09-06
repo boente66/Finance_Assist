@@ -1,5 +1,7 @@
 # core/session.py
 
+from core.config import DEFAULT_DB_PATH
+
 class Session:
     """
     Estado global da aplicação.
@@ -18,7 +20,8 @@ class Session:
     _config_padrao = {
         "idioma": "pt",
         "tema": "Primavera",
-        "moeda": "BRL"
+        "moeda": "BRL",
+        "db_path": DEFAULT_DB_PATH,
     }
 
     configuracoes = _config_padrao.copy()

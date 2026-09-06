@@ -24,6 +24,7 @@ from controllers.category_controller import CategoryController
 
 from core.translator_app import TranslatorApp
 from utilitarios.ion_path import IonPath
+from views.animated_add_button import AnimatedAddButton
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +110,11 @@ class TransactionDialogConta(QDialog):
         self.favorecido_combo = QComboBox()
         self.favorecido_combo.setMinimumHeight(28)
 
-        self.btn_add_fav = QPushButton("+")
-        self.btn_add_fav.setIcon(self._icon("add"))
-        self.btn_add_fav.setFixedSize(28, 28)
+        self.btn_add_fav = AnimatedAddButton(
+            TranslatorApp.get("Adicionar favorecido"),
+            self._icon("add"),
+            self,
+        )
 
         fav_row.addWidget(self.favorecido_combo)
         fav_row.addWidget(self.btn_add_fav)
@@ -126,9 +129,11 @@ class TransactionDialogConta(QDialog):
         self.categoria_combo = QComboBox()
         self.categoria_combo.setMinimumHeight(28)
 
-        self.btn_add_cat = QPushButton("+")
-        self.btn_add_cat.setIcon(self._icon("add"))
-        self.btn_add_cat.setFixedSize(28, 28)
+        self.btn_add_cat = AnimatedAddButton(
+            TranslatorApp.get("Adicionar categoria"),
+            self._icon("add"),
+            self,
+        )
 
         cat_row.addWidget(self.categoria_combo)
         cat_row.addWidget(self.btn_add_cat)
@@ -221,6 +226,13 @@ class TransactionDialogConta(QDialog):
         self.btn_salvar.setText(
             TranslatorApp.get("Salvar")
         )
+
+        categoria_hint = TranslatorApp.get("Adicionar categoria")
+        favorecido_hint = TranslatorApp.get("Adicionar favorecido")
+        self.btn_add_cat.setToolTip(categoria_hint)
+        self.btn_add_cat.setAccessibleName(categoria_hint)
+        self.btn_add_fav.setToolTip(favorecido_hint)
+        self.btn_add_fav.setAccessibleName(favorecido_hint)
 
         self._update_label()
 

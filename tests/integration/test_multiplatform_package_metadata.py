@@ -7,6 +7,9 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_workflow_gera_artefatos_linux_e_windows():
     workflow = (ROOT / ".github/workflows/build-multiplatform.yml").read_text(encoding="utf-8")
     assert "runs-on: ubuntu-22.04" in workflow
+    assert 'ubuntu: ["24.04", "26.04"]' in workflow
+    assert "FINANCE_ASSIST_ENV: test" in workflow
+    assert ".venv/bin/python -m pytest -q" in workflow
     assert "runs-on: windows-2022" in workflow
     assert "packaging/linux/build_deb.sh" in workflow
     assert "packaging\\windows\\build_windows.ps1" in workflow

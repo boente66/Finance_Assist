@@ -4,7 +4,7 @@ import logging
 import os
 from typing import List, Dict
 
-from core.config import DB_PATH
+from core.config import get_db_path
 from core.operation_result import operation_result
 from models.backup_model import BackupModel
 
@@ -22,7 +22,7 @@ class BackupService:
     """
 
     def __init__(self, db_path=None):
-        self.model = BackupModel(db_path or DB_PATH)
+        self.model = BackupModel(db_path or get_db_path())
 
     # =====================================================
     # BACKUP

@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_versao_de_teste_possui_formatos_coerentes():
-    assert APP_VERSION == "2.1.0-test.2"
-    assert DEBIAN_VERSION == "2.1.0~test2"
+    assert APP_VERSION == "2.1.0-test.3"
+    assert DEBIAN_VERSION == "2.1.0~test3"
 
 
 def test_metadados_debian_declaram_pacote_de_teste():
@@ -18,7 +18,7 @@ def test_metadados_debian_declaram_pacote_de_teste():
     assert "versão de teste" in control
     assert "Name=Finance Assist (Teste)" in desktop
     assert "Exec=/usr/bin/finance-assist-test" in desktop
-    assert "Ubuntu 22.04 LTS ou posterior" in control
+    assert "Ubuntu 22.04, 24.04 e 26.04 LTS" in control
 
 
 def test_script_nao_embute_banco_backup_ou_ambiente_virtual():

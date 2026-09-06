@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy, QMessageBox
 )
 from PyQt5.QtCore import QDate
+from PyQt5.QtGui import QIcon
 
 from controllers.fatura_controller import FaturaController
 from controllers.favorecido_controller import FavorecidoController
@@ -15,6 +16,8 @@ from controllers.category_controller import CategoryController
 
 from views.FavorecidoDialog import FavorecidoDialog
 from views.categoria_dialog import CategoriaDialog
+from views.animated_add_button import AnimatedAddButton
+from utilitarios.ion_path import IonPath
 
 
 class FaturaDialog(QDialog):
@@ -60,8 +63,11 @@ class FaturaDialog(QDialog):
 
         self.favorecido_combo = QComboBox()
 
-        self.btn_add_fav = QPushButton("+")
-        self.btn_add_fav.setFixedSize(28, 28)
+        self.btn_add_fav = AnimatedAddButton(
+            "Adicionar estabelecimento",
+            QIcon(IonPath.icon("add")),
+            self,
+        )
 
         self.fav_layout.addWidget(self.favorecido_combo)
         self.fav_layout.addWidget(self.btn_add_fav)
@@ -73,8 +79,11 @@ class FaturaDialog(QDialog):
 
         self.categoria_combo = QComboBox()
 
-        self.btn_add_cat = QPushButton("+")
-        self.btn_add_cat.setFixedSize(28, 28)
+        self.btn_add_cat = AnimatedAddButton(
+            "Adicionar categoria",
+            QIcon(IonPath.icon("add")),
+            self,
+        )
 
         self.cat_layout.addWidget(self.categoria_combo)
         self.cat_layout.addWidget(self.btn_add_cat)

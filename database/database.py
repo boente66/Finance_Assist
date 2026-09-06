@@ -5,7 +5,7 @@ import os
 import threading
 from contextlib import contextmanager
 
-from core.config import DB_PATH
+from core.config import get_db_path
 
 logging.basicConfig(
     filename="database.log",
@@ -19,8 +19,8 @@ class Database:
     _initializing_paths = {}
     _initialization_lock = threading.Lock()
 
-    def __init__(self, db_name=DB_PATH):
-        self.db_name = db_name
+    def __init__(self, db_name=None):
+        self.db_name = db_name or get_db_path()
         self._thread_local = threading.local()
 
         self._ensure_directory()
