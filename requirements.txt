@@ -17,6 +17,7 @@ pillow==11.3.0
 pytesseract==0.3.13
 argostranslate==1.11.0
 ctranslate2==4.6.0; platform_system == "Windows"
+onnxruntime==1.22.1; platform_system == "Windows"
 sentence-transformers==5.1.0
 scikit-learn==1.7.1
 cryptography==48.0.0

@@ -154,3 +154,17 @@ a preservar a última etapa alcançada e o build captura stdout/stderr.
 Foi introduzida a restrição `ctranslate2==4.6.0` somente no Windows como candidato
 de compatibilidade. Sua aprovação depende da execução congelada; as dependências
 nativas da tradução também passaram a ser importadas individualmente no teste.
+
+A verificação individual confirmou que CTranslate2, spaCy e Stanza carregavam.
+O erro localizado foi no ONNX Runtime, dependência da segmentação de texto:
+
+```text
+File "onnxruntime\\capi\\_pybind_state.py", line 32, in <module>
+ImportError: DLL load failed while importing onnxruntime_pybind11_state:
+A dynamic link library (DLL) initialization routine failed.
+```
+
+Foi fixado `onnxruntime==1.22.1` no Windows para validação dessa combinação.
+A falha de inicialização nativa e sua repetição pelo import de Argos explicam
+por que não havia relatório final nas primeiras tentativas. Não se atribui
+essa falha a CTranslate2 com base apenas no nome do import de tradução.
