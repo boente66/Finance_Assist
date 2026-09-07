@@ -8,11 +8,16 @@ from pathlib import Path
 import sys
 import traceback
 
+# Keep the fault descriptor alive through interpreter/native-library teardown.
+_fault_log = None
+
 
 def run_check():
+    global _fault_log
     from core.config import RUNTIME_ENVIRONMENT
     if RUNTIME_ENVIRONMENT != 'test':
         raise RuntimeError('A verificação exige armazenamento de teste isolado.')
+    from PyQt5.QtCore import QCoreApplication, QEvent
     from PyQt5.QtWidgets import QApplication, QWidget
     from controllers.user_controller import UserController
     from core.session import Session
@@ -35,6 +40,7 @@ def run_check():
     fault_log = None
     if target is not None:
         fault_log = target.with_name(target.name + '.fault.log').open('w', encoding='utf-8')
+        _fault_log = fault_log
         faulthandler.enable(file=fault_log, all_threads=True)
 
     class ErrorCollector(logging.Handler):
@@ -126,6 +132,13 @@ def run_check():
                     checked.append(name + '.' + cls.__name__)
             except Exception:
                 errors.append(traceback.format_exc())
+        checkpoint('destroy:widgets')
+        for widget in widgets:
+            widget.deleteLater()
+        # processEvents alone does not deliver DeferredDelete outside exec().
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        app.processEvents()
+        widgets.clear()
         result = {'checked': checked, 'errors': errors, 'ok': not errors}
         # Windows windowed executables do not expose stdout. Persist explicit evidence.
         if target is not None:
@@ -134,9 +147,6 @@ def run_check():
             print(json.dumps(result, indent=2, ensure_ascii=False))
         return 1 if errors else 0
     finally:
-        if fault_log is not None:
-            faulthandler.disable()
-            fault_log.close()
         sys.excepthook = old_hook
         logging.getLogger().removeHandler(collector)
         for widget in widgets:

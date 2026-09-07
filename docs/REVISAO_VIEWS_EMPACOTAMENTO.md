@@ -112,8 +112,9 @@ O resultado de cada execução é registrado em JSON (`checked`, `errors`, `ok`)
   construídos e renderizados; 12 imports de dependências, totalizando 87
   checagens aprovadas e zero erros.
 - Código-fonte: 75 checagens de módulos e widgets aprovadas, com banco temporário.
-- Suíte completa no Ubuntu 24.04: 206 aprovados, 14 avisos de depreciação.
-- Suíte completa no Ubuntu 26.04: aprovada.
+- Suíte completa no Ubuntu 24.04: 210 aprovados, 14 avisos de depreciação
+  (execução 34076884314, commit `baeaa8c`).
+- Suíte completa no Ubuntu 26.04: job aprovado na mesma execução.
 - Primeira execução CI da correção: build DEB e instalação/testes de views
   aprovados nas três versões Ubuntu. O teste Windows retornou falha, exigindo
   revisão da espera do processo e coleta explícita do relatório de diagnóstico.
@@ -124,7 +125,23 @@ A prova funcional adicional de OCR gera um PDF de imagem, extrai seu texto com
 o fluxo real `MakePDF.ler_pdf` e exige reconhecimento de “FINANCE”. Na matriz
 Ubuntu, a renderização também usa XCB com Xvfb, além do offscreen usado no build.
 
-Os links das execuções finais e de publicação serão registrados ao concluir.
+O DEB do commit `717960e` passou na instalação, renderização XCB e OCR nas
+três versões Ubuntu: [execução 34076267690](https://github.com/boente66/Finance_Assist/actions/runs/34076267690).
+Essa execução não aprova Windows, cujo job falhou. A validação seguinte é
+[34076884314](https://github.com/boente66/Finance_Assist/actions/runs/34076884314).
+
+### Pontos de código envolvidos
+
+- `MainView._handle_menu_click` e `MainView._resolve_view_class`
+  (`views/main_view.py`): navegação dinâmica e diagnóstico da falha de import.
+- `run.py`: isolamento do modo de teste antes da configuração do banco e
+  seleção de diretório gravável para logs.
+- `core.packaged_view_check.run_check`: construção das telas com persistência
+  temporária, captura de erros, checkpoints e prova real de OCR.
+- `MakePDF._ocr_pdf_sistema` (`utilitarios/makepdf.py`): ambiente do subprocesso
+  separado das bibliotecas do bootloader Linux.
+- `packaging/windows/runtime_binaries.py`: seleção consistente de DLLs MSVC;
+  não altera controllers, models, schema ou regras financeiras.
 
 ### Falha gráfica adicional reproduzida
 
@@ -171,6 +188,12 @@ do Visual Studio e substitui cópias antigas, inclusive as coletadas dentro
 de bibliotecas Qt. O build interrompe se o runtime não estiver disponível;
 dois testes verificam a substituição e a rejeição de diretório incompleto.
 Essa hipótese só será considerada aprovada após o teste do executável Windows.
+Na execução 34076884314, a substituição do MSVC eliminou o erro de importação:
+todas as dependências e views foram verificadas, com `errors: []`. O processo,
+porém, ainda encerrou com violação de acesso depois do relatório. A verificação
+passou a entregar explicitamente os eventos Qt `DeferredDelete` antes de
+destruir QApplication, mantendo faulthandler ativo durante a finalização nativa.
+A publicação Windows permanece condicionada ao código de saída zero.
 A falha de inicialização nativa e sua repetição pelo import de Argos explicam
 por que não havia relatório final nas primeiras tentativas. Não se atribui
 essa falha a CTranslate2 com base apenas no nome do import de tradução.
