@@ -2,6 +2,42 @@
 
 Projeto: Finance Assist. Revisão da versão 2.1.0-test.4; correção destinada à 2.1.0-test.5.
 
+Data da revisão: 7 de setembro de 2026.
+
+## Parecer final
+
+**APROVADO PARA DISTRIBUIÇÃO COMO VERSÃO DE TESTE**, dentro da cobertura abaixo.
+O build de release é o commit `d7b7f4e4a4461a90e9992359bb518ba89e0848ef`.
+A [execução final 34095103102](https://github.com/boente66/Finance_Assist/actions/runs/34095103102)
+concluiu todos os sete jobs com sucesso.
+
+| Verificação final | Resultado |
+|---|---|
+| Suíte completa no Ubuntu 24.04 | APROVADO — 210 testes, 14 avisos de depreciação |
+| Suíte completa no Ubuntu 26.04 | APROVADO |
+| Inventário e execução de views no DEB | APROVADO |
+| Inventário, execução e encerramento no Windows | APROVADO |
+| Instalação do mesmo DEB no Ubuntu 22.04 | APROVADO |
+| Instalação do mesmo DEB no Ubuntu 24.04 | APROVADO |
+| Instalação do mesmo DEB no Ubuntu 26.04 | APROVADO |
+| Renderização XCB e OCR real nas três versões Ubuntu | APROVADO |
+| Banco novo isolado e preservação do banco sentinela existente | APROVADO |
+| Todos os fluxos possíveis e equipamentos do mercado | NÃO VERIFICADO — não se afirma garantia universal |
+
+O relatório do executável Windows distribuído contém 91 verificações aprovadas:
+36 módulos, 39 widgets/diálogos e 16 imports de dependências, com lista de erros
+vazia. Seu ZIP passou na conferência SHA256 e no teste de integridade do arquivo.
+O DEB também registrou 91 verificações e zero erros no build. Após instalação,
+a matriz executou adicionalmente a prova real de OCR. O SHA256 do DEB foi
+conferido e seu conteúdo inspecionado: executável, atalho, ícone e licença,
+sem bancos, logs ou backups pessoais. Versão Debian: `2.1.0~test5`, `amd64`.
+
+Os instaladores e instruções estão na
+[release v2.1.0-test.5](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.5)
+e no [README](../README.md#9-pacotes-de-teste).
+O histórico abaixo registra a investigação e as tentativas intermediárias;
+as pendências mencionadas nessas tentativas foram superadas pela execução final.
+
 ## Incidente e evidência
 
 O Resumo Financeiro não carregava no executável distribuído. A inspeção do PYZ
@@ -206,6 +242,11 @@ o encerramento. O teste agora usa o tratador de exceção de console e fecha
 as conexões do banco temporário e os logs antes da remoção do diretório,
 necessária no Windows (arquivos abertos não podem ser removidos como no Linux).
 O teste local passou após esse ajuste; a aprovação congelada continua obrigatória.
+
+A execução [34094220640](https://github.com/boente66/Finance_Assist/actions/runs/34094220640)
+aprovou todos os sete jobs após essa correção, incluindo o encerramento do
+executável Windows. O runtime MSVC utilizado foi `14.44.35211.0`. Portanto,
+não foi necessário ignorar códigos de erro ou terminar o processo à força.
 A falha de inicialização nativa e sua repetição pelo import de Argos explicam
 por que não havia relatório final nas primeiras tentativas. Não se atribui
 essa falha a CTranslate2 com base apenas no nome do import de tradução.
