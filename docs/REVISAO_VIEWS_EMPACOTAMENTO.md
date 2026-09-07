@@ -105,4 +105,22 @@ Os diálogos de edição recebem fixtures de apresentação; esse teste não
 substitui os testes de gravação, autorização e transações financeiras.
 
 O resultado de cada execução é registrado em JSON (`checked`, `errors`, `ok`).
-As evidências finais de build e publicação serão acrescentadas após a validação.
+## Evidências obtidas
+
+- Executável local corrigido: 36 módulos de views presentes; 39 widgets/diálogos
+  construídos e renderizados; 12 imports de dependências, totalizando 87
+  checagens aprovadas e zero erros.
+- Código-fonte: 75 checagens de módulos e widgets aprovadas, com banco temporário.
+- Suíte completa no Ubuntu 24.04: 206 aprovados, 14 avisos de depreciação.
+- Suíte completa no Ubuntu 26.04: aprovada.
+- Primeira execução CI da correção: build DEB e instalação/testes de views
+  aprovados nas três versões Ubuntu. O teste Windows retornou falha, exigindo
+  revisão da espera do processo e coleta explícita do relatório de diagnóstico.
+- Dependências declaradas no ambiente local: `pip check` sem incompatibilidades.
+- Sintaxe Python e `git diff --check`: aprovados.
+
+A prova funcional adicional de OCR gera um PDF de imagem, extrai seu texto com
+o fluxo real `MakePDF.ler_pdf` e exige reconhecimento de “FINANCE”. Na matriz
+Ubuntu, a renderização também usa XCB com Xvfb, além do offscreen usado no build.
+
+Os links das execuções finais e de publicação serão registrados ao concluir.

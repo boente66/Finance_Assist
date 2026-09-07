@@ -163,4 +163,5 @@ jobs:
             dist/release/*.zip
             dist/release/*.zip.sha256
             dist/views-windows.json
+            dist/views-windows.json.*.log
           if-no-files-found: error

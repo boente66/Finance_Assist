@@ -22,10 +22,11 @@ try {
     & $Python packaging/verify_archive.py $Executable
     if ($LASTEXITCODE -ne 0) { throw "Inventário de views incompleto." }
     $Report = Join-Path $ProjectRoot "dist\views-windows.json"
-    $Probe = Start-Process -FilePath $Executable -ArgumentList @("--self-test-views", "--self-test-report", "`"$Report`"") -Wait -PassThru
+    $Probe = Start-Process -FilePath $Executable -ArgumentList @("--self-test-views", "--self-test-report", "`"$Report`"") -RedirectStandardOutput "$Report.stdout.log" -RedirectStandardError "$Report.stderr.log" -Wait -PassThru
     if ($Probe.ExitCode -ne 0) {
         if (Test-Path $Report) { Get-Content -Raw $Report | Write-Output }
-        throw "Falha na verificação das views: $Report"
+        Get-Content -Raw "$Report.stderr.log" | Write-Output
+        throw "Falha na verificação das views (código $($Probe.ExitCode)): $Report"
     }
     if (-not (Get-Content -Raw $Report | ConvertFrom-Json).ok) { throw "Relatório de views reprovado." }
 

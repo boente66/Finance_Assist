@@ -1,15 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
+import json
 
 root = Path(SPECPATH)
 hiddenimports = sorted('views.' + p.stem for p in (root / 'views').glob('*.py') if p.stem != '__init__')
+manifest = Path(workpath) / 'view-manifest.json'
+manifest.parent.mkdir(parents=True, exist_ok=True)
+manifest.write_text(json.dumps(hiddenimports), encoding='utf-8')
 
 
 a = Analysis(
     ['run.py'],
     pathex=[str(root)],
     binaries=[],
-    datas=[('assets', 'assets')],
+    datas=[('assets', 'assets'), (str(manifest), '.')],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

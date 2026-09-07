@@ -21,6 +21,16 @@ def run_check():
     TranslatorApp.initialize()
     errors = []
     checked = []
+    target = None
+    if '--self-test-report' in sys.argv:
+        target = Path(sys.argv[sys.argv.index('--self-test-report') + 1])
+
+    def checkpoint(stage):
+        if target is not None:
+            target.write_text(json.dumps({'checked': checked, 'errors': errors,
+                                          'ok': False, 'stage': stage}, indent=2), encoding='utf-8')
+
+    checkpoint('initialize')
 
     class ErrorCollector(logging.Handler):
         def emit(self, record):
@@ -54,6 +64,7 @@ def run_check():
                                'matplotlib.backends.backend_qtagg', 'sentence_transformers',
                                'argostranslate.translate', 'sklearn'):
                 try:
+                    checkpoint('import:' + dependency)
                     importlib.import_module(dependency)
                     checked.append(dependency)
                 except Exception:
@@ -76,11 +87,13 @@ def run_check():
                 errors.append(traceback.format_exc())
         for name in modules:
             try:
+                checkpoint('import:' + name)
                 module = importlib.import_module(name)
                 checked.append(name)
                 for _, cls in inspect.getmembers(module, inspect.isclass):
                     if cls.__module__ != name or not issubclass(cls, QWidget):
                         continue
+                    checkpoint('construct:' + name + '.' + cls.__name__)
                     kwargs = {key: fixtures[key] for key, param in inspect.signature(cls.__init__).parameters.items()
                               if key != 'self' and param.default is inspect.Parameter.empty
                               and param.kind not in (param.VAR_POSITIONAL, param.VAR_KEYWORD)}
@@ -108,8 +121,7 @@ def run_check():
                 errors.append(traceback.format_exc())
         result = {'checked': checked, 'errors': errors, 'ok': not errors}
         # Windows windowed executables do not expose stdout. Persist explicit evidence.
-        if '--self-test-report' in sys.argv:
-            target = Path(sys.argv[sys.argv.index('--self-test-report') + 1])
+        if target is not None:
             target.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding='utf-8')
         if sys.stdout is not None:
             print(json.dumps(result, indent=2, ensure_ascii=False))
