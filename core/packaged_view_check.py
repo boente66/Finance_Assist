@@ -1,11 +1,13 @@
 """Executable view smoke test; run.py establishes disposable storage first."""
 import importlib
 import faulthandler
+import gc
 import inspect
 import json
 import logging
 from pathlib import Path
 import sys
+import sqlite3
 import traceback
 
 # Keep the fault descriptor alive through interpreter/native-library teardown.
@@ -139,6 +141,19 @@ def run_check():
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         app.processEvents()
         widgets.clear()
+        checkpoint('close:test-database')
+        # Models own independent SQLite connections. Windows cannot remove the
+        # disposable database until every connection in this test process closes.
+        from core.config import get_db_path
+        test_database = Path(get_db_path()).resolve()
+        for candidate in gc.get_objects():
+            if isinstance(candidate, sqlite3.Connection):
+                try:
+                    paths = candidate.execute('PRAGMA database_list').fetchall()
+                except sqlite3.ProgrammingError:
+                    continue  # Already closed by its owner.
+                if any(row[2] and Path(row[2]).resolve() == test_database for row in paths):
+                    candidate.close()
         result = {'checked': checked, 'errors': errors, 'ok': not errors}
         # Windows windowed executables do not expose stdout. Persist explicit evidence.
         if target is not None:

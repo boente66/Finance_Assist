@@ -120,6 +120,9 @@ O resultado de cada execução é registrado em JSON (`checked`, `errors`, `ok`)
   revisão da espera do processo e coleta explícita do relatório de diagnóstico.
 - Dependências declaradas no ambiente local: `pip check` sem incompatibilidades.
 - Sintaxe Python e `git diff --check`: aprovados.
+- Execução local completa: `210 passed, 14 warnings in 867.76s`.
+- Teste local das views após descarte explícito dos widgets: aprovado,
+  com encerramento normal do processo.
 
 A prova funcional adicional de OCR gera um PDF de imagem, extrai seu texto com
 o fluxo real `MakePDF.ler_pdf` e exige reconhecimento de “FINANCE”. Na matriz
@@ -194,6 +197,12 @@ porém, ainda encerrou com violação de acesso depois do relatório. A verifica
 passou a entregar explicitamente os eventos Qt `DeferredDelete` antes de
 destruir QApplication, mantendo faulthandler ativo durante a finalização nativa.
 A publicação Windows permanece condicionada ao código de saída zero.
+O faulthandler da execução 34077560754 localizou a violação de acesso em
+`run.py:44`, na chamada a `QMessageBox.critical` pelo tratador global durante
+o encerramento. O teste agora usa o tratador de exceção de console e fecha
+as conexões do banco temporário e os logs antes da remoção do diretório,
+necessária no Windows (arquivos abertos não podem ser removidos como no Linux).
+O teste local passou após esse ajuste; a aprovação congelada continua obrigatória.
 A falha de inicialização nativa e sua repetição pelo import de Argos explicam
 por que não havia relatório final nas primeiras tentativas. Não se atribui
 essa falha a CTranslate2 com base apenas no nome do import de tradução.

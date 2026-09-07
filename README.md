@@ -354,6 +354,17 @@ Get-FileHash .\finance-assist_2.1.0-test.5_windows-x64.zip -Algorithm SHA256
 
 Compare o resultado com o conteúdo do arquivo de checksum publicado na release.
 
+Para OCR no Windows, instale também Poppler e Tesseract com o idioma português
+e disponibilize seus executáveis no `PATH`. Esses programas externos não fazem
+parte do ZIP. Os modelos de tradução e categorização são baixados na primeira
+utilização e precisam de conexão à internet. No Ubuntu, as ferramentas de OCR
+são dependências instaladas pelo `apt` junto com o DEB.
+
+Para recompilar o pacote Windows, use `packaging/windows/build_windows.ps1`
+em uma instalação do Visual Studio com ferramentas C++ e runtime redistribuível
+x64. O script seleciona o runtime completo para impedir a mistura de DLLs MSVC
+antigas e novas no executável.
+
 ## 10. Testes e qualidade
 
 A suíte contém testes de integração e de interface. Os testes financeiros usam

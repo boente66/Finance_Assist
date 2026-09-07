@@ -128,8 +128,11 @@ def main():
 if __name__ == "__main__":
     if _self_test_data is not None:
         from core.packaged_view_check import run_check
+        # Never open a modal dialog after QApplication teardown in CLI checks.
+        sys.excepthook = sys.__excepthook__
         try:
             sys.exit(run_check())
         finally:
+            logging.shutdown()
             _self_test_data.cleanup()
     sys.exit(main())
