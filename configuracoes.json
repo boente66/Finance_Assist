@@ -1,6 +1,6 @@
 {
     "db_path": "financeiro.db",
-    "idioma": "pt",
+    "idioma": "en",
     "moeda": "BRL",
-    "tema": "Primavera"
+    "tema": "Personalizado"
 }
