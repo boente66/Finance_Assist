@@ -90,6 +90,7 @@ RuntimeError: Views ausentes do executável: views.agendamento_dialog, views.age
 | `argostranslate` | Excluído expressamente do spec de teste | Remoção da exclusão |
 | Poppler | Não declarado no DEB | `poppler-utils` em Depends |
 | Tesseract / português | Não declarados no DEB | `tesseract-ocr`, `tesseract-ocr-por` em Depends |
+| Bibliotecas XCB | Cinco ausentes no build Ubuntu | `libxcb-icccm4`, `libxcb-image0`, `libxcb-keysyms1`, `libxcb-render-util0`, `libxcb-shape0` no build e Depends |
 
 Bibliotecas Python são verificadas por importação no processo congelado.
 Modelos de aprendizado não são bibliotecas: seu download inicial depende da
@@ -124,3 +125,32 @@ o fluxo real `MakePDF.ler_pdf` e exige reconhecimento de “FINANCE”. Na matri
 Ubuntu, a renderização também usa XCB com Xvfb, além do offscreen usado no build.
 
 Os links das execuções finais e de publicação serão registrados ao concluir.
+
+### Falha gráfica adicional reproduzida
+
+A execução com XCB revelou uma falha não detectável pelo backend offscreen:
+
+```text
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized.
+Aborted
+Process completed with exit code 134.
+```
+
+Os logs do PyInstaller confirmaram `Library not found` para
+`libxcb-shape.so.0`, `libxcb-icccm.so.4`, `libxcb-render-util.so.0`,
+`libxcb-keysyms.so.1` e `libxcb-image.so.0`. Essas bibliotecas estavam presentes
+no desktop local, mas ausentes no ambiente limpo de build. Foram adicionadas
+ao build e às dependências do DEB, mantendo a prova XCB obrigatória.
+
+### Diagnóstico Windows
+
+O processo terminou com código `-1073741819` (`0xC0000005`, violação de acesso)
+durante `import:argostranslate.translate`, após importar com sucesso as
+bibliotecas financeiras, gráficas e `sentence_transformers`. Trata-se de falha
+nativa, por isso não produziu traceback Python. O relatório incremental passou
+a preservar a última etapa alcançada e o build captura stdout/stderr.
+
+Foi introduzida a restrição `ctranslate2==4.6.0` somente no Windows como candidato
+de compatibilidade. Sua aprovação depende da execução congelada; as dependências
+nativas da tradução também passaram a ser importadas individualmente no teste.

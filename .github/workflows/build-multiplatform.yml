@@ -27,7 +27,7 @@ jobs:
       - name: Dependências Qt de execução
         run: |
           sudo apt-get update
-          sudo apt-get install -y libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0 libx11-6 libxcb1 libxcb-xinerama0 libxext6 libxkbcommon-x11-0 libxrender1
+          sudo apt-get install -y libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0 libx11-6 libxcb1 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxext6 libxkbcommon-x11-0 libxrender1
       - name: Ambiente Python
         run: |
           python -m venv .venv
@@ -55,7 +55,7 @@ jobs:
       - name: Dependências do sistema
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0 libx11-6 libxcb1 libxcb-xinerama0 libxext6 libxkbcommon-x11-0 libxrender1
+          sudo apt-get install -y dpkg-dev libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0 libx11-6 libxcb1 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxext6 libxkbcommon-x11-0 libxrender1
       - name: Ambiente Python
         run: |
           python -m venv .venv

@@ -27,6 +27,12 @@ if [[ ! -x "$PYTHON_BIN" || ! -x "$PYINSTALLER_BIN" ]]; then
 fi
 
 cd "$PROJECT_ROOT"
+QT_XCB_PLUGIN="$("$PYTHON_BIN" -c 'from PyQt5.QtCore import QLibraryInfo; print(QLibraryInfo.location(QLibraryInfo.PluginsPath) + "/platforms/libqxcb.so")')"
+if ldd "$QT_XCB_PLUGIN" | grep -q 'not found'; then
+    ldd "$QT_XCB_PLUGIN" >&2
+    printf 'Dependências nativas do Qt ausentes; build interrompido.\n' >&2
+    exit 1
+fi
 if [[ "${FINANCE_ASSIST_SKIP_PYINSTALLER:-0}" != "1" ]]; then
     "$PYINSTALLER_BIN" --noconfirm --clean ControleFinanceiro-teste.spec
 fi

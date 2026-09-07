@@ -5,7 +5,7 @@ Priority: optional
 Architecture: @ARCH@
 Installed-Size: @INSTALLED_SIZE@
 Maintainer: Leonardo Boente <boente66@users.noreply.github.com>
-Depends: libc6, libdbus-1-3, libfontconfig1, libgl1, libglib2.0-0 | libglib2.0-0t64, libx11-6, libxcb1, libxcb-xinerama0, libxext6, libxkbcommon-x11-0, libxrender1, poppler-utils, tesseract-ocr, tesseract-ocr-por
+Depends: libc6, libdbus-1-3, libfontconfig1, libgl1, libglib2.0-0 | libglib2.0-0t64, libx11-6, libxcb1, libxcb-xinerama0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-render-util0, libxcb-shape0, libxext6, libxkbcommon-x11-0, libxrender1, poppler-utils, tesseract-ocr, tesseract-ocr-por
 Homepage: https://github.com/boente66/Finance_Assist
 Description: Finance Assist - versão de teste para Linux
  Aplicativo desktop para controle financeiro pessoal.

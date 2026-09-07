@@ -1,5 +1,6 @@
 """Executable view smoke test; run.py establishes disposable storage first."""
 import importlib
+import faulthandler
 import inspect
 import json
 import logging
@@ -31,6 +32,10 @@ def run_check():
                                           'ok': False, 'stage': stage}, indent=2), encoding='utf-8')
 
     checkpoint('initialize')
+    fault_log = None
+    if target is not None:
+        fault_log = target.with_name(target.name + '.fault.log').open('w', encoding='utf-8')
+        faulthandler.enable(file=fault_log, all_threads=True)
 
     class ErrorCollector(logging.Handler):
         def emit(self, record):
@@ -62,6 +67,7 @@ def run_check():
             for dependency in ('typing_extensions', 'openpyxl', 'pandas', 'reportlab',
                                'pdfplumber', 'pdf2image', 'pytesseract', 'cryptography',
                                'matplotlib.backends.backend_qtagg', 'sentence_transformers',
+                               'ctranslate2', 'onnxruntime', 'spacy', 'stanza',
                                'argostranslate.translate', 'sklearn'):
                 try:
                     checkpoint('import:' + dependency)
@@ -127,6 +133,9 @@ def run_check():
             print(json.dumps(result, indent=2, ensure_ascii=False))
         return 1 if errors else 0
     finally:
+        if fault_log is not None:
+            faulthandler.disable()
+            fault_log.close()
         sys.excepthook = old_hook
         logging.getLogger().removeHandler(collector)
         for widget in widgets:
