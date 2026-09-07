@@ -58,6 +58,22 @@ def run_check():
                     checked.append(dependency)
                 except Exception:
                     errors.append(traceback.format_exc())
+        if '--self-test-ocr' in sys.argv:
+            try:
+                from core.config import DATA_DIR
+                from PIL import Image, ImageDraw, ImageFont
+                from utilitarios.makepdf import MakePDF
+                page = Image.new('RGB', (1000, 250), 'white')
+                ImageDraw.Draw(page).text((40, 70), 'FINANCE ASSIST',
+                                          font=ImageFont.load_default(size=60), fill='black')
+                sample = Path(DATA_DIR) / 'ocr-check.pdf'
+                page.save(sample, 'PDF', resolution=150)
+                extracted = MakePDF.ler_pdf(str(sample))
+                if not extracted or 'FINANCE' not in extracted.upper():
+                    raise RuntimeError('O OCR do PDF de teste não retornou o texto esperado')
+                checked.append('ocr.pdf-portugues')
+            except Exception:
+                errors.append(traceback.format_exc())
         for name in modules:
             try:
                 module = importlib.import_module(name)

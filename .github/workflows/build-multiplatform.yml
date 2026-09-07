@@ -68,11 +68,13 @@ jobs:
       - name: Gerar DEB
         run: packaging/linux/build_deb.sh
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: finance-assist-linux-ubuntu-22.04-amd64
           path: |
             dist/*.deb
             dist/*.deb.sha256
+            dist/views-linux.json
           if-no-files-found: error
 
   linux-deb-install:
@@ -121,7 +123,8 @@ jobs:
           TEST_DB="${EXISTING_HOME}/.financeassist/financeiro.db" python3 -c 'import os, sqlite3; db=sqlite3.connect(os.environ["TEST_DB"]); assert db.execute("SELECT valor FROM preservado_atualizacao").fetchone()[0] == "MANTER"; assert db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0; assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"; db.close()'
       - name: Testar todas as views do executável instalado
         run: |
-          timeout 600s finance-assist-test --self-test-views --self-test-report "${RUNNER_TEMP}/views.json"
+          sudo apt install -y xvfb xauth
+          QT_QPA_PLATFORM=xcb xvfb-run -a timeout 600s finance-assist-test --self-test-views --self-test-ocr --self-test-report "${RUNNER_TEMP}/views.json"
           python3 -c 'import json, os; r=json.load(open(os.environ["RUNNER_TEMP"] + "/views.json")); assert r["ok"]; assert "views.resumo_financeiro_view.ResumoFinanceiroView" in r["checked"]'
           pdftoppm -v
           tesseract --list-langs | grep -x por
@@ -153,9 +156,11 @@ jobs:
         shell: pwsh
         run: packaging\windows\build_windows.ps1
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: finance-assist-windows-x64
           path: |
             dist/release/*.zip
             dist/release/*.zip.sha256
+            dist/views-windows.json
           if-no-files-found: error
