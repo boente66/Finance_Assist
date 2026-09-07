@@ -17,6 +17,14 @@ if '--self-test-views' in sys.argv:
 from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
 
 from core.config import carregar_config, DATA_DIR
+
+# Configure a writable location before model imports can configure root logging.
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename=os.path.join(DATA_DIR, "finance-assist.log"),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
 from core.session import Session
 from core.themes import get_theme
 from core.translator_app import TranslatorApp
@@ -25,12 +33,6 @@ from core.window_manager import install_dialog_geometry_filter
 from views.login_dialog import LoginDialog
 from views.main_view import MainView
 
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename=os.path.join(DATA_DIR, "finance-assist.log"),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
 
 logger = logging.getLogger(__name__)
 

@@ -21,3 +21,5 @@ def test_all_view_modules_construct_and_render(tmp_path):
     assert expected <= set(data['checked'])
     assert 'views.resumo_financeiro_view.ResumoFinanceiroView' in data['checked']
     assert not (tmp_path / 'financeiro.db').exists()
+    assert not (tmp_path / 'database.log').exists()
+    assert not (tmp_path / 'finance-assist.log').exists()

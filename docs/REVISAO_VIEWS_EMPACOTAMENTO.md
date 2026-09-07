@@ -78,7 +78,10 @@ RuntimeError: Views ausentes do executável: views.agendamento_dialog, views.age
 - `MainView._handle_menu_click` registra falhas de resolução e informa o erro
   na barra de status, mantendo a tela anterior disponível.
 - O log passa de um arquivo relativo ao diretório corrente para
-  `DATA_DIR/finance-assist.log`, um local gravável.
+  `DATA_DIR/finance-assist.log`, um local gravável. A configuração ocorre antes
+  dos imports de models, evitando que o `basicConfig` legado selecione
+  `database.log` no diretório corrente. O teste verifica que nenhum desses
+  arquivos de log aparece no diretório de execução.
 
 ## Dependências
 
