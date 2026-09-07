@@ -10,6 +10,31 @@ ARCH="$(dpkg --print-architecture)"
 DEBIAN_VERSION="$(cd "$PROJECT_ROOT" && "$PYTHON_BIN" -c 'from core.version import DEBIAN_VERSION; print(DEBIAN_VERSION)')"
 ASSET_VERSION="$(cd "$PROJECT_ROOT" && "$PYTHON_BIN" -c 'from core.version import APP_VERSION; print(APP_VERSION)')"
 OUTPUT="$PROJECT_ROOT/dist/finance-assist_${ASSET_VERSION}_${ARCH}.deb"
+TARGET_BASE="${FINANCE_ASSIST_DEB_BASE:-ubuntu22.04}"
+LIBC_DEPENDENCY="libc6"
+GLIB_DEPENDENCY="libglib2.0-0 | libglib2.0-0t64"
+TARGET_DESCRIPTION="Compatível com Ubuntu 22.04, 24.04 e 26.04 LTS em arquitetura amd64."
+case "$TARGET_BASE" in
+    ubuntu22.04) ;;
+    ubuntu24.04)
+        # Do not relabel a Jammy executable as a Noble build.
+        . /etc/os-release
+        if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "24.04" ]]; then
+            printf 'A variante Ubuntu 24.04 deve ser compilada no Ubuntu 24.04.\n' >&2
+            exit 1
+        fi
+        if [[ "${FINANCE_ASSIST_SKIP_PYINSTALLER:-0}" == "1" ]]; then
+            printf 'A variante Ubuntu 24.04 exige recompilação do executável.\n' >&2
+            exit 1
+        fi
+        DEBIAN_VERSION="${DEBIAN_VERSION}+ubuntu24.04.1"
+        OUTPUT="$PROJECT_ROOT/dist/finance-assist_${ASSET_VERSION}_ubuntu24.04_${ARCH}.deb"
+        LIBC_DEPENDENCY="libc6 (>= 2.39)"
+        GLIB_DEPENDENCY="libglib2.0-0t64"
+        TARGET_DESCRIPTION="Compilado no Ubuntu 24.04; destinado ao Ubuntu 24.04 e Linux Mint 22.x amd64."
+        ;;
+    *) printf 'Base de pacote desconhecida: %s\n' "$TARGET_BASE" >&2; exit 1 ;;
+esac
 PACKAGE_ROOT="$(mktemp -d /tmp/finance-assist-deb.XXXXXX)"
 chmod 0755 "$PACKAGE_ROOT"
 
@@ -64,6 +89,9 @@ sed \
     -e "s/@VERSION@/$DEBIAN_VERSION/g" \
     -e "s/@ARCH@/$ARCH/g" \
     -e "s/@INSTALLED_SIZE@/$INSTALLED_SIZE/g" \
+    -e "s/@LIBC@/$LIBC_DEPENDENCY/g" \
+    -e "s/@GLIB@/$GLIB_DEPENDENCY/g" \
+    -e "s/@TARGET_DESCRIPTION@/$TARGET_DESCRIPTION/g" \
     "$SCRIPT_DIR/control.in" > "$PACKAGE_ROOT/DEBIAN/control"
 chmod 0644 "$PACKAGE_ROOT/DEBIAN/control"
 

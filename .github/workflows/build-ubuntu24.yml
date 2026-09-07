@@ -1,0 +1,74 @@
+name: DEB separado Ubuntu 24.04 e Mint 22.x
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  noble-deb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Dependências nativas Noble
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev xvfb xauth libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0t64 libx11-6 libxcb1 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxext6 libxkbcommon-x11-0 libxrender1
+      - name: Ambiente de build
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install pytest
+      - name: Suíte completa isolada
+        env:
+          QT_QPA_PLATFORM: offscreen
+          FINANCE_ASSIST_ENV: test
+          FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
+        run: .venv/bin/python -m pytest -q
+      - name: Compilar DEB Ubuntu 24.04
+        env:
+          FINANCE_ASSIST_DEB_BASE: ubuntu24.04
+        run: packaging/linux/build_deb.sh
+      - name: Instalar e validar o pacote gerado
+        run: |
+          cd dist
+          sha256sum -c finance-assist_*_ubuntu24.04_amd64.deb.sha256
+          dpkg-deb -f finance-assist_*_ubuntu24.04_amd64.deb Package Version Depends
+          sudo apt install -y ./finance-assist_*_ubuntu24.04_amd64.deb
+          QT_QPA_PLATFORM=xcb xvfb-run -a timeout 600s finance-assist-test --self-test-views --self-test-ocr --self-test-report "${RUNNER_TEMP}/noble-views.json"
+          python3 -c 'import json,os; r=json.load(open(os.environ["RUNNER_TEMP"]+"/noble-views.json")); assert r["ok"]; assert "ocr.pdf-portugues" in r["checked"]'
+      - name: Verificar banco preservado e instalação limpa
+        run: |
+          TEST_HOME="${RUNNER_TEMP}/noble-update-home"
+          mkdir -p "$TEST_HOME/.financeassist"
+          TEST_DB="$TEST_HOME/.financeassist/financeiro.db" python3 -c 'import sqlite3,os; d=sqlite3.connect(os.environ["TEST_DB"]); d.execute("CREATE TABLE sentinela (valor TEXT)"); d.execute("INSERT INTO sentinela VALUES (\"PRESERVAR\")"); d.commit(); d.close()'
+          set +e
+          timeout 15s env HOME="$TEST_HOME" QT_QPA_PLATFORM=offscreen finance-assist-test
+          STATUS=$?
+          set -e
+          test "$STATUS" -eq 124
+          TEST_DB="$TEST_HOME/.financeassist/financeiro.db" python3 -c 'import sqlite3,os; d=sqlite3.connect(os.environ["TEST_DB"]); assert d.execute("SELECT valor FROM sentinela").fetchone()[0]=="PRESERVAR"; assert d.execute("PRAGMA integrity_check").fetchone()[0]=="ok"; d.close()'
+          CLEAN_HOME="${RUNNER_TEMP}/noble-clean-home"
+          mkdir -p "$CLEAN_HOME"
+          set +e
+          timeout 15s env HOME="$CLEAN_HOME" QT_QPA_PLATFORM=offscreen finance-assist-test
+          STATUS=$?
+          set -e
+          test "$STATUS" -eq 124
+          TEST_DB="$CLEAN_HOME/.financeassist/financeiro.db" python3 -c 'import sqlite3,os; d=sqlite3.connect(os.environ["TEST_DB"]); assert d.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]==0; assert d.execute("PRAGMA integrity_check").fetchone()[0]=="ok"; d.close()'
+      - uses: actions/upload-artifact@v6
+        with:
+          name: finance-assist-ubuntu24.04-amd64
+          path: |
+            dist/*_ubuntu24.04_amd64.deb
+            dist/*_ubuntu24.04_amd64.deb.sha256
+            dist/views-linux.json
+          if-no-files-found: error
