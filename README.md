@@ -338,7 +338,35 @@ Ubuntu 22.04, 24.04 e 26.04, inicia o executável com HOME limpa e confirma que 
 banco criado não contém dados do checkout. Diferenças de compositor, DPI e
 ambiente gráfico ainda exigem homologação visual local.
 
-### 9.2 Windows
+### 9.2 Variante separada: Ubuntu 24.04 / Linux Mint 22.x
+
+Para Ubuntu 24.04 e Mint 22.x, existe também um pacote **recompilado no Ubuntu
+24.04**, identificado no nome do arquivo. O Mint 22.2 utiliza essa base, conforme
+as [notas oficiais do Mint](https://www.linuxmint.com/rel_zara.php).
+
+- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.5/finance-assist_2.1.0-test.5_ubuntu24.04_amd64.deb)
+- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.5/finance-assist_2.1.0-test.5_ubuntu24.04_amd64.deb.sha256)
+
+```bash
+sha256sum -c finance-assist_2.1.0-test.5_ubuntu24.04_amd64.deb.sha256
+sudo apt install ./finance-assist_2.1.0-test.5_ubuntu24.04_amd64.deb
+finance-assist-test
+```
+
+Mantém o nome instalado `finance-assist-test` e o diretório de dados: é uma
+atualização alternativa, não uma segunda aplicação. A versão Debian é
+`2.1.0~test5+ubuntu24.04.1`, com dependências Noble (`libglib2.0-0t64` e
+`libc6 >= 2.39`). Não instale essa variante no Ubuntu 22.04; use o DEB anterior.
+
+Validado no Ubuntu 24.04 em [CI](https://github.com/boente66/Finance_Assist/actions/runs/34102270517):
+213 testes, instalação, telas, OCR e armazenamento isolado. No Mint 22.3,
+a simulação apt resolveu as dependências e o executável extraído passou em
+91 verificações offscreen, sem erros. A instalação real
+no Mint 22.2 ainda depende de confirmação; não se atribui uma falha de instalação
+à base de compilação sem a mensagem de erro. Em caso de falha, envie a saída
+completa do comando `apt install`, sem dados pessoais. Não force dependências.
+
+### 9.3 Windows
 
 Baixe `finance-assist_2.1.0-test.5_windows-x64.zip`, verifique o arquivo
 `.sha256`, extraia a pasta e execute `FinanceAssist-test.exe`. O artefato é
