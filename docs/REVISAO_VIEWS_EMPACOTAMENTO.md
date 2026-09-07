@@ -168,3 +168,22 @@ Foi fixado `onnxruntime==1.22.1` no Windows para validação dessa combinação.
 A falha de inicialização nativa e sua repetição pelo import de Argos explicam
 por que não havia relatório final nas primeiras tentativas. Não se atribui
 essa falha a CTranslate2 com base apenas no nome do import de tradução.
+
+### OCR em versões novas do Ubuntu
+
+Após corrigir o XCB, todas as views renderizaram. O OCR passou no Ubuntu 22.04,
+mas a execução real no 24.04 revelou:
+
+```text
+pdfinfo: /tmp/_MEI.../libstdc++.so.6: version `GLIBCXX_3.4.32' not found
+(required by /lib/x86_64-linux-gnu/libpoppler.so.134)
+RuntimeError: O OCR do PDF de teste não retornou o texto esperado
+```
+
+O bootloader altera `LD_LIBRARY_PATH` para carregar suas bibliotecas. Poppler e
+Tesseract pertencem ao sistema e não devem herdar esse caminho. A correção em
+`MakePDF._ocr_pdf_sistema` fornece uma cópia do ambiente aos subprocessos com o
+caminho original restaurado. O ambiente global não é alterado, preservando os
+outros fluxos e threads do aplicativo. O processamento mantém a ordem numérica
+das páginas e usa armazenamento temporário, limites de execução e argumentos
+sem shell. Dois testes exercitam o ambiente de um processo filho real.

@@ -1,3 +1,14 @@
+import logging
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+
+logger = logging.getLogger(__name__)
+
+
 class MakePDF:
     """
     Classe de INFRAESTRUTURA para manipulação de PDF.
@@ -78,6 +89,8 @@ class MakePDF:
                             texto += texto_bruto + "\n"
 
             if not texto.strip():
+                if getattr(sys, 'frozen', False) and sys.platform.startswith('linux'):
+                    return MakePDF._ocr_pdf_sistema(caminho_arquivo)
                 imagens = pdf2image.convert_from_path(
                     caminho_arquivo
                 )
@@ -91,8 +104,43 @@ class MakePDF:
             return texto.strip() or None
 
         except Exception as e:
-            print(f"Erro ao ler PDF: {e}")
+            logger.exception("Erro ao ler PDF")
             return None
+
+    @staticmethod
+    def _external_environment(environ=None):
+        """Restore the host loader path for child processes, never globally."""
+        env = dict(os.environ if environ is None else environ)
+        original = env.pop('LD_LIBRARY_PATH_ORIG', '')
+        if original:
+            env['LD_LIBRARY_PATH'] = original
+        else:
+            env.pop('LD_LIBRARY_PATH', None)
+        return env
+
+    @staticmethod
+    def _ocr_pdf_sistema(caminho_arquivo):
+        """Use distro Poppler/Tesseract without inheriting frozen C++ libraries."""
+        env = MakePDF._external_environment()
+        with tempfile.TemporaryDirectory(prefix='finance-assist-ocr-') as folder:
+            prefix = str(Path(folder) / 'page')
+            subprocess.run(
+                ['pdftoppm', '-r', '200', '-png', str(Path(caminho_arquivo).resolve()), prefix],
+                env=env, check=True, capture_output=True, timeout=300,
+            )
+            pages = sorted(Path(folder).glob('page-*.png'),
+                           key=lambda p: int(p.stem.rsplit('-', 1)[1]))
+            if not pages:
+                raise RuntimeError('Poppler não gerou páginas para OCR')
+            texts = []
+            for page in pages:
+                result = subprocess.run(
+                    ['tesseract', str(page), 'stdout', '-l', 'por'],
+                    env=env, check=True, capture_output=True, text=True,
+                    encoding='utf-8', errors='replace', timeout=120,
+                )
+                texts.append(result.stdout)
+            return '\n'.join(texts).strip() or None
 
     # ==========================================================
     # VISUALIZAÇÃO

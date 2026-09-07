@@ -120,7 +120,8 @@ def run_check():
                         widget.on_load()
                     widget.show()
                     app.processEvents()
-                    widget.grab()  # Exercise painting, including Matplotlib canvases.
+                    if widget.grab().isNull():
+                        raise RuntimeError('A renderização retornou imagem vazia: ' + cls.__name__)
                     widget.hide()
                     checked.append(name + '.' + cls.__name__)
             except Exception:
