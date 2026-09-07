@@ -13,6 +13,16 @@ if (-not (Test-Path $Python) -or -not (Test-Path $PyInstaller)) {
 
 Push-Location $ProjectRoot
 try {
+    # Qt wheels can carry an older CRT than ONNX requires. Use the complete
+    # redistributable supplied by Visual Studio, including nested DLL copies.
+    $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-not (Test-Path $VsWhere)) { throw "Visual Studio C++ Redistributable não localizado." }
+    $VsRoot = & $VsWhere -latest -products '*' -property installationPath
+    $Runtime = Get-ChildItem "$VsRoot\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" -Directory |
+        Sort-Object { [version]$_.Parent.Parent.Name } -Descending | Select-Object -First 1
+    if (-not $Runtime) { throw "Runtime MSVC x64 redistribuível ausente." }
+    $env:FINANCE_ASSIST_MSVC_REDIST = $Runtime.FullName
+    Get-ChildItem "$Runtime\*.dll" | ForEach-Object { Write-Output "$($_.Name): $($_.VersionInfo.FileVersion)" }
     & $PyInstaller --noconfirm --clean "ControleFinanceiro-teste.spec"
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller falhou." }
     if (-not (Test-Path $Executable)) {

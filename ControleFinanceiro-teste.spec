@@ -1,5 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 import json
+import os
+import runpy
 from pathlib import Path
 
 root = Path(SPECPATH)
@@ -25,6 +27,9 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+if os.name == 'nt':
+    runtime_helper = runpy.run_path(str(root / 'packaging/windows/runtime_binaries.py'))
+    a.binaries = runtime_helper['replace_runtime'](a.binaries, os.environ['FINANCE_ASSIST_MSVC_REDIST'])
 pyz = PYZ(a.pure)
 
 exe = EXE(

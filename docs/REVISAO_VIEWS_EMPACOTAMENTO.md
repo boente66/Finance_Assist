@@ -165,6 +165,12 @@ A dynamic link library (DLL) initialization routine failed.
 ```
 
 Foi fixado `onnxruntime==1.22.1` no Windows para validação dessa combinação.
+A execução 34076267690 mostrou que essa restrição, isoladamente, não resolveu
+o erro. A próxima validação seleciona o runtime C++ redistribuível completo
+do Visual Studio e substitui cópias antigas, inclusive as coletadas dentro
+de bibliotecas Qt. O build interrompe se o runtime não estiver disponível;
+dois testes verificam a substituição e a rejeição de diretório incompleto.
+Essa hipótese só será considerada aprovada após o teste do executável Windows.
 A falha de inicialização nativa e sua repetição pelo import de Argos explicam
 por que não havia relatório final nas primeiras tentativas. Não se atribui
 essa falha a CTranslate2 com base apenas no nome do import de tradução.

@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
 import json
+import os
+import runpy
 
 root = Path(SPECPATH)
 hiddenimports = sorted('views.' + p.stem for p in (root / 'views').glob('*.py') if p.stem != '__init__')
@@ -22,6 +24,9 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+if os.name == 'nt':
+    runtime_helper = runpy.run_path(str(root / 'packaging/windows/runtime_binaries.py'))
+    a.binaries = runtime_helper['replace_runtime'](a.binaries, os.environ['FINANCE_ASSIST_MSVC_REDIST'])
 pyz = PYZ(a.pure)
 
 exe = EXE(
