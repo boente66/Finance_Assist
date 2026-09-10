@@ -72,9 +72,25 @@ e às respostas dos diálogos modais de confirmação.
 
 ## 5. Estado da validação e distribuição
 
-Validações locais e geração dos instaladores em andamento. Este documento ainda
-não certifica publicação nem aprovação final dos artefatos test.6. As evidências
-conclusivas serão registradas após os resultados dos testes e do empacotamento.
+Código validado: `548bdf7a5523596d64fcb740bbe0705d3ba9fd0f`.
+
+- Ubuntu 24.04: **241 testes aprovados**, 20,88 s.
+- Ubuntu 26.04: **241 testes aprovados**, 18,75 s.
+- Verificação local de favorecidos, encerramento e migrações: **31 testes aprovados**, 464,23 s.
+- Sintaxe dos 148 arquivos Python verificada; `git diff --check` sem erros.
+- Dependências instaladas: `pip check` sem incompatibilidades.
+- Os avisos da suíte referem-se a APIs depreciadas de bibliotecas (Matplotlib/Pyparsing e PyPDF2); não são falhas dos fluxos testados.
+
+Evidências: [CI multiplataforma](https://github.com/boente66/Finance_Assist/actions/runs/34423936095)
+e [CI Ubuntu 24.04/Mint](https://github.com/boente66/Finance_Assist/actions/runs/34423938712).
+
+Os dois fluxos de CI foram aprovados. O DEB geral foi instalado e iniciado em
+Ubuntu 22.04, 24.04 e 26.04; os testes confirmaram a preservação de um banco
+preexistente, a criação limpa para novos usuários e o funcionamento das views.
+O DEB nativo Ubuntu 24.04/Mint passou pela instalação, pelas views, pelo OCR e
+pelo teste de banco preexistente. O pacote Windows passou pelo inventário e pelo
+teste das views. Os três arquivos e seus checksums foram publicados na
+[pré-release v2.1.0-test.6](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.6).
 
 Não foi recebido um traceback do aplicativo instalado para este incidente.
 As causas acima foram identificadas por inspeção e cenários reproduzíveis; erros
