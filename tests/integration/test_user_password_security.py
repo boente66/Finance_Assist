@@ -217,6 +217,10 @@ class PasswordModelStub:
         assert self.reset_model.shared is True
         self.changed.append((user_id, password))
 
+    def get_user_by_id(self, user_id):
+        assert self.reset_model.shared is True
+        return {"ID_Usuario": user_id, "Ativo": 1}
+
 
 def test_reset_consumo_do_token_e_senha_ocorrem_na_mesma_unidade_de_trabalho():
     reset_model = ResetModelStub()

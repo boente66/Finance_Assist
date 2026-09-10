@@ -109,4 +109,7 @@ class UserController:
    # =============================
     def delete_own_account(self, senha) -> bool:
         id_usuario = self._get_usuario_id()
-        return self.service.delete_own_account(id_usuario, senha, Session.get_usuario())
+        encerrada = self.service.delete_own_account(id_usuario, senha, Session.get_usuario())
+        if encerrada:
+            Session.set_usuario(None)
+        return encerrada

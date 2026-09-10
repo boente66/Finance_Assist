@@ -456,11 +456,11 @@ CREATE TABLE IF NOT EXISTS metas (
 -- =====================================================
 -- ÍNDICES
 -- =====================================================
-CREATE UNIQUE INDEX IF NOT EXISTS idx_cpf
+CREATE INDEX IF NOT EXISTS idx_cpf
 ON pessoa_fisica(CPF)
 WHERE CPF IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_cnpj
+CREATE INDEX IF NOT EXISTS idx_cnpj
 ON pessoa_juridica(CNPJ)
 WHERE CNPJ IS NOT NULL;
 
@@ -937,6 +937,42 @@ ON recuperacao_senha(ID_Usuario);
             'SELECT 1 FROM usuarios WHERE Ativo IS NULL OR Ativo NOT IN (0, 1) LIMIT 1'
         ).fetchone() is None
 
+    def _migration_005_payee_documents(self):
+        # Remove somente a restrição global antiga; nenhum registro é regravado.
+        for table, document in (('pessoa_fisica', 'CPF'), ('pessoa_juridica', 'CNPJ')):
+            index = 'idx_' + document.lower()
+            self.connection.execute(f'DROP INDEX IF EXISTS {index}')
+            self.connection.execute(
+                f'CREATE INDEX {index} ON {table}({document}) WHERE {document} IS NOT NULL')
+            for event in ('INSERT', 'UPDATE'):
+                self.connection.execute(f"""
+                    CREATE TRIGGER IF NOT EXISTS scoped_{document.lower()}_{event.lower()}
+                    BEFORE {event} ON {table}
+                    WHEN NEW.{document} IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM {table} d
+                        JOIN favorecido f ON f.ID_Favorecido = d.ID_Favorecido
+                        JOIN favorecido alvo ON alvo.ID_Favorecido = NEW.ID_Favorecido
+                        WHERE d.{document} = NEW.{document}
+                          AND d.ID_Favorecido <> NEW.ID_Favorecido
+                          AND f.ID_Usuario = alvo.ID_Usuario
+                    )
+                    BEGIN SELECT RAISE(ABORT, 'Documento já cadastrado para este usuário'); END
+                """)
+
+    def _payee_documents_valid(self):
+        for table, document in (('pessoa_fisica', 'CPF'), ('pessoa_juridica', 'CNPJ')):
+            indexes = self.connection.execute(f'PRAGMA index_list({table})').fetchall()
+            if not any(row['name'] == 'idx_' + document.lower() and not row['unique']
+                       for row in indexes):
+                return False
+            for event in ('insert', 'update'):
+                name = f'scoped_{document.lower()}_{event}'
+                if not self.connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = ?", (name,)
+                ).fetchone():
+                    return False
+        return True
+
     def _run_migrations(self):
         self._ensure_migration_table()
         migrations = (
@@ -962,6 +998,8 @@ ON recuperacao_senha(ID_Usuario);
                 True,
             ),
             (4, 'user_access_status', self._migration_004_user_access, self._user_access_valid, False),
+            (5, 'payee_documents_by_user', self._migration_005_payee_documents,
+             self._payee_documents_valid, False),
         )
         for migration in migrations:
             self._run_migration(*migration)

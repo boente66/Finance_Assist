@@ -61,6 +61,7 @@ def test_close_access_preserves_history_and_invalidates_reset(account):
     token = service.password_reset_model.create_token(user['ID_Usuario'])
     before = service.user_model.fetch_all('SELECT * FROM transacoes')
     assert controller.delete_own_account(PASSWORD)
+    assert Session.get_usuario() is None
     assert service.user_model.get_user_by_id(user['ID_Usuario'])['Ativo'] == 0
     assert service.user_model.fetch_all('SELECT * FROM transacoes') == before
     assert controller.authenticate_user('cliente', PASSWORD) is None

@@ -111,3 +111,29 @@ def test_invalid_edit_preserves_existing_payee(payees, documento, alteracao):
     with pytest.raises(ValueError):
         controller.atualizar_favorecido(fid, alteracao)
     assert controller.obter_favorecido(fid) == before
+
+
+@pytest.mark.parametrize('table,document', [('pessoa_fisica', 'CPF'), ('pessoa_juridica', 'CNPJ')])
+def test_legacy_document_index_migrates_without_deleting_records(payees, table, document):
+    number = '12345678910' if document == 'CPF' else '12345678000190'
+    controller = FavorecidoController()
+    fid = controller.adicionar_favorecido({'Nome': 'Preservar', document: number})
+    before = controller.obter_favorecido(fid)
+    # Reproduz o índice global das versões anteriores em banco descartável.
+    index = 'idx_' + document.lower()
+    payees.execute_query(f'DROP INDEX {index}')
+    payees.execute_query(f'CREATE UNIQUE INDEX {index} ON {table}({document}) WHERE {document} IS NOT NULL')
+    payees.execute_query('DELETE FROM schema_migrations WHERE Versao = 5')
+    payees._run_migrations()
+    assert controller.obter_favorecido(fid) == before
+    Session.set_usuario({'ID_Usuario': 2})
+    other = controller.adicionar_favorecido({'Nome': 'Outro usuário', document: number})
+    assert other != fid
+    # Mesmo usuário continua protegido, inclusive em escrita direta no banco.
+    other_number = '98765432100' if document == 'CPF' else '98765432000100'
+    third = controller.adicionar_favorecido({'Nome': 'Terceiro', document: other_number})
+    with pytest.raises(DatabaseError):
+        payees.execute_query(f'UPDATE {table} SET {document} = ? WHERE ID_Favorecido = ?', (number, third))
+    assert controller.obter_favorecido(third)['Documento'] == other_number
+    assert payees.fetch_one('PRAGMA integrity_check')['integrity_check'] == 'ok'
+    assert payees.fetch_all('PRAGMA foreign_key_check') == []
