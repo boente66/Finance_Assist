@@ -18,6 +18,9 @@ class RelatorioController:
             raise RuntimeError("Usuário não autenticado.")
         return usuario["ID_Usuario"]
 
+    def anos_disponiveis(self):
+        return self.service.anos_disponiveis(self._get_usuario_id())
+
     # ---------------------------------------------------------
     # RELATÓRIO DIÁRIO
     # ---------------------------------------------------------

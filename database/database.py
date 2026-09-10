@@ -140,7 +140,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
         Nivel_Acesso IN ('admin','usuario')
     ),
     Tema TEXT DEFAULT 'Claro',
-    Idioma TEXT DEFAULT 'pt_BR'
+    Idioma TEXT DEFAULT 'pt_BR',
+    Ativo INTEGER NOT NULL DEFAULT 1 CHECK (Ativo IN (0, 1))
 );
 
 -- =====================================================
@@ -925,6 +926,17 @@ ON recuperacao_senha(ID_Usuario);
             )
         """)
 
+    def _migration_004_user_access(self):
+        self._add_column_if_missing('usuarios', 'Ativo',
+                                    'INTEGER NOT NULL DEFAULT 1 CHECK (Ativo IN (0, 1))')
+
+    def _user_access_valid(self):
+        if 'Ativo' not in self._table_columns('usuarios'):
+            return False
+        return self.connection.execute(
+            'SELECT 1 FROM usuarios WHERE Ativo IS NULL OR Ativo NOT IN (0, 1) LIMIT 1'
+        ).fetchone() is None
+
     def _run_migrations(self):
         self._ensure_migration_table()
         migrations = (
@@ -949,6 +961,7 @@ ON recuperacao_senha(ID_Usuario);
                 self._pagamentos_p0_valid,
                 True,
             ),
+            (4, 'user_access_status', self._migration_004_user_access, self._user_access_valid, False),
         )
         for migration in migrations:
             self._run_migration(*migration)

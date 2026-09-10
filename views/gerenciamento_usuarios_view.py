@@ -41,7 +41,7 @@ class GerenciamentoUsuariosView(QtWidgets.QWidget):
         layout.addLayout(search_layout)
 
         self.table = QtWidgets.QTableWidget()
-        self.table.setColumnCount(4)
+        self.table.setColumnCount(5)
         self.table.setSelectionBehavior(
             QtWidgets.QAbstractItemView.SelectRows
         )
@@ -113,6 +113,7 @@ class GerenciamentoUsuariosView(QtWidgets.QWidget):
             TranslatorApp.get("Nome"),
             TranslatorApp.get("Email"),
             TranslatorApp.get("Administrador"),
+            TranslatorApp.get("Status"),
         ])
 
         self.preencher_tabela(self.lista_completa)
@@ -168,6 +169,8 @@ class GerenciamentoUsuariosView(QtWidgets.QWidget):
                 3,
                 QtWidgets.QTableWidgetItem(admin)
             )
+            self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(
+                TranslatorApp.get('Ativo' if user.get('Ativo', 1) else 'Encerrado')))
 
         self.table.resizeColumnsToContents()
 

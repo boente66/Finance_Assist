@@ -140,7 +140,7 @@ class UserModel(Database):
     def get_user_by_login(self, login: str):
         query = """
         SELECT ID_Usuario, Nome, DataNascimento, Sexo, CPF, Email, Login,
-               Telefone, Celular, Nivel_Acesso, Tema, Idioma
+               Telefone, Celular, Nivel_Acesso, Tema, Idioma, Ativo
         FROM usuarios
         WHERE Login = ?
         """
@@ -153,7 +153,7 @@ class UserModel(Database):
     def authenticate_user(self, login: str, senha_digitada: str):
 
         usuario = self._get_user_credentials_by_login(login)
-        if not usuario:
+        if not usuario or not usuario.get('Ativo', 1):
             self._simular_verificacao_inexistente(senha_digitada)
             return None
 
@@ -173,7 +173,7 @@ class UserModel(Database):
 
     def get_all_users(self):
         query = """
-        SELECT ID_Usuario, Nome, Email, Login, Nivel_Acesso
+        SELECT ID_Usuario, Nome, Email, Login, Nivel_Acesso, Ativo
         FROM usuarios
         """
         return self.fetch_all(query)
@@ -181,7 +181,7 @@ class UserModel(Database):
     def get_user_by_id(self, id_usuario: int):
         query = """
         SELECT ID_Usuario, Nome, DataNascimento, Sexo, CPF, Email, Login,
-               Telefone, Celular, Nivel_Acesso, Tema, Idioma
+               Telefone, Celular, Nivel_Acesso, Tema, Idioma, Ativo
         FROM usuarios
         WHERE ID_Usuario = ?
         """
@@ -194,7 +194,7 @@ class UserModel(Database):
         query = """
         SELECT COUNT(*) as total
         FROM usuarios
-        WHERE LOWER(Nivel_Acesso) = 'admin'
+        WHERE LOWER(Nivel_Acesso) = 'admin' AND Ativo = 1
         """
         resultado = self.fetch_one(query)
         return resultado["total"] if resultado else 0
@@ -260,6 +260,9 @@ class UserModel(Database):
         """
         query = "DELETE FROM usuarios WHERE ID_Usuario = ?"
         self.execute_query(query, (id_usuario,))
+
+    def close_access(self, id_usuario):
+        self.execute_query('UPDATE usuarios SET Ativo = 0 WHERE ID_Usuario = ?', (id_usuario,))
 
     # ==================================================
     # PREFERÊNCIAS

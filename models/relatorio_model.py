@@ -1,126 +1,75 @@
+from datetime import date, timedelta
 from database.database import Database
 
 
 class RelatorioModel(Database):
-    def __init__(self):
-        super().__init__()
+    """Consultas de leitura; erros não são confundidos com ausência de dados."""
 
-    # -------------------------
-    # RELATÓRIO DIÁRIO
-    # -------------------------
+    DATA_SQL = """CASE WHEN length(t.Data) = 10 AND substr(t.Data, 3, 1) = '/'
+        AND substr(t.Data, 6, 1) = '/'
+        THEN date(substr(t.Data, 7, 4) || '-' || substr(t.Data, 4, 2) || '-' || substr(t.Data, 1, 2))
+        ELSE date(t.Data) END"""
+    MOVIMENTOS = "COALESCE(t.Tipo, '') <> 'Transferência'"
+
+    def get_anos_disponiveis(self, id_usuario):
+        rows = self.fetch_all(f"""SELECT DISTINCT strftime('%Y', {self.DATA_SQL}) AS Ano
+            FROM transacoes t WHERE t.ID_Usuario = ? ORDER BY Ano DESC""", (id_usuario,))
+        return [int(row['Ano']) for row in rows if row['Ano']]
+
     def get_relatorio_diario(self, dias, id_usuario):
-        """ Retorna um relatório diário agrupado por data e categoria para os últimos 'dias' dias. """
-        try:
-            query = """
-            SELECT 
-                t.Data,
-                c.Nome AS Categoria,
+        params = [id_usuario]
+        periodo = ''
+        if dias is not None:
+            hoje = date.today()
+            periodo = f'AND {self.DATA_SQL} BETWEEN ? AND ?'
+            params.extend(((hoje - timedelta(days=dias - 1)).isoformat(), hoje.isoformat()))
+        return self.fetch_all(f"""
+            SELECT {self.DATA_SQL} AS Data, COALESCE(c.Nome, 'Sem categoria') AS Categoria,
                 SUM(CASE WHEN t.Valor > 0 THEN t.Valor ELSE 0 END) AS Receita,
                 SUM(CASE WHEN t.Valor < 0 THEN ABS(t.Valor) ELSE 0 END) AS Despesa,
                 SUM(t.Valor) AS Economia
-            FROM transacoes t
-            LEFT JOIN categorias c 
-                ON c.ID_Categoria = t.ID_Categoria
-            WHERE date(t.Data) >= date('now', ?)
-              AND t.ID_Usuario = ?
-            GROUP BY t.Data, c.Nome
-            ORDER BY t.Data DESC
-            """
-            return self.fetch_all(query, (f"-{dias} days", id_usuario)) or []
-        except Exception:
-            return []
+            FROM transacoes t LEFT JOIN categorias c ON c.ID_Categoria = t.ID_Categoria
+                AND c.ID_Usuario = t.ID_Usuario
+            WHERE t.ID_Usuario = ? AND {self.MOVIMENTOS} {periodo}
+            GROUP BY {self.DATA_SQL}, c.Nome ORDER BY Data
+        """, params)
 
-    # -------------------------
-    # RELATÓRIO ANUAL
-    # -------------------------
     def get_relatorio_anual(self, ano, id_usuario):
-        """ Retorna um relatório anual agrupado por mês e categoria para o ano especificado. """
-        try:
-            query = """
-            SELECT 
-                strftime('%m', t.Data) AS Mes,
-                c.Nome AS Categoria,
+        return self.fetch_all(f"""
+            SELECT strftime('%m', {self.DATA_SQL}) AS Mes,
+                COALESCE(c.Nome, 'Sem categoria') AS Categoria,
                 SUM(CASE WHEN t.Valor > 0 THEN t.Valor ELSE 0 END) AS Receita,
                 SUM(CASE WHEN t.Valor < 0 THEN ABS(t.Valor) ELSE 0 END) AS Despesa,
                 SUM(t.Valor) AS Economia
-            FROM transacoes t
-            LEFT JOIN categorias c 
-                ON c.ID_Categoria = t.ID_Categoria
-            WHERE strftime('%Y', t.Data) = ?
-            AND t.ID_Usuario = ?
-            GROUP BY Mes, c.Nome
-            ORDER BY Mes
-            """
-            return self.fetch_all(query, (str(ano), id_usuario)) or []
-        except Exception:
-            return []
-    # -------------------------
-    # INFORME COMPLETO
-    # -------------------------
+            FROM transacoes t LEFT JOIN categorias c ON c.ID_Categoria = t.ID_Categoria
+                AND c.ID_Usuario = t.ID_Usuario
+            WHERE strftime('%Y', {self.DATA_SQL}) = ? AND t.ID_Usuario = ? AND {self.MOVIMENTOS}
+            GROUP BY Mes, c.Nome ORDER BY Mes, Categoria
+        """, (str(ano), id_usuario))
+
     def get_transacoes_ano(self, ano, id_usuario):
-        """ Retorna todas as transações do ano especificado para o usuário. """
-        try:
-            query = """
-            SELECT *
-            FROM transacoes
-            WHERE strftime('%Y', Data) = ?
-              AND ID_Usuario = ?
-            ORDER BY Data
-            """
-            return self.fetch_all(query, (str(ano), id_usuario)) or []
-        except Exception:
-            return []
+        return self.fetch_all(f"""SELECT t.* FROM transacoes t
+            WHERE strftime('%Y', {self.DATA_SQL}) = ? AND t.ID_Usuario = ?
+            ORDER BY {self.DATA_SQL}, t.ID_Transacao""", (str(ano), id_usuario))
 
-    # -------------------------
-    # RENDIMENTOS
-    # -------------------------
+    def _informe(self, ano, id_usuario, receitas):
+        operador = '>' if receitas else '<'
+        return self.fetch_all(f"""
+            SELECT COALESCE(f.Nome, 'Não informado') AS Fonte,
+                pj.CNPJ AS CNPJ, COALESCE(pj.CNPJ, pf.CPF, '') AS Documento,
+                f.Tipo AS Tipo_Favorecido, SUM(ABS(t.Valor)) AS Valor
+            FROM transacoes t
+            LEFT JOIN favorecido f ON t.ID_Favorecido = f.ID_Favorecido
+                AND f.ID_Usuario = t.ID_Usuario
+            LEFT JOIN pessoa_juridica pj ON pj.ID_Favorecido = f.ID_Favorecido
+            LEFT JOIN pessoa_fisica pf ON pf.ID_Favorecido = f.ID_Favorecido
+            WHERE strftime('%Y', {self.DATA_SQL}) = ? AND t.Valor {operador} 0
+                AND t.ID_Usuario = ? AND {self.MOVIMENTOS}
+            GROUP BY f.ID_Favorecido, f.Nome, pj.CNPJ, pf.CPF, f.Tipo ORDER BY Fonte
+        """, (str(ano), id_usuario))
+
     def get_informe_rendimentos(self, ano, id_usuario):
-        """ Retorna um relatório de rendimentos (receitas) do ano especificado para o usuário. """
-        try:
-            query = """
-            SELECT 
-                f.Nome AS Fonte,
-                pj.CNPJ AS CNPJ,
-                SUM(t.Valor) AS Valor
-            FROM transacoes t
-            JOIN favorecido f 
-                ON t.ID_Favorecido = f.ID_Favorecido
-            LEFT JOIN pessoa_juridica pj 
-                ON pj.ID_Favorecido = f.ID_Favorecido
-            WHERE strftime('%Y', t.Data) = ?
-              AND t.Tipo = 'Receita'
-              AND t.ID_Usuario = ?
-            GROUP BY f.Nome, pj.CNPJ
-            ORDER BY f.Nome
-            """
-            return self.fetch_all(query, (str(ano), id_usuario)) or []
-        except Exception:
-            return []
+        return self._informe(ano, id_usuario, True)
 
-    # -------------------------
-    # GASTOS
-    # -------------------------
     def get_informe_gastos(self, ano, id_usuario):
-        try:
-            query = """
-            SELECT 
-                f.Nome AS Fonte,
-                COALESCE(pj.CNPJ, pf.CPF) AS Documento,
-                f.Tipo AS Tipo_Favorecido,
-                SUM(ABS(t.Valor)) AS Valor
-            FROM transacoes t
-            JOIN favorecido f 
-                ON t.ID_Favorecido = f.ID_Favorecido
-            LEFT JOIN pessoa_juridica pj 
-                ON pj.ID_Favorecido = f.ID_Favorecido
-            LEFT JOIN pessoa_fisica pf 
-                ON pf.ID_Favorecido = f.ID_Favorecido
-            WHERE strftime('%Y', t.Data) = ?
-              AND t.Tipo = 'Despesa'
-              AND t.ID_Usuario = ?
-            GROUP BY f.Nome, Documento, f.Tipo
-            ORDER BY f.Nome
-            """
-            return self.fetch_all(query, (str(ano), id_usuario)) or []
-        except Exception:
-            return []
+        return self._informe(ano, id_usuario, False)

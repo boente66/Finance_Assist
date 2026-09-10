@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QInputDialog,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -228,7 +230,30 @@ class PerfilView(QWidget):
         self.password_button.setIcon(self._icon("lock"))
         self.password_button.clicked.connect(self._change_password)
         layout.addWidget(self.password_button, 0, Qt.AlignRight)
+        self.close_account_button = QPushButton()
+        self.close_account_button.setObjectName('deleteButton')
+        self.close_account_button.clicked.connect(self._close_account)
+        layout.addWidget(self.close_account_button, 0, Qt.AlignRight)
         return card
+
+    def _close_account(self):
+        message = TranslatorApp.get(
+            'Encerrar sua conta impedirá novos acessos. Seu histórico financeiro será mantido. '
+            'O último administrador não pode encerrar a conta. Deseja continuar?')
+        if QMessageBox.question(self, TranslatorApp.get('Encerrar minha conta'), message,
+                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        senha, ok = QInputDialog.getText(self, TranslatorApp.get('Confirmar identidade'),
+                                         TranslatorApp.get('Senha atual:'), QLineEdit.Password)
+        if not ok or not senha:
+            return
+        if not self.user_controller.delete_own_account(senha):
+            QMessageBox.warning(self, TranslatorApp.get('Não foi possível encerrar'),
+                                TranslatorApp.get('Confira a senha. Se você for o último administrador, cadastre outro administrador antes de encerrar.'))
+            return
+        QMessageBox.information(self, TranslatorApp.get('Conta encerrada'),
+                                TranslatorApp.get('O acesso foi encerrado. O histórico financeiro foi preservado.'))
+        self.logout_requested.emit()
 
     def _arrange_content(self, compact):
         for card in (self.personal_card, self.preferences_card, self.security_card):
@@ -364,6 +389,7 @@ class PerfilView(QWidget):
         self.edit_button.setText(TranslatorApp.get("Editar"))
         self.save_preferences_button.setText(TranslatorApp.get("Salvar preferências"))
         self.password_button.setText(TranslatorApp.get("Alterar senha"))
+        self.close_account_button.setText(TranslatorApp.get('Encerrar minha conta'))
         self.version.setText(f"{TranslatorApp.get('Versão')} {APP_VERSION}")
         self._update_user_info()
 

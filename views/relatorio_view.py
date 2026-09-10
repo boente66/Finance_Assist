@@ -47,7 +47,7 @@ class RelatorioView(QWidget):
         TranslatorApp.bind(self._atualizar_textos, self)
         self._atualizar_textos()
 
-        self.load_diario()
+        self.on_load()
 
     # ==================================================
     # UI
@@ -108,8 +108,11 @@ class RelatorioView(QWidget):
     # ==================================================
     def _connect_events(self):
         self.sections.currentRowChanged.connect(
-            self.stacked.setCurrentIndex
+            self._change_section
         )
+        self.btn_gerar_anual.clicked.connect(self.load_anual)
+        self.combo_anual.currentIndexChanged.connect(self.load_anual)
+        self.combo_inf.currentIndexChanged.connect(self.preview)
 
         self.btn_gerar_diario.clicked.connect(
             self.load_diario
@@ -187,6 +190,9 @@ class RelatorioView(QWidget):
         self.lbl_ano_base.setText(
             TranslatorApp.get("Ano Base:")
         )
+        self.lbl_ano_anual.setText(TranslatorApp.get("Ano:"))
+        self.btn_gerar_anual.setText(TranslatorApp.get("Gerar"))
+        self.input_days.setItemText(self.input_days.count() - 1, TranslatorApp.get("Todo histórico"))
 
         self.btn_preview.setText(
             TranslatorApp.get("Visualizar")
@@ -357,17 +363,14 @@ class RelatorioView(QWidget):
         )
 
         ax3 = self.figure.add_subplot(133)
-        ax3.pie(
-            [
-                sum(receitas),
-                sum(despesas),
-            ],
-            labels=[
-                TranslatorApp.get("Receitas"),
-                TranslatorApp.get("Despesas"),
-            ],
-            autopct="%1.1f%%"
-        )
+        if sum(receitas) + sum(despesas) > 0:
+            ax3.pie(
+                [sum(receitas), sum(despesas)],
+                labels=[TranslatorApp.get("Receitas"), TranslatorApp.get("Despesas")],
+                autopct="%1.1f%%"
+            )
+        else:
+            ax3.text(0.5, 0.5, TranslatorApp.get("Sem movimentação"), ha='center')
         ax3.set_title(
             TranslatorApp.get("Distribuição")
         )
@@ -417,12 +420,10 @@ class RelatorioView(QWidget):
 
         self.lbl_dias = QLabel()
         self.input_days = QComboBox()
-        self.input_days.addItems([
-            "7",
-            "15",
-            "30",
-            "90"
-        ])
+        for dias in (7, 15, 30, 90):
+            self.input_days.addItem(str(dias), dias)
+        self.input_days.addItem(TranslatorApp.get("Todo histórico"), None)
+        self.input_days.setCurrentIndex(2)
 
         self.btn_gerar_diario = QPushButton()
 
@@ -442,11 +443,12 @@ class RelatorioView(QWidget):
 
     def load_diario(self):
         try:
-            dias = int(self.input_days.currentText())
+            dias = self.input_days.currentData()
 
             data = self.controller.relatorio_diario(dias)
 
             if data is None:
+                self._reset_summary()
                 self._error(
                     self.table,
                     TranslatorApp.get("Não foi possível gerar o relatório."),
@@ -454,6 +456,7 @@ class RelatorioView(QWidget):
                 return
 
             if not data:
+                self._reset_summary()
                 self._empty(self.table)
                 return
 
@@ -477,14 +480,19 @@ class RelatorioView(QWidget):
                 CurrencyFormatter.format(saldo)
             )
 
-            self._update_chart(data)
-            self._update_insights(receitas, despesas)
             self._fill_table(self.table, data)
+            self._update_insights(receitas, despesas)
+            try:
+                self._update_chart(data)
+            except Exception:
+                logger.warning("Gráfico indisponível; tabela preservada", exc_info=True)
 
         except Exception:
             logger.exception(
                 "Erro relatório diário"
             )
+            self._reset_summary()
+            self._error(self.table, TranslatorApp.get("Não foi possível gerar o relatório."))
 
     # ==================================================
     # ANUAL
@@ -492,6 +500,15 @@ class RelatorioView(QWidget):
     def _build_anual(self):
         w = QWidget()
         layout = QVBoxLayout(w)
+        controls = QHBoxLayout()
+        self.lbl_ano_anual = QLabel()
+        self.combo_anual = QComboBox()
+        self.btn_gerar_anual = QPushButton()
+        controls.addWidget(self.lbl_ano_anual)
+        controls.addWidget(self.combo_anual)
+        controls.addWidget(self.btn_gerar_anual)
+        controls.addStretch()
+        layout.addLayout(controls)
 
         self.table_anual = QTableWidget()
         self.table_anual.setColumnCount(5)
@@ -499,6 +516,54 @@ class RelatorioView(QWidget):
         layout.addWidget(self.table_anual)
 
         return w
+
+    def _reset_summary(self):
+        for label in (self.lbl_receita, self.lbl_despesa, self.lbl_saldo):
+            label.setText(CurrencyFormatter.format(0))
+        self.lbl_insights.setText(TranslatorApp.get("Sem movimentação no período selecionado"))
+        if self.figure is not None:
+            self.figure.clear()
+            self.canvas.draw()
+
+    def load_anual(self):
+        try:
+            data = self.controller.relatorio_anual(int(self.combo_anual.currentText()))
+            if data is None:
+                self._error(self.table_anual, TranslatorApp.get("Não foi possível gerar o relatório."))
+            elif data:
+                self._fill_table(self.table_anual, data)
+            else:
+                self._empty(self.table_anual)
+        except Exception:
+            logger.exception("Erro relatório anual")
+            self._error(self.table_anual, TranslatorApp.get("Não foi possível gerar o relatório."))
+
+    def _change_section(self, index):
+        if index not in (0, 1, 2):
+            return
+        self.stacked.setCurrentIndex(index)
+        (self.load_diario, self.load_anual, self.preview)[index]()
+
+    def on_load(self):
+        try:
+            anos = sorted(set(self.controller.anos_disponiveis()) | {datetime.now().year}, reverse=True)
+            for combo in (self.combo_anual, self.combo_inf):
+                selected = combo.currentText()
+                combo.blockSignals(True)
+                combo.clear()
+                combo.addItems([str(ano) for ano in anos])
+                if selected in [str(ano) for ano in anos]:
+                    combo.setCurrentText(selected)
+                combo.blockSignals(False)
+            self._change_section(self.sections.currentRow())
+        except Exception:
+            logger.exception("Erro ao atualizar períodos dos relatórios")
+            self._reset_summary()
+            self._error(self.table, TranslatorApp.get("Não foi possível carregar os períodos."))
+            self._error(self.table_anual, TranslatorApp.get("Não foi possível carregar os períodos."))
+            self.text.setPlainText(TranslatorApp.get("Não foi possível carregar os períodos."))
+            self.btn_pdf.setEnabled(False)
+            self.btn_print.setEnabled(False)
 
     # ==================================================
     # INFORME
@@ -538,19 +603,19 @@ class RelatorioView(QWidget):
         return w
 
     def preview(self):
-        ano = int(
-            self.combo_inf.currentText()
-        )
-
-        txt = self.controller.gerar_texto_informe(
-            ano
-        )
-
-        self.text.setPlainText(
-            txt or TranslatorApp.get("Sem dados")
-        )
+        try:
+            txt = self.controller.gerar_texto_informe(int(self.combo_inf.currentText()))
+        except Exception:
+            logger.exception("Erro ao carregar informe")
+            txt = None
+        self.text.setPlainText(txt if txt is not None else TranslatorApp.get("Não foi possível gerar o informe."))
+        self.btn_pdf.setEnabled(txt is not None)
+        self.btn_print.setEnabled(txt is not None)
+        return txt is not None
 
     def export_pdf(self):
+        if not self.preview():
+            return
         txt = self.text.toPlainText()
 
         if not txt:
@@ -571,6 +636,8 @@ class RelatorioView(QWidget):
             )
 
     def print_pdf(self):
+        if not self.preview():
+            return
         printer = QPrinter()
         dlg = QPrintDialog(printer, self)
 
@@ -582,11 +649,14 @@ class RelatorioView(QWidget):
     # ==================================================
     def _fill_table(self, table, data):
         table.setRowCount(0)
+        table.setColumnCount(5)
+        keys = ('Mes' if table is self.table_anual else 'Data', 'Categoria', 'Receita', 'Despesa', 'Economia')
+        table.setHorizontalHeaderLabels([TranslatorApp.get('Mês' if key == 'Mes' else key) for key in keys])
 
         for i, row in enumerate(data):
             table.insertRow(i)
 
-            values = list(row.values())
+            values = [row.get(key, '') for key in keys]
 
             for j, val in enumerate(values):
                 if isinstance(val, (int, float)):

@@ -1,4 +1,4 @@
 """Identificação única da versão exibida e empacotada."""
 
-APP_VERSION = "2.1.0-test.5"
-DEBIAN_VERSION = "2.1.0~test5"
+APP_VERSION = "2.1.0-test.6"
+DEBIAN_VERSION = "2.1.0~test6"

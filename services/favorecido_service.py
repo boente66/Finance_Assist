@@ -37,6 +37,9 @@ class FavorecidoService:
         cpf = self._somente_numeros(dados.get("CPF"))
         cnpj = self._somente_numeros(dados.get("CNPJ"))
 
+        if cpf and cnpj:
+            raise ValueError('Informe apenas CPF ou CNPJ, conforme o tipo.')
+
         # 🔥 inferência automática (mais robusto)
         if cpf and not cnpj:
             tipo = "PF"

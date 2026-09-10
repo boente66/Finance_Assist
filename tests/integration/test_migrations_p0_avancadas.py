@@ -90,7 +90,7 @@ def versions(database):
 def test_banco_novo_tem_versoes_fks_indices_e_constraints(tmp_path):
     database = Database(str(tmp_path / "novo.db"))
 
-    assert [row["Versao"] for row in versions(database)] == [1, 2, 3]
+    assert [row["Versao"] for row in versions(database)] == [1, 2, 3, 4]
     assert fk_agendamento(database)
     assert database._schedule_index_valid()
     assert database._pagamentos_p0_valid()
@@ -212,7 +212,7 @@ def test_pagamentos_incompleta_vazia_e_recuperada(tmp_path):
 
     database = Database(path)
     assert database._pagamentos_p0_valid()
-    assert [row["Versao"] for row in versions(database)] == [1, 2, 3]
+    assert [row["Versao"] for row in versions(database)] == [1, 2, 3, 4]
 
 
 def test_pagamentos_incompleta_com_dados_falha_sem_perda(tmp_path):
@@ -323,6 +323,6 @@ def test_inicializacao_concorrente_do_mesmo_banco(tmp_path):
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = list(executor.map(initialize, range(2)))
 
-    assert results == [(3, 1), (3, 1)]
+    assert results == [(4, 1), (4, 1)]
     database = Database(path)
     assert database.fetch_all("PRAGMA foreign_key_check") == []

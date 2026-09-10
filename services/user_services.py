@@ -301,22 +301,28 @@ class UserService:
 
             
 
-    def delete_own_account(self, id_usuario: int, usuario_logado: dict) -> bool:
+    def delete_own_account(self, id_usuario: int, senha: str, usuario_logado: dict) -> bool:
         """
-        Permite que um usuário exclua sua própria conta a qualquer momento.
+        Encerra somente o acesso, preservando usuário e histórico financeiro.
         """
         try:
             if not usuario_logado or usuario_logado.get("ID_Usuario") != id_usuario:
                 raise PermissionError("Somente o próprio usuário pode excluir sua conta.")
 
-            usuario_alvo = self.get_user_by_id(id_usuario)
-            if not usuario_alvo:
-                return False
-
-            self.user_model.delete_user(id_usuario)
+            with self.user_model.unit_of_work(self.password_reset_model):
+                usuario_alvo = self.get_user_by_id(id_usuario)
+                if not usuario_alvo or not usuario_alvo.get('Ativo', 1):
+                    return False
+                autenticado = self.user_model.authenticate_user(usuario_alvo['Login'], senha)
+                if not autenticado or autenticado['ID_Usuario'] != id_usuario:
+                    return False
+                if usuario_alvo.get('Nivel_Acesso', '').lower() == 'admin' and self._count_admins() <= 1:
+                    return False
+                self.user_model.close_access(id_usuario)
+                self.password_reset_model.invalidate_user_tokens(id_usuario)
             return True
 
-        except (DatabaseError, PermissionError):
+        except (DatabaseError, PermissionError, ValueError):
             logger.exception("Erro ao excluir conta do usuário")
             return False
 
@@ -346,6 +352,9 @@ class UserService:
                     return False
 
                 id_usuario = registro["ID_Usuario"]
+                usuario = self.get_user_by_id(id_usuario)
+                if not usuario or not usuario.get('Ativo', 1):
+                    return False
 
                 self.user_model.change_password(id_usuario, nova_senha)
 
@@ -402,7 +411,7 @@ class UserService:
             usuario = self.user_model.get_user_by_login(login_ou_email)
 
             # Segurança: nunca revelar existência
-            if not usuario:
+            if not usuario or not usuario.get('Ativo', 1):
                 logger.info("Solicitação de reset para login inexistente.")
                 return True
 

@@ -27,6 +27,8 @@ class FavorecidoDialog(QDialog):
 
         self._build_ui()
         self._carregar_dados()
+        # A edição não converte silenciosamente PF em PJ (ou vice-versa).
+        self.tipo_combo.setEnabled(not bool(self.favorecido))
         self._trocar_tipo()
 
         TranslatorApp.bind(self._atualizar_textos, self)
@@ -193,7 +195,10 @@ class FavorecidoDialog(QDialog):
             if id_fav:
                 self.controller.atualizar_favorecido(id_fav, self.dados)
             else:
-                self.controller.adicionar_favorecido(self.dados)
+                id_fav = self.controller.adicionar_favorecido(self.dados)
+                if not id_fav:
+                    raise ValueError('Não foi possível cadastrar o favorecido.')
+                self.dados['ID_Favorecido'] = id_fav
 
             self.accept()
 

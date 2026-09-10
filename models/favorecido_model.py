@@ -146,9 +146,20 @@ class FavorecidoModel(Database):
 
         if tipo == "PJ" and not cnpj:
             raise ValueError("CNPJ é obrigatório para Pessoa Jurídica.")
+        if cpf and cnpj:
+            raise ValueError('Informe apenas CPF ou CNPJ, conforme o tipo.')
+        if tipo == 'PF' and len(cpf) != 11:
+            raise ValueError('CPF deve conter 11 dígitos.')
+        if tipo == 'PJ' and len(cnpj) != 14:
+            raise ValueError('CNPJ deve conter 14 dígitos.')
 
         try:
-            self.begin()
+            self.begin(immediate=True)
+            existente = (self.get_favorecido_by_cpf(cpf, id_usuario) if tipo == 'PF'
+                         else self.get_favorecido_by_cnpj(cnpj, id_usuario))
+            if existente:
+                self.commit()
+                return existente['ID_Favorecido']
 
             self.execute_query("""
                 INSERT INTO favorecido (Nome, Tipo, ID_Usuario)
@@ -193,15 +204,23 @@ class FavorecidoModel(Database):
     # ATUALIZAR
     # =========================================================
     def update_favorecido(self, id_favorecido, dados, id_usuario):
+        tipo = self.get_tipo(id_favorecido, id_usuario)
+        if not tipo:
+            raise ValueError("Favorecido não encontrado.")
+
+        cpf = self._somente_numeros(dados.get("CPF"))
+        cnpj = self._somente_numeros(dados.get("CNPJ"))
+        telefone = self._somente_numeros(dados.get("Telefone"))
+        if dados.get('Tipo', tipo) != tipo or (tipo == 'PF' and cnpj) or (tipo == 'PJ' and cpf):
+            raise ValueError('O documento deve corresponder ao tipo do favorecido.')
+        if 'CPF' in dados and tipo == 'PF' and len(cpf or '') != 11:
+            raise ValueError('CPF deve conter 11 dígitos.')
+        if 'CNPJ' in dados and tipo == 'PJ' and len(cnpj or '') != 14:
+            raise ValueError('CNPJ deve conter 14 dígitos.')
+        if 'Nome' in dados and not (dados['Nome'] or '').strip():
+            raise ValueError('Nome é obrigatório.')
+
         try:
-            tipo = self.get_tipo(id_favorecido, id_usuario)
-            if not tipo:
-                raise ValueError("Favorecido não encontrado.")
-
-            cpf = self._somente_numeros(dados.get("CPF"))
-            cnpj = self._somente_numeros(dados.get("CNPJ"))
-            telefone = self._somente_numeros(dados.get("Telefone"))  # 🔥 CORRIGIDO
-
             self.begin()
 
             self.execute_query("""

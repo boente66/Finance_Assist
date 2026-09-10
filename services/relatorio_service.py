@@ -13,9 +13,12 @@ class RelatorioService:
     # RELATÓRIO DIÁRIO
     # ============================================================
     def relatorio_diario(self, dias, id_usuario):
-        if dias <= 0:
+        if dias is not None and (not isinstance(dias, int) or dias <= 0):
             raise ValueError("O período deve ser maior que zero.")
         return self.model.get_relatorio_diario(dias, id_usuario)
+
+    def anos_disponiveis(self, id_usuario):
+        return self.model.get_anos_disponiveis(id_usuario)
 
     # ============================================================
     # RELATÓRIO ANUAL
@@ -66,7 +69,11 @@ IDENTIFICAÇÃO DO CONTRIBUINTE:
 Nome: {nome}
 CPF: {NameFormat.formatCPF(cpf)}
 
-RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA JURÍDICA:
+Relatório auxiliar das transações de contas registradas no sistema.
+Não substitui informes oficiais. Não classifica tributação ou dedutibilidade.
+Transferências internas e faturas/agendamentos ainda não pagos não são somados.
+
+RECEITAS REGISTRADAS:
 """
 
         # ---------------------------
@@ -74,27 +81,25 @@ RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA JURÍDICA:
         # ---------------------------
         for item in dados["receitas"]:
             fonte = item.get("Fonte", "N/D")
-            cnpj = NameFormat.formatCNPJ(item.get("CNPJ", ""))
+            cnpj = NameFormat.format_documento(item.get("Documento") or "") or "Não informado"
             valor = CurrencyFormatter.format(item.get("Valor", 0))
 
             texto += f"""
 Fonte Pagadora: {fonte}
-CNPJ: {cnpj}
+Documento: {cnpj}
 Valor Total Recebido: {valor}
-IRRF: R$ 0,00
 """
 
         # ---------------------------
         #  Gastos
         # ---------------------------
         texto += """
-DESPESAS DEDUTÍVEIS / PAGAMENTOS A PESSOAS JURÍDICAS OU FÍSICAS:
+DESPESAS REGISTRADAS:
 """
 
         for item in dados["gastos"]:
             fav = item.get("Fonte", "N/D")
-            doc = item.get("Documento", "")
-            doc_formatado = NameFormat.formatCNPJ(doc) if len(doc) > 11 else NameFormat.formatCPF(doc)
+            doc_formatado = NameFormat.format_documento(item.get("Documento") or "") or "Não informado"
             valor = CurrencyFormatter.format(item.get("Valor", 0),)
 
             texto += f"""
@@ -103,4 +108,11 @@ Documento: {doc_formatado}
 Total Pago: {valor}
 """
 
+        receita = sum(float(item['Valor'] or 0) for item in dados['receitas'])
+        despesa = sum(float(item['Valor'] or 0) for item in dados['gastos'])
+        if not dados['receitas'] and not dados['gastos']:
+            texto += '\nNenhuma transação encontrada para o ano selecionado.\n'
+        texto += f'\nTotal de receitas: {CurrencyFormatter.format(receita)}'
+        texto += f'\nTotal de despesas: {CurrencyFormatter.format(despesa)}'
+        texto += f'\nResultado: {CurrencyFormatter.format(receita - despesa)}'
         return texto.strip()
