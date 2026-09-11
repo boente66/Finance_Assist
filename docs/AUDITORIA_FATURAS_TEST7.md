@@ -41,4 +41,12 @@ são copiados para fixtures; os testes usam trechos anonimizados representativos
   PDFs fornecidos não foram adicionados às alterações desta versão. Os testes
   contêm somente exemplos anonimizados.
 
-Os resultados dos builds, instalação e links ficam registrados na pré-release.
+## Distribuição
+
+- [Build multiplataforma aprovado](https://github.com/boente66/Finance_Assist/actions/runs/34554788498):
+  Windows x64, código no Ubuntu 24.04/26.04 e instalação do DEB base nas três
+  versões suportadas do Ubuntu.
+- [Build Ubuntu 24.04/Mint 22.x aprovado](https://github.com/boente66/Finance_Assist/actions/runs/34554803836):
+  instalação limpa e atualização sobre banco sentinela preservado.
+- [Pré-release v2.1.0-test.7](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.7):
+  três instaladores e respectivos checksums SHA-256 publicados.
