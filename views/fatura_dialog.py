@@ -287,52 +287,38 @@ class FaturaDialog(QDialog):
     # ======================================================
     # SALVAR
     # ======================================================
+    def dados_formulario(self):
+        """Valida e retorna os campos; compartilhado com a tela de edição."""
+        descricao = self.descricao_edit.text().strip()
+        if not descricao:
+            raise ValueError("Descrição obrigatória")
+        valor_texto = self.valor_edit.text().replace(".", "").replace(",", ".").strip()
+        if not valor_texto:
+            raise ValueError("Valor obrigatório")
+        valor = abs(float(valor_texto))
+        if valor <= 0:
+            raise ValueError("Valor deve ser maior que zero")
+        ciclo = self.fatura_combo.currentData()
+        if not ciclo:
+            raise ValueError("Selecione a fatura")
+        return {
+            "ID_Cartao": self.id_cartao,
+            "Descricao": descricao,
+            "Valor": valor,
+            "Data": self.data_edit.date().toString("yyyy-MM-dd"),
+            "Competencia_Mes": ciclo["Mes"],
+            "Competencia_Ano": ciclo["Ano"],
+            "Num_Parcelas": int(self.parcelas_spin.value()),
+            "ID_Categoria": self.categoria_combo.currentData(),
+            "ID_Favorecido": self.favorecido_combo.currentData(),
+            "Notas": self.notas_edit.toPlainText(),
+            "Paga": 0,
+            "Previsto": 0,
+        }
+
     def salvar(self):
         try:
-            descricao = self.descricao_edit.text().strip()
-
-            if not descricao:
-                raise ValueError("Descrição obrigatória")
-
-            valor_texto = (
-                self.valor_edit.text()
-                .replace(".", "")
-                .replace(",", ".")
-                .strip()
-            )
-
-            if not valor_texto:
-                raise ValueError("Valor obrigatório")
-
-            valor = abs(float(valor_texto))
-
-            if valor <= 0:
-                raise ValueError("Valor deve ser maior que zero")
-
-            ciclo = self.fatura_combo.currentData()
-
-            if not ciclo:
-                raise ValueError("Selecione a fatura")
-
-            parcelas = int(self.parcelas_spin.value())
-
-            
-            dados = {
-                "ID_Cartao": self.id_cartao,
-                "Descricao": descricao,
-                "Valor": valor,
-                "Data": self.data_edit.date().toString("yyyy-MM-dd"),
-                "Competencia_Mes": ciclo["Mes"],
-                "Competencia_Ano": ciclo["Ano"],
-                "Num_Parcelas": parcelas,
-                "ID_Categoria": self.categoria_combo.currentData(),
-                "ID_Favorecido": self.favorecido_combo.currentData(),
-                "Notas": self.notas_edit.toPlainText(),
-                "Paga": 0,
-                "Previsto": 0
-            }
-
-            self.fatura_controller.registrar_despesa_cartao(dados)
+            self.fatura_controller.registrar_despesa_cartao(self.dados_formulario())
 
             self.accept()
 

@@ -41,11 +41,13 @@ class MakePDF:
     # LEITURA SIMPLES (PyPDF2)
     # ==========================================================
     @staticmethod
-    def importar_pdf(caminho_arquivo):
+    def importar_pdf(caminho_arquivo, senha=None):
         try:
             from PyPDF2 import PdfReader
 
             reader = PdfReader(caminho_arquivo)
+            if reader.is_encrypted and not reader.decrypt(senha or ""):
+                raise ValueError("Senha da fatura PDF incorreta ou não informada.")
             texto = ""
 
             for page in reader.pages:
@@ -53,23 +55,36 @@ class MakePDF:
 
             return texto
 
-        except Exception as e:
-            print(f"Erro ao importar PDF: {e}")
+        except ValueError:
+            raise
+        except Exception:
+            logger.exception("Erro ao extrair texto digital do PDF")
             return None
 
     # ==========================================================
     # LEITURA AVANÇADA (pdfplumber + OCR)
     # ==========================================================
     @staticmethod
-    def ler_pdf(caminho_arquivo):
+    def ler_pdf(caminho_arquivo, senha=None):
         try:
+            # Faturas digitais preservam melhor a ordem dos lançamentos pelo
+            # fluxo textual. A leitura tabular continua como fallback para
+            # extratos bancários e PDFs sem texto utilizável.
+            texto_digital = MakePDF.importar_pdf(caminho_arquivo, senha)
+            marcador = (texto_digital or "").lower()
+            if len(marcador.strip()) >= 100 and "fatura" in marcador and (
+                "nubank" in marcador or "picpay mastercard" in marcador
+                or "itau unibanco" in marcador or "banco itaú" in marcador
+            ):
+                return texto_digital.strip()
+
             import pdfplumber
             import pdf2image
             import pytesseract
 
             texto = ""
 
-            with pdfplumber.open(caminho_arquivo) as pdf:
+            with pdfplumber.open(caminho_arquivo, password=senha) as pdf:
                 for pagina in pdf.pages:
 
                     tabela = pagina.extract_table()
@@ -103,6 +118,8 @@ class MakePDF:
 
             return texto.strip() or None
 
+        except ValueError:
+            raise
         except Exception as e:
             logger.exception("Erro ao ler PDF")
             return None

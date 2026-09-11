@@ -6,7 +6,9 @@ from models.layouts.bradesco_layout import BradescoLayoutModel
 from models.layouts.itau_layout import ItauLayoutModel
 from models.layouts.datani_layout import DataniLayoutModel
 from models.layouts.picpay_layout import PicPayLayoutModel
-from models.layouts.fatura_cartao_layout import FaturaCartaoLayoutModel
+from models.layouts.picpay_fatura_layout import PicPayFaturaLayoutModel
+from models.layouts.nubank_fatura_layout import NubankFaturaLayoutModel
+from models.layouts.itau_fatura_layout import ItauFaturaLayoutModel
 
 
 class ReconhecimentoService:
@@ -21,7 +23,9 @@ class ReconhecimentoService:
     INDICE_ITAU = 202
     INDICE_BANCO_BRASIL = 203
     INDICE_BRADESCO = 204
-    INDICE_FATURA_CARTAO = 301
+    INDICE_FATURA_PICPAY = 301
+    INDICE_FATURA_NUBANK = 302
+    INDICE_FATURA_ITAU = 303
 
     SCORE_MINIMO = 5
     MAX_LINHAS_TEXTO = 100
@@ -33,7 +37,9 @@ class ReconhecimentoService:
         self.itau_layout = ItauLayoutModel()
         self.bb_layout = BancoBrasilLayoutModel()
         self.bradesco_layout = BradescoLayoutModel()
-        self.fatura_cartao_layout = FaturaCartaoLayoutModel()
+        self.picpay_fatura_layout = PicPayFaturaLayoutModel()
+        self.nubank_fatura_layout = NubankFaturaLayoutModel()
+        self.itau_fatura_layout = ItauFaturaLayoutModel()
 
     # ======================================================
     # ENTRADA PRINCIPAL
@@ -82,14 +88,30 @@ class ReconhecimentoService:
     def reconhecer_fatura(self, conteudo):
         return self._melhor([
             self._candidato(
-                indice=self.INDICE_FATURA_CARTAO,
-                nome="fatura_cartao_estruturada",
+                indice=self.INDICE_FATURA_PICPAY,
+                nome="fatura_picpay_pdf",
                 grupo="fatura",
                 tipo_documento="fatura_cartao",
-                layout=self.fatura_cartao_layout,
-                score=self._score_fatura_cartao(conteudo),
-            )
-        ], "Fatura de cartão estruturada não localizada.")
+                layout=self.picpay_fatura_layout,
+                score=self._score_fatura_picpay(conteudo),
+            ),
+            self._candidato(
+                indice=self.INDICE_FATURA_NUBANK,
+                nome="fatura_nubank_pdf",
+                grupo="fatura",
+                tipo_documento="fatura_cartao",
+                layout=self.nubank_fatura_layout,
+                score=self._score_fatura_nubank(conteudo),
+            ),
+            self._candidato(
+                indice=self.INDICE_FATURA_ITAU,
+                nome="fatura_itau_pdf",
+                grupo="fatura",
+                tipo_documento="fatura_cartao",
+                layout=self.itau_fatura_layout,
+                score=self._score_fatura_itau(conteudo),
+            ),
+        ], "Fatura PDF PicPay, Nubank ou Itaú não reconhecida.")
 
     # ======================================================
     # RECONHECER DENTRO DO GRUPO
@@ -167,34 +189,32 @@ class ReconhecimentoService:
         )
 
     def _score_fatura_cartao(self, conteudo):
-        if not isinstance(conteudo, list) or not conteudo:
-            return 0
+        return max(self._score_fatura_picpay(conteudo), self._score_fatura_nubank(conteudo),
+                   self._score_fatura_itau(conteudo))
+
+    def _score_fatura_picpay(self, conteudo):
         texto = self._conteudo_para_texto(conteudo)
-        colunas = self._colunas(conteudo)
-        colunas_compactas = {
-            re.sub(r"[^a-z0-9]+", "", coluna) for coluna in colunas
-        }
-        score = 0
-        if "fatura_cartao" in texto:
-            score += 6
-        tem_data = bool({
-            "data", "datacompra", "datadacompra",
-            "datalancamento", "datadelancamento",
-        } & colunas_compactas)
-        tem_descricao = bool(
-            {"descricao", "estabelecimento", "historico", "lancamento"}
-            & colunas_compactas
-        )
-        tem_valor = bool({"valor", "valorcompra"} & colunas_compactas)
-        if tem_data and tem_descricao and tem_valor:
-            score += 2
-        if any("parcela" in coluna for coluna in colunas_compactas):
-            score += 4
-        if any("competencia" in coluna for coluna in colunas_compactas):
-            score += 4
-        if "cartao" in colunas_compactas or "fatura" in colunas_compactas:
-            score += 3
-        return score
+        if not isinstance(conteudo, str):
+            return 0
+        return sum((6 if "picpay mastercard" in texto else 0,
+                    3 if "total da sua fatura" in texto else 0,
+                    3 if "transações nacionais" in texto else 0))
+
+    def _score_fatura_nubank(self, conteudo):
+        texto = self._conteudo_para_texto(conteudo)
+        if not isinstance(conteudo, str):
+            return 0
+        return sum((6 if "nubank" in texto else 0,
+                    3 if "resumo da fatura atual" in texto else 0,
+                    3 if "transações" in texto and "fatura" in texto else 0))
+
+    def _score_fatura_itau(self, conteudo):
+        texto = self._conteudo_para_texto(conteudo)
+        if not isinstance(conteudo, str):
+            return 0
+        return sum((6 if "banco itaú" in texto or "itau unibanco" in texto else 0,
+                    3 if "lançamentos: compras e saques" in texto else 0,
+                    3 if "total desta fatura" in texto else 0))
 
     # ======================================================
     # SCORES — DATANI / MIGRAÇÃO

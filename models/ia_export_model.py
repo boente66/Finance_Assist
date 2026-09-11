@@ -1,8 +1,5 @@
 # models/ia_export_model.py
 
-from utilitarios.makepdf import MakePDF
-
-
 class IAExportModel:
     """
     Model responsável SOMENTE por escrever arquivos.
@@ -40,9 +37,6 @@ class IAExportModel:
         df.to_excel(file_path, index=False)
         return True
 
-    def export_to_pdf(self, file_path: str, titulo: str) -> bool:
-        linhas = []
-        for item in self.data:
-            linhas.append(" | ".join(f"{k}: {v}" for k, v in item.items()))
-
-        return MakePDF.gerar_pdf(file_path, titulo, "\n".join(linhas))
+    def export_statement_pdf(self, file_path, conta, transacoes, data_inicio, data_fim):
+        from utilitarios.financial_pdf import FinancialPDF
+        return FinancialPDF.extrato(file_path, conta, transacoes, data_inicio, data_fim)

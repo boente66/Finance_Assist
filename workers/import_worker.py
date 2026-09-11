@@ -37,6 +37,7 @@ class ImportWorker(QThread):
         id_conta: int,
         parent: Optional[object] = None,
         tipo_destino: str = "conta",
+        senha_pdf: str | None = None,
     ):
         super().__init__(parent)
 
@@ -44,6 +45,7 @@ class ImportWorker(QThread):
         self.caminho_arquivo = caminho_arquivo
         self.id_conta = id_conta
         self.tipo_destino = tipo_destino
+        self.senha_pdf = senha_pdf
         self._cancelado = False
 
     def run(self):
@@ -58,6 +60,7 @@ class ImportWorker(QThread):
                     caminho_arquivo=self.caminho_arquivo,
                     id_cartao=self.id_conta,
                     progress_callback=self._emit_progress,
+                    senha_pdf=self.senha_pdf,
                 )
             else:
                 lancamentos = self.controller.importar_arquivo(

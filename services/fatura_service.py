@@ -45,7 +45,9 @@ class FaturaService:
         return f"{id_cartao}_{mes}_{ano}_{id_usuario}"
 
     def _get_cache(self, key):
-        return self._cache_fatura.get(key)
+        # Models/controllers podem coexistir na mesma tela; consultar o banco
+        # evita devolver uma fatura obsoleta após edição, colagem ou exclusão.
+        return None
 
     def _set_cache(self, key, value):
         self._cache_fatura[key] = value
@@ -217,6 +219,32 @@ class FaturaService:
 
         self._clear_cache()
         return total
+
+    def obter_lancamento(self, id_lancamento, id_usuario):
+        return self.lancamento_model.get_lancamento_by_id(id_lancamento, id_usuario)
+
+    def atualizar_lancamento(self, id_lancamento, dados, id_usuario):
+        atual = self.obter_lancamento(id_lancamento, id_usuario)
+        if not atual:
+            raise ValueError("Lançamento não encontrado.")
+        if atual.get("Paga"):
+            raise ValueError("Lançamentos de uma fatura paga não podem ser editados.")
+        payload = dict(atual)
+        payload.update(dados)
+        payload["ID_Cartao"] = atual["ID_Cartao"]
+        resultado = self.lancamento_model.update_lancamento(id_lancamento, payload, id_usuario)
+        self._clear_cache()
+        return resultado
+
+    def excluir_lancamento(self, id_lancamento, id_usuario):
+        atual = self.obter_lancamento(id_lancamento, id_usuario)
+        if not atual:
+            raise ValueError("Lançamento não encontrado.")
+        if atual.get("Paga"):
+            raise ValueError("Lançamentos de uma fatura paga não podem ser excluídos.")
+        resultado = self.lancamento_model.excluir_lancamento(id_lancamento, id_usuario)
+        self._clear_cache()
+        return resultado
 
     # ============================================================
     # FATURA
@@ -580,34 +608,12 @@ class FaturaService:
             "total_registros": total_registros
         }
 
-    def exportar_fatura_pdf(self, cartao, lancamentos, caminho):
+    def exportar_fatura_pdf(self, cartao, lancamentos, caminho, mes, ano):
         if not caminho:
             raise ValueError("Caminho do PDF não informado.")
 
-        from utilitarios.makepdf import MakePDF
-
-        nome_cartao = (cartao or {}).get("Nome", "Cartão")
-        linhas = [f"Cartão: {nome_cartao}", ""]
-
-        total = 0.0
-        for item in lancamentos or []:
-            valor = float(item.get("Valor") or 0)
-            total += valor
-            data = item.get("Data", "")
-            descricao = item.get("Descricao", "")
-            categoria = item.get("Categoria", "Sem categoria")
-            status = "Pago" if item.get("Paga") else "Aberto"
-
-            linhas.append(
-                f"{data} | {descricao} | {categoria} | R$ {valor:.2f} | {status}"
-            )
-
-        linhas.extend(["", f"Total: R$ {total:.2f}"])
-        return MakePDF.gerar_pdf(
-            caminho,
-            f"Fatura - {nome_cartao}",
-            "\n".join(linhas)
-        )
+        from utilitarios.financial_pdf import FinancialPDF
+        return FinancialPDF.fatura(caminho, cartao or {}, lancamentos or [], mes, ano)
 
     # ============================================================
     # CATEGORIA

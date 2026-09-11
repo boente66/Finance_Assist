@@ -49,7 +49,8 @@ class IAExportService:
             return self.model.export_to_xlsx(caminho_arquivo)
 
         if formato == "PDF":
-            titulo = f"Extrato - {conta['Nome_Conta']}"
-            return self.model.export_to_pdf(caminho_arquivo, titulo)
+            return self.model.export_statement_pdf(
+                caminho_arquivo, conta, transacoes, data_inicio, data_fim
+            )
 
         raise ValueError("Formato de exportação inválido.")

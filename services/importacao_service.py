@@ -142,7 +142,8 @@ class ImportacaoService:
         self,
         caminho_arquivo: str,
         extensao: str,
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        senha_pdf: str | None = None,
     ):
 
         match extensao:
@@ -151,7 +152,7 @@ class ImportacaoService:
                 if progress_callback:
                     progress_callback(15, "Extraindo texto do PDF...")
 
-                return self.pdf_service.ler_texto(caminho_arquivo)
+                return self.pdf_service.ler_texto(caminho_arquivo, senha_pdf)
 
             case ".csv":
                 if progress_callback:
@@ -292,6 +293,7 @@ class ImportacaoService:
         dia_fechamento,
         resolver_competencia,
         progress_callback=None,
+        senha_pdf=None,
     ):
         """Importa fatura estruturada usando os leitores e reconhecimento comuns."""
         if not caminho_arquivo or not os.path.exists(caminho_arquivo):
@@ -303,7 +305,7 @@ class ImportacaoService:
             progress_callback(10, "Lendo fatura...")
         extensao = os.path.splitext(caminho_arquivo)[1].lower()
         conteudo = self._ler_conteudo(
-            caminho_arquivo, extensao, progress_callback
+            caminho_arquivo, extensao, progress_callback, senha_pdf
         )
         reconhecimento = self.reconhecimento_service.reconhecer_layout(conteudo)
         if reconhecimento.get("tipo_documento") != "fatura_cartao":

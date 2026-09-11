@@ -68,7 +68,14 @@ def run_check():
         modules = sorted('views.' + p.stem for p in (Path(__file__).resolve().parents[1] / 'views').glob('*.py') if p.stem != '__init__')
     fixtures = {'usuario_logado': user, 'usuario': user, 'controller': controller,
                 'transacao': {}, 'lancamentos': [], 'tooltip': 'Adicionar',
-                'symbol': '+', 'label': 'Teste'}
+                'symbol': '+', 'label': 'Teste',
+                'lancamento': {
+                    'ID_Lancamento': 1, 'ID_Cartao': 1,
+                    'Descricao': 'Teste', 'Valor': 1,
+                    'Data': '2026-01-01', 'Competencia_Mes': 1,
+                    'Competencia_Ano': 2026, 'Num_Parcelas': 1,
+                    'Parcela_Atual': 1, 'Paga': 0,
+                }}
     widgets = []
     try:
         if getattr(sys, 'frozen', False):
@@ -117,6 +124,14 @@ def run_check():
                         kwargs['conta'] = {'ID_Conta': 1, 'Nome_Conta': 'Teste', 'Saldo': 0}
                     if cls.__name__ == 'FaturaDialog':
                         kwargs['id_cartao'] = 1
+                    if cls.__name__ == 'EditarFaturaDialog':
+                        kwargs['lancamento'] = {
+                            'ID_Lancamento': 1, 'ID_Cartao': 1,
+                            'Descricao': 'Teste', 'Valor': 1,
+                            'Data': '2026-01-01', 'Competencia_Mes': 1,
+                            'Competencia_Ano': 2026, 'Num_Parcelas': 1,
+                            'Parcela_Atual': 1, 'Paga': 0,
+                        }
                     if cls.__name__ == 'TransactionDialogConta':
                         kwargs['id_conta'] = 1
                     if cls.__name__ == 'SubcategoriaDialog':

@@ -52,6 +52,7 @@ class FaturaController:
         caminho_arquivo,
         id_cartao,
         progress_callback=None,
+        senha_pdf=None,
     ):
         id_usuario = self.get_id_usuario()
         cartao = self.service.buscar_cartao_por_id(id_cartao, id_usuario)
@@ -64,6 +65,7 @@ class FaturaController:
             dia_fechamento=cartao["Dia_Fechamento"],
             resolver_competencia=self.service.aplicar_fatura,
             progress_callback=progress_callback,
+            senha_pdf=senha_pdf,
         )
 
     def salvar_lancamentos_importados(self, lista_lancamentos):
@@ -150,12 +152,21 @@ class FaturaController:
     # ==================================================
     # EXPORTAÇÃO
     # ==================================================
-    def exportar_fatura_pdf(self, cartao, lancamentos, caminho):
+    def exportar_fatura_pdf(self, cartao, lancamentos, caminho, mes, ano):
         return self.service.exportar_fatura_pdf(
-            cartao,
-            lancamentos,
-            caminho
+            cartao, lancamentos, caminho, mes, ano
         )
+
+    def obter_lancamento(self, id_lancamento):
+        return self.service.obter_lancamento(id_lancamento, self.get_id_usuario())
+
+    def atualizar_lancamento(self, id_lancamento, dados):
+        return self.service.atualizar_lancamento(
+            id_lancamento, dados, self.get_id_usuario()
+        )
+
+    def excluir_lancamento(self, id_lancamento):
+        return self.service.excluir_lancamento(id_lancamento, self.get_id_usuario())
 
     # ==================================================
     # VALORES

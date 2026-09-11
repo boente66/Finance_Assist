@@ -1,87 +1,88 @@
-from models.layouts.fatura_cartao_layout import FaturaCartaoLayoutModel
+import pytest
+from models.layouts.nubank_fatura_layout import NubankFaturaLayoutModel
 from services.reconhecer_service import ReconhecimentoService
-from services.importacao_service import ImportacaoService
 
-from conftest import criar_cartao, criar_usuario
+PICPAY = """Esta é a sua fatura de Agosto.
+Vencimento: 25/08/2026 | Fechamento: 19/08/2026
+PicPay Mastercard® PLATINUM
+Total da sua fatura R$ 285,65
+Transações Nacionais
+04/07 IOF DIARIO PARCELADO 0,21
+04/07 IOF ADICIONAL PARCELADO 0,19
+04/07 FIN DROGARIA LIDER 2 . 49,99
+17/07 PAGAMENTO DE FATURA -214,08
+18/08 CREDITO PULA COMPRA -44,90
+18/07 NETFLIX ENTRETENIMENTO 44,90
+28/07 GOOGLE ONE 49,99
+01/08 99PAY *RECARGA SALDO 7,45
+05/08 DL*UBERRIDES 3,93
+12/08 GOOGLE CHATGPT 95,99
+14/08 GOOGLE MICROSOFT ONED 33,00
+18/08 NETFLIX.COM 44,90
+"""
+
+NUBANK = """Nubank
+FATURA 27 AGO 2026 EMISSÃO E ENVIO 20 AGO 2026
+RESUMO DA FATURA ATUAL
+TRANSAÇÕES DE 20 JUL A 20 AGO
+20 JUL •••• 5514 Shopee *Partirjuntos - Parcela 4/4 R$ 5,20
+22 JUL Plano NuCel R$ 25,00
+23 JUL Raia Drogasil - NuPay R$ 37,49
+27 JUL Nubank+ R$ 29,00
+09 AGO 99Food - NuPay R$ 41,03
+20 JUL Pagamento em 20 JUL −R$ 208,22
+20 JUL
+ Cliente exemplo - Parcela 6/6
+Total a pagar: R$ 420,70 (valor da transação de R$ 300,00 + R$ 4,32 de IOF
++ R$ 116,38 de juros) divididos em 6 parcelas de R$ 70,12.R$ 70,12
+27 JUL Saldo restante da fatura anterior R$ 0,00
+"""
+
+ITAU = """Banco Itaú S.A.
+Vencimento: 24/08/2026 = Total desta fatura 63,40
+L Lançamentos atuais 69,40
+Lançamentos: compras e saques
+CLIENTE EXEMPLO
+DATA ESTABELECIMENTO VALOR EM R$
+21/07 Carteira digital 5,97 Encargos cobrados nesta fatura
+25/07 LOJA EXEMPLO 01/05 27,76
+26/07 ASSINATURA DIGITAL 8,34 Multa por atraso 2,00 % 0,00
+26/07 TRANSPORTE 6,03
+26/07 SERVICO ONLINE 5,99
+27/07 SERVICO ONLINE 6,00
+29/07 TRANSPORTE 4,32 Valor original da dívida 0,00
+10/08 TRANSPORTE 4,99 % juros sobre dívida origem 0,00%
+Lançamentos no cartão 69,40
+L Total dos lançamentos atuais 69,40
+Compras parceladas - próximas faturas
+25/07 LOJA EXEMPLO 02/05 27,76
+"""
 
 
-def test_reconhece_e_normaliza_fatura_csv_estruturada():
-    conteudo = [{
-        "Data": "05/08/2026",
-        "Descricao": "LOJA EXEMPLO",
-        "Valor": "R$ 123,45",
-        "TipoDocumento": "fatura_cartao",
-        "parcela": "03/10",
-        "competencia": "08/2026",
-    }]
-    reconhecimento = ReconhecimentoService().reconhecer_layout(conteudo)
-    assert reconhecimento["tipo_documento"] == "fatura_cartao"
-
-    item = reconhecimento["layout"].parse(conteudo)[0]
-    assert item["Data"] == "2026-08-05"
-    assert item["Valor"] == 123.45
-    assert item["Parcela_Atual"] == 3
-    assert item["Num_Parcelas"] == 10
-    assert (item["Competencia_Mes"], item["Competencia_Ano"]) == (8, 2026)
+@pytest.mark.parametrize("texto,nome,total,quantidade", [
+    (PICPAY, "fatura_picpay_pdf", 330.55, 10),
+    (NUBANK, "fatura_nubank_pdf", 207.84, 6),
+    (ITAU, "fatura_itau_pdf", 69.40, 8),
+])
+def test_reconhece_layouts_reais_e_fecha_total(texto, nome, total, quantidade):
+    reconhecimento = ReconhecimentoService().reconhecer_layout(texto)
+    assert reconhecimento["nome"] == nome
+    itens = reconhecimento["layout"].parse(texto)
+    assert len(itens) == quantidade
+    assert sum(item["Valor"] for item in itens) == pytest.approx(total)
+    assert all(item["Competencia_Mes"] == 8 for item in itens)
+    assert not any("PAGAMENTO" in item["Descricao"].upper() for item in itens)
 
 
-def test_parcela_malformada_nao_e_inventada():
-    item = FaturaCartaoLayoutModel().parse([{
-        "Data": "2026-08-05",
-        "Descricao": "Compra",
-        "Valor": 10,
-        "TipoDocumento": "fatura_cartao",
-        "parcela": "10/03",
-    }])[0]
-    assert item["Parcela_Atual"] == 1
-    assert item["Num_Parcelas"] == 1
+def test_parcelas_e_ano_anterior_sao_preservados():
+    itens = NubankFaturaLayoutModel().parse(NUBANK)
+    parcela = next(item for item in itens if "6/6" in item["Descricao"])
+    assert (parcela["Parcela_Atual"], parcela["Num_Parcelas"]) == (6, 6)
+    assert parcela["Data"] == "2026-07-20"
 
 
-def test_reconhece_colunas_usuais_de_planilha_de_fatura():
-    conteudo = [{
-        "Datadacompra": "2026-08-05",
-        "Descricao": "Compra XLSX",
-        "Valor": 10,
-        "Parcela": "1/2",
-    }]
-    reconhecimento = ReconhecimentoService().reconhecer_layout(conteudo)
-    assert reconhecimento["tipo_documento"] == "fatura_cartao"
-    assert reconhecimento["layout"].parse(conteudo)[0]["Num_Parcelas"] == 2
-
-
-def test_pdf_textual_generico_nao_e_anunciado_como_fatura_suportada():
-    reconhecimento = ReconhecimentoService().reconhecer_layout(
-        "Fatura do cartão com lançamentos diversos"
-    )
-    assert reconhecimento["tipo_documento"] != "fatura_cartao"
-
-
-def test_pipeline_real_de_fatura_csv_chega_reconciliado(
-    db, db_path, tmp_path, monkeypatch
-):
-    usuario = criar_usuario(db, "pipeline_fatura")
-    cartao = criar_cartao(db, usuario)
-    arquivo = tmp_path / "fatura.csv"
-    arquivo.write_text(
-        "Data,Descricao,Valor,Parcela,Competencia\n"
-        "05/08/2026,Loja Exemplo,123.45,03/10,08/2026\n",
-        encoding="utf-8",
-    )
-    service = ImportacaoService(db_path)
-    monkeypatch.setattr(
-        service.categorizacao_service,
-        "categorizar",
-        lambda *_args: (None, 0.0),
-    )
-
-    resultado = service.importar_fatura(
-        str(arquivo),
-        usuario,
-        cartao,
-        10,
-        lambda _data, _fechamento: (8, 2026),
-    )
-    assert len(resultado) == 1
-    assert resultado[0]["StatusImportacao"] == "NOVO"
-    assert resultado[0]["Parcela_Atual"] == 3
-    assert resultado[0]["Num_Parcelas"] == 10
+def test_layout_generico_nao_aceita_planilha_ambigua():
+    resultado = ReconhecimentoService().reconhecer_layout([{
+        "Data": "05/08/2026", "Descricao": "Compra", "Valor": "123,45"
+    }])
+    assert resultado["tipo_documento"] != "fatura_cartao"

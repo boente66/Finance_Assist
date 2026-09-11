@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
 import os
 from datetime import datetime
@@ -8,10 +9,10 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QDialog,
     QToolButton, QMessageBox, QPushButton, QInputDialog,
-    QFrame, QProgressBar
+    QFrame, QProgressBar, QMenu, QApplication, QLineEdit
 )
-from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QIcon, QFont
+from PyQt5.QtCore import Qt, QSize
 
 from controllers.fatura_controller import FaturaController
 from controllers.account_controller import AccountController
@@ -25,6 +26,7 @@ from utilitarios.date_formatter import DateFormatter
 from utilitarios.ion_path import IonPath
 
 from views.fatura_dialog import FaturaDialog
+from views.editar_fatura_dialog import EditarFaturaDialog
 from views.responsive_layout import FlowLayout
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,7 @@ class PainelFatura(QWidget):
         self.btn_pagar.setText(TranslatorApp.get("Pagar"))
         self.btn_exportar.setText(TranslatorApp.get("PDF"))
         self.btn_importar.setText(TranslatorApp.get("Importar fatura"))
+        self.btn_acoes.setText(TranslatorApp.get("Ações"))
 
         self.lbl_status.setText(TranslatorApp.get("Status:"))
         self.lbl_mes.setText(TranslatorApp.get("Mês:"))
@@ -168,6 +171,8 @@ class PainelFatura(QWidget):
         self.btn_exportar.setIcon(self._icon("pdf"))
         self.btn_importar = btn("Importar fatura", self.importar_fatura)
         self.btn_importar.setIcon(self._icon("import"))
+        self.btn_acoes = btn("Ações", self._abrir_menu_acoes)
+        self.btn_acoes.setIcon(self._icon("adjust"))
         self.btn_pagar.setObjectName("secondaryButton")
         self.btn_exportar.setObjectName("secondaryButton")
 
@@ -175,6 +180,7 @@ class PainelFatura(QWidget):
         self.toolbar.addWidget(self.btn_pagar)
         self.toolbar.addWidget(self.btn_exportar)
         self.toolbar.addWidget(self.btn_importar)
+        self.toolbar.addWidget(self.btn_acoes)
 
         self.filtro_combo = QComboBox()
         self.filtro_combo.addItem("Todos", "Todos")
@@ -230,6 +236,8 @@ class PainelFatura(QWidget):
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.cellDoubleClicked.connect(lambda *_: self.editar_lancamento())
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         layout.addWidget(self.table)
@@ -275,6 +283,15 @@ class PainelFatura(QWidget):
         if width >= 760:
             header.setSectionResizeMode(1, QHeaderView.Stretch)
             header.setSectionResizeMode(2, QHeaderView.Stretch)
+        font_size = 9 if width < 760 else 10
+        self.table.setFont(QFont(self.font().family(), font_size))
+        self.table.verticalHeader().setDefaultSectionSize(28 if width < 760 else 34)
+        for button in (self.btn_lancar, self.btn_pagar, self.btn_exportar,
+                       self.btn_importar, self.btn_acoes):
+            button.setIconSize(QSize(15, 15) if width < 760 else QSize(18, 18))
+            button.setToolButtonStyle(
+                Qt.ToolButtonIconOnly if width < 600 else Qt.ToolButtonTextBesideIcon
+            )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -326,8 +343,9 @@ class PainelFatura(QWidget):
         self._reset_paginacao()
 
     def _next_page(self):
-        self.page += 1
-        self._carregar()
+        if self.table.rowCount() == self.limit:
+            self.page += 1
+            self._carregar()
 
     def _prev_page(self):
         if self.page > 0:
@@ -436,12 +454,14 @@ class PainelFatura(QWidget):
             if item.get("Parcela_Atual") and item.get("Num_Parcelas"):
                 descricao += f" ({item['Parcela_Atual']}/{item['Num_Parcelas']})"
 
+            data_item = QTableWidgetItem(
+                DateFormatter.iso_to_br(item.get("Data", ""))
+            )
+            data_item.setData(Qt.UserRole, int(item["ID_Lancamento"]))
             self.table.setItem(
                 row,
                 0,
-                QTableWidgetItem(
-                    DateFormatter.iso_to_br(item.get("Data", ""))
-                )
+                data_item
             )
 
             self.table.setItem(row, 1, QTableWidgetItem(descricao))
@@ -462,6 +482,93 @@ class PainelFatura(QWidget):
     # ======================================================
     # AÇÕES
     # ======================================================
+    def _abrir_menu_acoes(self):
+        menu = QMenu(self)
+        copiar = menu.addAction(self._icon("copy"), TranslatorApp.get("Copiar"))
+        colar = menu.addAction(self._icon("add"), TranslatorApp.get("Colar"))
+        menu.addSeparator()
+        editar = menu.addAction(self._icon("edit"), TranslatorApp.get("Editar"))
+        excluir = menu.addAction(self._icon("delete"), TranslatorApp.get("Excluir"))
+        copiar.setEnabled(self._id_selecionado() is not None)
+        editar.setEnabled(self._id_selecionado() is not None)
+        excluir.setEnabled(self._id_selecionado() is not None)
+        colar.setEnabled(bool(QApplication.clipboard().text().strip()))
+        escolhido = menu.exec_(self.btn_acoes.mapToGlobal(self.btn_acoes.rect().bottomLeft()))
+        if escolhido is copiar:
+            self.copiar_lancamento()
+        elif escolhido is colar:
+            self.colar_lancamento()
+        elif escolhido is editar:
+            self.editar_lancamento()
+        elif escolhido is excluir:
+            self.excluir_lancamento()
+
+    def _id_selecionado(self):
+        row = self.table.currentRow()
+        item = self.table.item(row, 0) if row >= 0 else None
+        return item.data(Qt.UserRole) if item else None
+
+    def copiar_lancamento(self):
+        identificador = self._id_selecionado()
+        if identificador is None:
+            return False
+        item = self.controller.obter_lancamento(identificador)
+        if not item:
+            return False
+        QApplication.clipboard().setText(json.dumps(dict(item), ensure_ascii=False))
+        return True
+
+    def colar_lancamento(self):
+        if not self.cartao:
+            return False
+        try:
+            item = json.loads(QApplication.clipboard().text())
+            if not isinstance(item, dict) or not item.get("Descricao"):
+                raise ValueError("A área de transferência não contém um lançamento de fatura.")
+            for chave in ("ID_Lancamento", "ID_Usuario", "ID_Conta", "ID_Transacao", "Paga"):
+                item.pop(chave, None)
+            item["ID_Cartao"] = self.cartao["ID_Cartao"]
+            item["Competencia_Mes"] = int(self.mes_combo.currentData())
+            item["Competencia_Ano"] = int(self.ano_combo.currentText())
+            item["Paga"] = 0
+            self.controller.registrar_despesa_cartao(item)
+            self._carregar()
+            return True
+        except Exception as exc:
+            QMessageBox.warning(self, TranslatorApp.get("Não foi possível colar"), str(exc))
+            return False
+
+    def editar_lancamento(self):
+        identificador = self._id_selecionado()
+        if identificador is None:
+            return False
+        item = self.controller.obter_lancamento(identificador)
+        if not item:
+            return False
+        dialog = EditarFaturaDialog(item, self)
+        if dialog.exec_() == QDialog.Accepted:
+            self._carregar()
+            return True
+        return False
+
+    def excluir_lancamento(self):
+        identificador = self._id_selecionado()
+        if identificador is None:
+            return False
+        if QMessageBox.question(
+            self, TranslatorApp.get("Excluir lançamento"),
+            TranslatorApp.get("Deseja excluir este lançamento da fatura?"),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        ) != QMessageBox.Yes:
+            return False
+        try:
+            self.controller.excluir_lancamento(identificador)
+            self._carregar()
+            return True
+        except Exception as exc:
+            QMessageBox.warning(self, TranslatorApp.get("Não foi possível excluir"), str(exc))
+            return False
+
     def add_transaction(self):
         if not self.cartao:
             QMessageBox.warning(
@@ -491,11 +598,21 @@ class PainelFatura(QWidget):
             self,
             TranslatorApp.get("Selecionar fatura"),
             "",
-            "Faturas estruturadas (*.csv *.xlsx *.xls)",
+            "Faturas PDF (*.pdf)",
         )
         if not arquivo:
             return
         try:
+            senha_pdf = None
+            from PyPDF2 import PdfReader
+            if PdfReader(arquivo).is_encrypted:
+                senha_pdf, ok = QInputDialog.getText(
+                    self, TranslatorApp.get("Fatura protegida"),
+                    TranslatorApp.get("Digite a senha do PDF:"),
+                    QLineEdit.Password,
+                )
+                if not ok:
+                    return
             from workers.import_worker import ImportWorker
 
             self.import_progress.setValue(0)
@@ -506,6 +623,7 @@ class PainelFatura(QWidget):
                 id_conta=self.cartao["ID_Cartao"],
                 parent=self,
                 tipo_destino="cartao",
+                senha_pdf=senha_pdf,
             )
             self.import_worker.progress.connect(
                 lambda valor, _texto: self.import_progress.setValue(valor)
@@ -698,7 +816,9 @@ class PainelFatura(QWidget):
             self.controller.exportar_fatura_pdf(
                 self.cartao,
                 dados,
-                caminho
+                caminho,
+                mes,
+                ano,
             )
 
             QMessageBox.information(
