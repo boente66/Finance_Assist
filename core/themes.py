@@ -242,6 +242,14 @@ QPushButton#circularAddButton:pressed {{
     background: {c['sidebar_active']}; border-color: {c['sidebar_active']};
 }}
 QPushButton#circularAddButton:focus {{ border: 2px solid {c['focus']}; }}
+QPushButton#circularNavButton, QToolButton#circularNavButton {{
+    background: {c['primary']}; color: white; border: 1px solid {c['primary']};
+    border-radius: 18px; padding: 0; min-width: 36px; max-width: 36px;
+    min-height: 36px; max-height: 36px; font-weight: 700;
+}}
+QPushButton#circularNavButton:hover, QToolButton#circularNavButton:hover {{
+    background: {c['primary_hover']}; border-color: {c['focus']};
+}}
 QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{ background: {c['input_background']}; color: {c['text_primary']}; border: 1px solid {c['border']}; border-radius: {radius - 3}px; padding: 4px 8px; min-height: {field_height}px; selection-background-color: {c['selection']}; }}
 QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {{ border: 2px solid {c['focus']}; }}
 QComboBox QAbstractItemView {{ background: {c['surface']}; color: {c['text_primary']}; selection-background-color: {c['selection']}; }}

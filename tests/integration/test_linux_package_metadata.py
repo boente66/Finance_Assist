@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_versao_de_teste_possui_formatos_coerentes():
-    assert APP_VERSION == "2.1.0-test.7"
-    assert DEBIAN_VERSION == "2.1.0~test7"
+    assert APP_VERSION == "2.1.0-test.8"
+    assert DEBIAN_VERSION == "2.1.0~test8"
 
 
 def test_metadados_debian_declaram_pacote_de_teste():

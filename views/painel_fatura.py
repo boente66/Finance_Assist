@@ -68,7 +68,6 @@ class PainelFatura(QWidget):
         self.btn_pagar.setText(TranslatorApp.get("Pagar"))
         self.btn_exportar.setText(TranslatorApp.get("PDF"))
         self.btn_importar.setText(TranslatorApp.get("Importar fatura"))
-        self.btn_acoes.setText(TranslatorApp.get("Ações"))
 
         self.lbl_status.setText(TranslatorApp.get("Status:"))
         self.lbl_mes.setText(TranslatorApp.get("Mês:"))
@@ -123,6 +122,8 @@ class PainelFatura(QWidget):
     # ======================================================
     def _init_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(7)
 
         self.nome_cartao_label = QLabel("-")
         self.nome_cartao_label.setObjectName("pageTitle")
@@ -171,8 +172,6 @@ class PainelFatura(QWidget):
         self.btn_exportar.setIcon(self._icon("pdf"))
         self.btn_importar = btn("Importar fatura", self.importar_fatura)
         self.btn_importar.setIcon(self._icon("import"))
-        self.btn_acoes = btn("Ações", self._abrir_menu_acoes)
-        self.btn_acoes.setIcon(self._icon("adjust"))
         self.btn_pagar.setObjectName("secondaryButton")
         self.btn_exportar.setObjectName("secondaryButton")
 
@@ -180,7 +179,6 @@ class PainelFatura(QWidget):
         self.toolbar.addWidget(self.btn_pagar)
         self.toolbar.addWidget(self.btn_exportar)
         self.toolbar.addWidget(self.btn_importar)
-        self.toolbar.addWidget(self.btn_acoes)
 
         self.filtro_combo = QComboBox()
         self.filtro_combo.addItem("Todos", "Todos")
@@ -237,6 +235,8 @@ class PainelFatura(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._abrir_menu_acoes)
         self.table.cellDoubleClicked.connect(lambda *_: self.editar_lancamento())
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
@@ -247,14 +247,20 @@ class PainelFatura(QWidget):
 
         self.btn_prev = QPushButton("◀")
         self.btn_next = QPushButton("▶")
+        for button, tip in ((self.btn_prev, "Página anterior"), (self.btn_next, "Próxima página")):
+            button.setObjectName("circularNavButton")
+            button.setFixedSize(38, 38)
+            button.setToolTip(TranslatorApp.get(tip))
         self.label_page = QLabel()
 
         self.btn_prev.clicked.connect(self._prev_page)
         self.btn_next.clicked.connect(self._next_page)
 
+        paginacao.addStretch()
         paginacao.addWidget(self.btn_prev)
         paginacao.addWidget(self.label_page)
         paginacao.addWidget(self.btn_next)
+        paginacao.addStretch()
 
         layout.addLayout(paginacao)
 
@@ -271,7 +277,7 @@ class PainelFatura(QWidget):
 
     def set_compact_mode(self, compact, available_width=None):
         width = int(available_width or self.width())
-        columns = 3 if width >= 850 else 2 if width >= 520 else 1
+        columns = 3 if width >= 680 else 2 if width >= 460 else 1
         for widget in self.indicator_widgets:
             self.indicators_layout.removeWidget(widget)
         for index, widget in enumerate(self.indicator_widgets):
@@ -287,7 +293,7 @@ class PainelFatura(QWidget):
         self.table.setFont(QFont(self.font().family(), font_size))
         self.table.verticalHeader().setDefaultSectionSize(28 if width < 760 else 34)
         for button in (self.btn_lancar, self.btn_pagar, self.btn_exportar,
-                       self.btn_importar, self.btn_acoes):
+                       self.btn_importar):
             button.setIconSize(QSize(15, 15) if width < 760 else QSize(18, 18))
             button.setToolButtonStyle(
                 Qt.ToolButtonIconOnly if width < 600 else Qt.ToolButtonTextBesideIcon
@@ -482,7 +488,11 @@ class PainelFatura(QWidget):
     # ======================================================
     # AÇÕES
     # ======================================================
-    def _abrir_menu_acoes(self):
+    def _abrir_menu_acoes(self, pos=None):
+        if pos is not None:
+            item = self.table.itemAt(pos)
+            if item:
+                self.table.selectRow(item.row())
         menu = QMenu(self)
         copiar = menu.addAction(self._icon("copy"), TranslatorApp.get("Copiar"))
         colar = menu.addAction(self._icon("add"), TranslatorApp.get("Colar"))
@@ -493,7 +503,11 @@ class PainelFatura(QWidget):
         editar.setEnabled(self._id_selecionado() is not None)
         excluir.setEnabled(self._id_selecionado() is not None)
         colar.setEnabled(bool(QApplication.clipboard().text().strip()))
-        escolhido = menu.exec_(self.btn_acoes.mapToGlobal(self.btn_acoes.rect().bottomLeft()))
+        global_pos = (
+            self.table.viewport().mapToGlobal(pos)
+            if pos is not None else self.table.mapToGlobal(self.table.rect().center())
+        )
+        escolhido = menu.exec_(global_pos)
         if escolhido is copiar:
             self.copiar_lancamento()
         elif escolhido is colar:

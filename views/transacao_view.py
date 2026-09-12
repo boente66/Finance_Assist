@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QMenu,
     QMessageBox,
     QApplication,
+    QFrame,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
@@ -30,8 +31,10 @@ from views.criar_cartao_dialog import CriarCartaoDialog, EditCartaoDialog
 from views.ajustar_saldo_dialog import AjustarSaldoDialog
 from views.painel_account import PainelAccount
 from views.painel_fatura import PainelFatura
+from views.animated_add_button import AnimatedAddButton
 
 from core.translator_app import TranslatorApp
+from core.config import carregar_config
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +57,16 @@ class TransacaoView(QWidget):
         self.page_title.setObjectName("pageTitle")
         self.page_subtitle = QLabel()
         self.page_subtitle.setObjectName("pageSubtitle")
-        root_layout.addWidget(self.page_title)
+        title_row = QHBoxLayout()
+        title_row.addWidget(self.page_title)
+        title_row.addStretch()
+        self.btn_recarregar = QPushButton(TranslatorApp.get("Atualizar"))
+        self.btn_recarregar.setObjectName("secondaryButton")
+        self.btn_recarregar.setIcon(self._icon("refresh"))
+        self.btn_recarregar.setToolTip(TranslatorApp.get("Recarregar contas e cartões do banco"))
+        self.btn_recarregar.clicked.connect(self.recarregar_dados)
+        title_row.addWidget(self.btn_recarregar)
+        root_layout.addLayout(title_row)
         root_layout.addWidget(self.page_subtitle)
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setChildrenCollapsible(False)
@@ -145,7 +157,7 @@ class TransacaoView(QWidget):
         ) = self._criar_lista_com_header(
             "Contas e Poupanças",
             self.criar_conta_dialog,
-            altura_max=220
+            altura_max=170
         )
 
         self.lista_contas.itemClicked.connect(
@@ -173,7 +185,7 @@ class TransacaoView(QWidget):
         ) = self._criar_lista_com_header(
             "Cartões de Crédito",
             self.criar_cartao_dialog,
-            altura_max=160
+            altura_max=130
         )
 
         self.lista_cartoes.itemClicked.connect(
@@ -201,11 +213,29 @@ class TransacaoView(QWidget):
         self.splitter.addWidget(self.area_painel_widget)
         self.splitter.setStretchFactor(0, 0)
         self.splitter.setStretchFactor(1, 1)
-        self.splitter.setSizes([280, 900])
+        self.splitter.setSizes([240, 940])
+        self._mostrar_boas_vindas()
+
+    def _mostrar_boas_vindas(self):
+        nome = ((getattr(self.parent(), "usuario", {}) or {}).get("Nome") or "Usuário").split()[0]
+        vazio = QFrame()
+        vazio.setObjectName("financeTip")
+        caixa = QVBoxLayout(vazio)
+        boas_vindas = carregar_config().get("mensagem_boas_vindas", True)
+        titulo = QLabel(f"Bem-vindo, {nome}!" if boas_vindas else "Contas e cartões")
+        titulo.setObjectName("pageTitle")
+        texto = QLabel("Selecione uma conta ou cartão para consultar e atualizar suas informações.")
+        texto.setObjectName("muted")
+        texto.setWordWrap(True)
+        caixa.addStretch()
+        caixa.addWidget(titulo, 0, Qt.AlignCenter)
+        caixa.addWidget(texto, 0, Qt.AlignCenter)
+        caixa.addStretch()
+        self._trocar_painel(vazio)
 
     def set_compact_mode(self, compact, available_width=None):
         width = int(available_width or self.width())
-        left_width = 210 if width < 900 else 280
+        left_width = 205 if width < 900 else 240
         self.left_widget.setMinimumWidth(180)
         self.splitter.setSizes([left_width, max(360, width - left_width)])
         if self.painel_ativo and hasattr(self.painel_ativo, "set_compact_mode"):
@@ -214,6 +244,8 @@ class TransacaoView(QWidget):
     def _trocar_painel(self, painel):
         if self.painel_ativo:
             self.area_painel.removeWidget(self.painel_ativo)
+            self.painel_ativo.hide()
+            self.painel_ativo.setParent(None)
             self.painel_ativo.deleteLater()
 
         self.painel_ativo = painel
@@ -289,6 +321,8 @@ class TransacaoView(QWidget):
     # CARREGAMENTOS
     # ==========================================================
     def carregar_contas(self):
+        selecionada = self.lista_contas.currentItem()
+        id_selecionado = selecionada.data(Qt.UserRole) if selecionada else None
         self.lista_contas.clear()
 
         contas = self.account_controller.get_all_accounts() or []
@@ -317,6 +351,8 @@ class TransacaoView(QWidget):
             )
 
             self.lista_contas.addItem(item)
+            if conta.get("ID_Conta") == id_selecionado:
+                self.lista_contas.setCurrentItem(item)
 
         self.lbl_saldo_total_contas.setText(
             f"{TranslatorApp.get('Saldo total')}: "
@@ -324,6 +360,8 @@ class TransacaoView(QWidget):
         )
 
     def carregar_cartoes(self):
+        selecionado = self.lista_cartoes.currentItem()
+        id_selecionado = selecionado.data(Qt.UserRole) if selecionado else None
         self.lista_cartoes.clear()
 
         cartoes = self.fatura_controller.get_all_cartoes() or []
@@ -344,6 +382,20 @@ class TransacaoView(QWidget):
             )
 
             self.lista_cartoes.addItem(item)
+            if cartao.get("ID_Cartao") == id_selecionado:
+                self.lista_cartoes.setCurrentItem(item)
+
+    def recarregar_dados(self):
+        self.carregar_contas()
+        self.carregar_cartoes()
+        if isinstance(self.painel_ativo, PainelAccount) and self.painel_ativo.conta:
+            conta = self.account_controller.get_account_by_id(self.painel_ativo.conta["ID_Conta"])
+            if conta:
+                self.painel_ativo.set_conta(conta)
+        elif isinstance(self.painel_ativo, PainelFatura) and self.painel_ativo.cartao:
+            cartao = self.fatura_controller.buscar_cartao_por_id(self.painel_ativo.cartao["ID_Cartao"])
+            if cartao:
+                self.painel_ativo.set_cartao(cartao)
 
     # ==========================================================
     # MENUS
@@ -534,11 +586,7 @@ class TransacaoView(QWidget):
         label = QLabel(titulo)
         label.setObjectName("cardTitle")
 
-        btn = QPushButton("")
-        btn.setIcon(
-            self._icon("add")
-        )
-        btn.setMinimumSize(32, 32)
+        btn = AnimatedAddButton(TranslatorApp.get("Adicionar"), self._icon("add"))
         btn.clicked.connect(callback_novo)
 
         header.addWidget(label)

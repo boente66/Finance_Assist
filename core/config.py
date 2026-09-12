@@ -93,6 +93,12 @@ DEFAULTS = {
     "tema": "Primavera",
     "moeda": "BRL",
     "db_path": DEFAULT_DB_PATH,
+    "backup_automatico": False,
+    "backup_intervalo_horas": 24,
+    "backup_retencao": 7,
+    "notificacoes_ativas": True,
+    "alerta_intervalo_minutos": 30,
+    "mensagem_boas_vindas": True,
 }
 
 _config_db = JsonDatabase(file_path=CONFIG_PATH, default_data=DEFAULTS)

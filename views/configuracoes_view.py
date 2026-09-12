@@ -3,7 +3,8 @@ import logging
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QMessageBox, QLineEdit, QFileDialog
+    QPushButton, QMessageBox, QLineEdit, QFileDialog, QCheckBox, QSpinBox,
+    QGroupBox, QFormLayout
 )
 
 from core.session import Session
@@ -93,6 +94,23 @@ class ConfiguracoesView(QWidget):
             self.db_label.hide()
             self.db_edit.hide()
             self.db_btn.hide()
+
+        self.automacao_box = QGroupBox("Backup e alertas em segundo plano")
+        automacao = QFormLayout(self.automacao_box)
+        self.backup_auto_check = QCheckBox("Criar backup automático")
+        self.backup_horas_spin = QSpinBox(); self.backup_horas_spin.setRange(1, 168); self.backup_horas_spin.setSuffix(" h")
+        self.backup_retencao_spin = QSpinBox(); self.backup_retencao_spin.setRange(1, 90)
+        self.notificacoes_check = QCheckBox("Ativar notificações e alertas")
+        self.alerta_minutos_spin = QSpinBox(); self.alerta_minutos_spin.setRange(5, 1440); self.alerta_minutos_spin.setSuffix(" min")
+        self.boas_vindas_check = QCheckBox("Mostrar mensagem de boas-vindas")
+        automacao.addRow(self.backup_auto_check)
+        automacao.addRow("Intervalo do backup", self.backup_horas_spin)
+        automacao.addRow("Backups mantidos", self.backup_retencao_spin)
+        automacao.addRow(self.notificacoes_check)
+        automacao.addRow("Intervalo dos alertas", self.alerta_minutos_spin)
+        automacao.addRow(self.boas_vindas_check)
+        self.automacao_box.setVisible(self.eh_admin)
+        self.layout.addWidget(self.automacao_box)
 
         self.buttons_layout = FlowLayout(horizontal_spacing=8, vertical_spacing=8)
 
@@ -186,6 +204,13 @@ class ConfiguracoesView(QWidget):
 
         if self.eh_admin and db_path:
             self.db_edit.setText(db_path)
+        if self.eh_admin:
+            self.backup_auto_check.setChecked(config.get("backup_automatico", False))
+            self.backup_horas_spin.setValue(config.get("backup_intervalo_horas", 24))
+            self.backup_retencao_spin.setValue(config.get("backup_retencao", 7))
+            self.notificacoes_check.setChecked(config.get("notificacoes_ativas", True))
+            self.alerta_minutos_spin.setValue(config.get("alerta_intervalo_minutos", 30))
+            self.boas_vindas_check.setChecked(config.get("mensagem_boas_vindas", True))
 
         self.idioma_combo.blockSignals(False)
         self.tema_combo.blockSignals(False)
@@ -198,6 +223,12 @@ class ConfiguracoesView(QWidget):
             "moeda": self.moeda_combo.currentData(),
             "db_path": self.db_edit.text().strip()
             if self.eh_admin else None,
+            "backup_automatico": self.backup_auto_check.isChecked() if self.eh_admin else False,
+            "backup_intervalo_horas": self.backup_horas_spin.value() if self.eh_admin else 24,
+            "backup_retencao": self.backup_retencao_spin.value() if self.eh_admin else 7,
+            "notificacoes_ativas": self.notificacoes_check.isChecked() if self.eh_admin else True,
+            "alerta_intervalo_minutos": self.alerta_minutos_spin.value() if self.eh_admin else 30,
+            "mensagem_boas_vindas": self.boas_vindas_check.isChecked() if self.eh_admin else True,
         }
 
     def _set_combo_by_data(self, combo, value):
@@ -278,6 +309,12 @@ class ConfiguracoesView(QWidget):
                 tema=dados["tema"],
                 moeda=dados["moeda"],
                 db_path=dados["db_path"],
+                backup_automatico=dados["backup_automatico"],
+                backup_intervalo_horas=dados["backup_intervalo_horas"],
+                backup_retencao=dados["backup_retencao"],
+                notificacoes_ativas=dados["notificacoes_ativas"],
+                alerta_intervalo_minutos=dados["alerta_intervalo_minutos"],
+                mensagem_boas_vindas=dados["mensagem_boas_vindas"],
             )
 
             if not ok:

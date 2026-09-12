@@ -54,6 +54,7 @@ class ConfiguracoesController:
     # CONFIG ATUAL / SESSION
     # ==================================================
     def obter_configuracoes(self):
+        persistida = carregar_config() or {}
         return {
             "tema": Session.get_config(
                 "tema",
@@ -71,6 +72,12 @@ class ConfiguracoesController:
                 "db_path",
                 self.DEFAULT_CONFIG["db_path"]
             ),
+            "backup_automatico": bool(persistida.get("backup_automatico", False)),
+            "backup_intervalo_horas": int(persistida.get("backup_intervalo_horas", 24)),
+            "backup_retencao": int(persistida.get("backup_retencao", 7)),
+            "notificacoes_ativas": bool(persistida.get("notificacoes_ativas", True)),
+            "alerta_intervalo_minutos": int(persistida.get("alerta_intervalo_minutos", 30)),
+            "mensagem_boas_vindas": bool(persistida.get("mensagem_boas_vindas", True)),
         }
 
     # ==================================================
@@ -99,6 +106,12 @@ class ConfiguracoesController:
                     "db_path",
                     self.DEFAULT_CONFIG["db_path"]
                 ),
+                "backup_automatico": bool(config.get("backup_automatico", False)),
+                "backup_intervalo_horas": int(config.get("backup_intervalo_horas", 24)),
+                "backup_retencao": int(config.get("backup_retencao", 7)),
+                "notificacoes_ativas": bool(config.get("notificacoes_ativas", True)),
+                "alerta_intervalo_minutos": int(config.get("alerta_intervalo_minutos", 30)),
+                "mensagem_boas_vindas": bool(config.get("mensagem_boas_vindas", True)),
             }
 
         except Exception:
@@ -110,7 +123,13 @@ class ConfiguracoesController:
         idioma,
         tema,
         moeda,
-        db_path=None
+        db_path=None,
+        backup_automatico=False,
+        backup_intervalo_horas=24,
+        backup_retencao=7,
+        notificacoes_ativas=True,
+        alerta_intervalo_minutos=30,
+        mensagem_boas_vindas=True,
     ):
         """
         Salva padrão global no configuracoes.json.
@@ -153,6 +172,12 @@ class ConfiguracoesController:
                 or config.get("db_path")
                 or self.DEFAULT_CONFIG["db_path"]
             )
+            config["backup_automatico"] = bool(backup_automatico)
+            config["backup_intervalo_horas"] = max(1, int(backup_intervalo_horas))
+            config["backup_retencao"] = max(1, int(backup_retencao))
+            config["notificacoes_ativas"] = bool(notificacoes_ativas)
+            config["alerta_intervalo_minutos"] = max(5, int(alerta_intervalo_minutos))
+            config["mensagem_boas_vindas"] = bool(mensagem_boas_vindas)
 
             if not salvar_config(config):
                 raise RuntimeError(

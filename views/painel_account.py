@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
 import os
 from datetime import datetime
@@ -18,6 +19,8 @@ from PyQt5.QtWidgets import (
     QProgressDialog,
     QComboBox,
     QLineEdit,
+    QMenu,
+    QApplication,
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QColor, QFont, QIcon
@@ -84,8 +87,6 @@ class PainelAccount(QWidget):
     def _on_translate(self, *_):
         self.btn_lancamento.setText(TranslatorApp.get("Lançamento"))
         self.btn_transferencia.setText(TranslatorApp.get("Transferência"))
-        self.btn_editar.setText(TranslatorApp.get("Editar"))
-        self.btn_excluir.setText(TranslatorApp.get("Excluir"))
         self.btn_importar.setText(TranslatorApp.get("Importar"))
         self.btn_exportar.setText(TranslatorApp.get("Exportar"))
 
@@ -158,18 +159,12 @@ class PainelAccount(QWidget):
             "Transferência", "transfer", self.transfer_transaction
         )
 
-        self.btn_editar = btn("Editar", "edit", self.edit_transaction)
-
-        self.btn_excluir = btn("Excluir", "delete", self.delete_transaction)
-
         self.btn_importar = btn("Importar", "import", self.importar_extrato)
 
         self.btn_exportar = btn("Exportar", "export", self.exportar_extrato)
 
         toolbar.addWidget(self.btn_lancamento)
         toolbar.addWidget(self.btn_transferencia)
-        toolbar.addWidget(self.btn_editar)
-        toolbar.addWidget(self.btn_excluir)
         toolbar.addWidget(self.btn_importar)
         toolbar.addWidget(self.btn_exportar)
 
@@ -220,6 +215,10 @@ class PainelAccount(QWidget):
         )
 
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._abrir_menu_contextual)
+        self.table.cellDoubleClicked.connect(lambda *_: self.edit_transaction())
         layout.addWidget(self.table)
 
         # PAGINAÇÃO
@@ -227,12 +226,16 @@ class PainelAccount(QWidget):
 
         self.btn_prev = QToolButton()
         self.btn_prev.setText("◀")
+        self.btn_prev.setObjectName("circularNavButton")
+        self.btn_prev.setToolTip(TranslatorApp.get("Página anterior"))
         self.btn_prev.clicked.connect(self._prev)
 
         self.lbl_page = QLabel()
 
         self.btn_next = QToolButton()
         self.btn_next.setText("▶")
+        self.btn_next.setObjectName("circularNavButton")
+        self.btn_next.setToolTip(TranslatorApp.get("Próxima página"))
         self.btn_next.clicked.connect(self._next)
 
         pag.addStretch()
@@ -415,6 +418,59 @@ class PainelAccount(QWidget):
     # ==================================================
     # AÇÕES
     # ==================================================
+    def _abrir_menu_contextual(self, pos):
+        item = self.table.itemAt(pos)
+        if item:
+            self.table.selectRow(item.row())
+        menu = QMenu(self)
+        copiar = menu.addAction(self._icon("copy"), TranslatorApp.get("Copiar"))
+        colar = menu.addAction(self._icon("add"), TranslatorApp.get("Colar"))
+        menu.addSeparator()
+        editar = menu.addAction(self._icon("edit"), TranslatorApp.get("Editar"))
+        excluir = menu.addAction(self._icon("delete"), TranslatorApp.get("Excluir"))
+        selecionado = self.table.currentRow() >= 0
+        copiar.setEnabled(selecionado)
+        editar.setEnabled(selecionado)
+        excluir.setEnabled(selecionado)
+        colar.setEnabled(bool(QApplication.clipboard().text().strip()) and bool(self.conta))
+        escolha = menu.exec_(self.table.viewport().mapToGlobal(pos))
+        if escolha is copiar:
+            self.copy_transaction()
+        elif escolha is colar:
+            self.paste_transaction()
+        elif escolha is editar:
+            self.edit_transaction()
+        elif escolha is excluir:
+            self.delete_transaction()
+
+    def copy_transaction(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return False
+        transacao = self.transaction_controller.get_transaction_by_id(
+            int(self.table.item(row, 1).text())
+        )
+        if not transacao:
+            return False
+        QApplication.clipboard().setText(json.dumps(dict(transacao), ensure_ascii=False))
+        return True
+
+    def paste_transaction(self):
+        try:
+            transacao = json.loads(QApplication.clipboard().text())
+            if not isinstance(transacao, dict) or not transacao.get("Descricao"):
+                raise ValueError("A área de transferência não contém uma transação válida.")
+            for chave in ("ID_Transacao", "ID_Usuario", "Categoria", "Favorecido"):
+                transacao.pop(chave, None)
+            transacao["ID_Conta"] = self.conta["ID_Conta"]
+            transacao["ID_Agendamento"] = None
+            self.transaction_controller.add_transaction(transacao)
+            self.carregar_historico()
+            return True
+        except Exception as exc:
+            QMessageBox.warning(self, TranslatorApp.get("Não foi possível colar"), str(exc))
+            return False
+
     def add_transaction(self):
         if not self.conta:
             QMessageBox.warning(

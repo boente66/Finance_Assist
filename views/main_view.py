@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QFrame,
     QApplication,
     QScrollArea,
+    QSystemTrayIcon,
 )
 from PyQt5.QtCore import QPointF, QRectF, QTimer, Qt, QSize
 from PyQt5.QtGui import QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPen, QPixmap
@@ -24,6 +25,8 @@ from core.theme_manager import ThemeManager
 from core.translator_app import TranslatorApp
 from core.window_manager import WindowManager
 from utilitarios.ion_path import IonPath
+from core.background_manager import BackgroundManager
+from core.config import carregar_config
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,29 @@ class MainView(QMainWindow):
         self._update_sidebar_for_width()
 
         self._abrir_primeira_view()
+        self._start_background_services()
+
+    def _start_background_services(self):
+        self.tray = QSystemTrayIcon(self._icon("finance_assist"), self)
+        self.tray.setToolTip("Finance Assist")
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.show()
+        self.background_manager = BackgroundManager(self)
+        self.background_manager.notification.connect(self._show_background_notification)
+        self.background_manager.backup_finished.connect(
+            lambda path: self.statusBar().showMessage(f"Backup automático concluído: {path}", 12000)
+        )
+        config = carregar_config()
+        if config.get("mensagem_boas_vindas", True):
+            nome = (self.usuario.get("Nome") or "Usuário").split()[0]
+            QTimer.singleShot(500, lambda: self.statusBar().showMessage(
+                f"Bem-vindo, {nome}! Seus dados financeiros estão prontos.", 10000
+            ))
+
+    def _show_background_notification(self, title, message):
+        self.statusBar().showMessage(message, 15000)
+        if self.tray.isVisible():
+            self.tray.showMessage(title, message, QSystemTrayIcon.Information, 10000)
 
     # ==================================================
     # MARCA
