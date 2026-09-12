@@ -94,10 +94,16 @@ class MainView(QMainWindow):
         )
         config = carregar_config()
         if config.get("mensagem_boas_vindas", True):
-            nome = (self.usuario.get("Nome") or "Usuário").split()[0]
-            QTimer.singleShot(500, lambda: self.statusBar().showMessage(
-                f"Bem-vindo, {nome}! Seus dados financeiros estão prontos.", 10000
-            ))
+            self.welcome_timer = QTimer(self)
+            self.welcome_timer.setSingleShot(True)
+            self.welcome_timer.timeout.connect(self._show_welcome_message)
+            self.welcome_timer.start(500)
+
+    def _show_welcome_message(self):
+        nome = (self.usuario.get("Nome") or "Usuário").split()[0]
+        self.statusBar().showMessage(
+            f"Bem-vindo, {nome}! Seus dados financeiros estão prontos.", 10000
+        )
 
     def _show_background_notification(self, title, message):
         self.statusBar().showMessage(message, 15000)

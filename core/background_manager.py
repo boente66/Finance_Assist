@@ -27,7 +27,10 @@ class BackgroundManager(QObject):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.check_now)
         self.timer.start(60_000)
-        QTimer.singleShot(3_000, self.check_now)
+        self.initial_timer = QTimer(self)
+        self.initial_timer.setSingleShot(True)
+        self.initial_timer.timeout.connect(self.check_now)
+        self.initial_timer.start(3_000)
 
     def check_now(self):
         config = carregar_config()
