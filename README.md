@@ -5,6 +5,25 @@
   <p>Versão atual: <code>2.1.0-test.8</code> · Estágio: teste multiplataforma</p>
 </div>
 
+[![Versão](https://img.shields.io/badge/versão-2.1.0--test.8-1597c5)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.8)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.8)
+[![Windows](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.8)
+[![Testes](https://img.shields.io/badge/testes-246%20aprovados-2ea44f)](docs/AUDITORIA_INTERFACE_BACKUP_TEST8.md)
+
+**[Baixar a versão test.8](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.8)**
+· **[Manual do usuário](docs/MANUAL_DO_USUARIO.md)**
+· **[Manual em DOCX](DOCUMENTA%C3%87%C3%83O%20DO%20SISTEMA%20CONTROLE%20FINANCEIRO.docx)**
+· **[Auditoria técnica](docs/AUDITORIA_INTERFACE_BACKUP_TEST8.md)**
+
+### Novidades da test.8
+
+- interface mais compacta, com botões circulares, animações e dicas;
+- menu de contexto nas contas e faturas para copiar, colar, editar e excluir;
+- importação de faturas bancárias e exportação organizada dos lançamentos;
+- backup manual e automático criptografado, com intervalo e retenção;
+- alertas de agendamentos vencidos e mensagem de boas-vindas configuráveis;
+- atualização sobre instalações existentes com preservação do banco de dados.
+
 > [!IMPORTANT]
 > Esta versão é destinada a testes e homologação. Ela não deve ser tratada como
 > versão estável nem como substituta de orientação contábil, fiscal, jurídica ou
