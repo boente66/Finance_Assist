@@ -41,3 +41,16 @@ Os testes usam bancos descartáveis e conferem que o backup não altera o banco 
 origem.
 
 Validação local final: **246 testes automatizados aprovados**.
+
+## Publicação
+
+- GitHub Release `v2.1.0-test.8` publicada como prerelease com três instaladores
+  e os respectivos arquivos SHA-256.
+- Build multiplataforma aprovado no GitHub Actions, incluindo Windows e pacotes
+  DEB para Ubuntu 22.04, 24.04 e 26.04.
+- Validação dedicada do pacote Ubuntu 24.04 aprovada, incluindo atualização com
+  preservação do banco existente.
+
+Links: [release](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.8),
+[build multiplataforma](https://github.com/boente66/Finance_Assist/actions/runs/34713345483)
+e [validação Ubuntu 24.04](https://github.com/boente66/Finance_Assist/actions/runs/34713354005).
