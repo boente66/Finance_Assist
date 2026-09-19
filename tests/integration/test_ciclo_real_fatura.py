@@ -59,15 +59,15 @@ def test_ciclo_creditos_pagamento_e_limite_real(db, db_path):
     setembro = service.get_painel_cartao(
         cartao, 9, 2026, usuario
     )["fatura"]
-    assert agosto == {
-        "total": 750.0,
-        "compras": 800.0,
-        "creditos": 50.0,
-        "pagamentos": 0,
-        "saldo_a_pagar": 750.0,
-        "status": "FECHADA",
-        "data_fechamento": "2026-08-20",
-    }
+    assert agosto["total_fatura"] == 750.0
+    assert agosto["compras"] == 800.0
+    assert agosto["creditos"] == -50.0
+    assert agosto["estornos"] == 0
+    assert agosto["ajustes"] == 0
+    assert agosto["pagamentos"] == 0
+    assert agosto["saldo_a_pagar"] == 750.0
+    assert agosto["status"] == "FECHADA"
+    assert agosto["data_fechamento"] == "2026-08-20"
     assert setembro["status"] == "ABERTA"
     assert setembro["compras"] == 300
     assert service.calcular_limite_disponivel(cartao, usuario) == 950
@@ -82,7 +82,7 @@ def test_ciclo_creditos_pagamento_e_limite_real(db, db_path):
     )["fatura"]
     assert agosto_pago["status"] == "PAGA"
     assert agosto_pago["compras"] == 800
-    assert agosto_pago["creditos"] == 50
+    assert agosto_pago["creditos"] == -50
     assert agosto_pago["pagamentos"] == 750
     assert agosto_pago["saldo_a_pagar"] == 0
     assert saldo(db, conta) == 2250
@@ -98,7 +98,6 @@ def test_ciclo_creditos_pagamento_e_limite_real(db, db_path):
     assert [(item["Tipo_Movimento"], item["Valor"]) for item in agosto_itens] == [
         ("COMPRA", 800),
         ("CREDITO", -50),
-        ("PAGAMENTO", -750),
     ]
     fatura_id = db.fetch_one(
         "SELECT ID_Fatura FROM faturas_cartao "
@@ -109,7 +108,7 @@ def test_ciclo_creditos_pagamento_e_limite_real(db, db_path):
         "SELECT COUNT(*) AS total FROM lancamentos "
         "WHERE ID_Cartao = ? AND ID_Fatura = ?",
         (cartao, fatura_id),
-    )["total"] == 3
+    )["total"] == 2
     assert db.fetch_one(
         "SELECT ID_Fatura FROM pagamentos_fatura WHERE ID_Cartao = ?",
         (cartao,),
@@ -141,7 +140,7 @@ def test_estorno_depois_do_fechamento_entra_na_competencia_seguinte(
 
     assert original["Valor"] == 100
     setembro = movimentos(db, cartao, 9)
-    assert setembro[0]["Tipo_Movimento"] == "CREDITO"
+    assert setembro[0]["Tipo_Movimento"] == "ESTORNO"
     assert setembro[0]["Valor"] == -100
     assert setembro[0]["ID_Lancamento_Origem"] == original_id
 
@@ -167,7 +166,7 @@ def test_importacao_preserva_sinal_do_credito(db, db_path):
     assert item["Tipo_Movimento"] == "CREDITO"
 
 
-def test_migracao_preserva_compra_e_materializa_pagamento_historico(db):
+def test_migracao_preserva_compra_sem_materializar_pagamento_historico(db):
     usuario = criar_usuario(db, "migracao_fatura")
     conta = criar_conta(db, usuario, "Conta", 1000)
     cartao = criar_cartao(db, usuario)
@@ -201,7 +200,7 @@ def test_migracao_preserva_compra_e_materializa_pagamento_historico(db):
     ]
     assert tipos_valores
     assert ("COMPRA", 120) in tipos_valores
-    assert ("PAGAMENTO", -120) in tipos_valores
+    assert ("PAGAMENTO", -120) not in tipos_valores
 
 
 def test_persistencia_rejeita_sinal_incorreto_em_credito(db, db_path):

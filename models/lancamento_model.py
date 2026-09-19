@@ -40,14 +40,17 @@ class LancamentoModel(Database):
 
         tipo_movimento = dados.get("Tipo_Movimento", "COMPRA")
         valor = float(dados["Valor"])
-        if tipo_movimento not in {"COMPRA", "CREDITO", "PAGAMENTO"}:
+        permitidos = {"COMPRA", "CREDITO", "ESTORNO", "AJUSTE", "ENCARGO"}
+        if tipo_movimento not in permitidos:
             raise ValueError("Tipo de movimento da fatura inválido.")
-        if tipo_movimento == "COMPRA" and valor <= 0:
-            raise ValueError("Compra de cartão deve possuir valor positivo.")
-        if tipo_movimento in {"CREDITO", "PAGAMENTO"} and valor >= 0:
+        if tipo_movimento in {"COMPRA", "ENCARGO"} and valor <= 0:
+            raise ValueError("Compra ou encargo deve possuir valor positivo.")
+        if tipo_movimento in {"CREDITO", "ESTORNO"} and valor >= 0:
             raise ValueError(
-                "Crédito ou pagamento de fatura deve possuir valor negativo."
+                "Crédito ou estorno deve possuir valor negativo."
             )
+        if tipo_movimento == "AJUSTE" and valor == 0:
+            raise ValueError("Ajuste deve possuir valor diferente de zero.")
 
         data = dados["Data"]
         if not isinstance(data, str):

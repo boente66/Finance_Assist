@@ -111,12 +111,20 @@ def test_nova_compra_aumenta_valor_dinamico(db, db_path):
     user, _, cards = preparar(db, db_path)
     service = ScheduleService(db_path)
     adicionar_compra(db, user, cards[0], 10)
-    before = invoice_items(service.get_financial_projection(user))[0]["valor"]
+    before = sum(
+        item["valor"] for item in invoice_items(
+            service.get_financial_projection(user)
+        )
+    )
     service.fatura_service.registrar_despesa_cartao({
         "ID_Usuario": user, "ID_Cartao": cards[0], "Descricao": "Nova compra",
         "Valor": 15, "Data": date.today().replace(day=1).isoformat(), "Num_Parcelas": 1,
     })
-    after = invoice_items(service.get_financial_projection(user))[0]["valor"]
+    after = sum(
+        item["valor"] for item in invoice_items(
+            service.get_financial_projection(user)
+        )
+    )
     assert after == before + Decimal("15.00")
 
 

@@ -9,21 +9,23 @@ class FaturaCicloModel(Database):
         ano,
         id_usuario,
         data_fechamento,
+        data_vencimento,
         status="ABERTA",
     ):
         self.execute_query("""
             INSERT INTO faturas_cartao (
                 ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario,
-                Status, Data_Fechamento
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                Status, Data_Fechamento, Data_Vencimento
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(
                 ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario
             ) DO UPDATE SET
                 Data_Fechamento = excluded.Data_Fechamento,
+                Data_Vencimento = excluded.Data_Vencimento,
                 Atualizado_Em = CURRENT_TIMESTAMP
         """, (
             id_cartao, int(mes), int(ano), id_usuario,
-            status, data_fechamento,
+            status, data_fechamento, data_vencimento,
         ))
         return self.obter(id_cartao, mes, ano, id_usuario)
 

@@ -325,6 +325,8 @@ class ImportacaoService:
             valor = self._parse_valor(item.get("Valor"))
             if not data or not descricao or valor is None:
                 continue
+            if float(valor) < 0 and "pagamento" in descricao.lower():
+                continue
             mes = item.get("Competencia_Mes")
             ano = item.get("Competencia_Ano")
             if not mes or not ano:
@@ -348,9 +350,7 @@ class ImportacaoService:
                 "Subcategoria": item.get("Subcategoria"),
                 "ConfiancaIA": 0.0,
                 "Tipo_Movimento": item.get("Tipo_Movimento") or (
-                    "PAGAMENTO"
-                    if float(valor) < 0 and "pagamento" in descricao.lower()
-                    else "CREDITO" if float(valor) < 0 else "COMPRA"
+                    "CREDITO" if float(valor) < 0 else "COMPRA"
                 ),
             })
 

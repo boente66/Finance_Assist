@@ -433,8 +433,10 @@ class PainelFatura(QWidget):
         self.resumo_label.setText(
             f"{status} | "
             f"Compras: {CurrencyFormatter.format(fatura.get('compras', 0))} | "
-            f"Créditos: -{CurrencyFormatter.format(fatura.get('creditos', 0))} | "
-            f"Pagamentos: -{CurrencyFormatter.format(fatura.get('pagamentos', 0))} | "
+            f"Créditos: {CurrencyFormatter.format(fatura.get('creditos', 0))} | "
+            f"Estornos: {CurrencyFormatter.format(fatura.get('estornos', 0))} | "
+            f"Ajustes: {CurrencyFormatter.format(fatura.get('ajustes', 0))} | "
+            f"Pagamentos: {CurrencyFormatter.format(fatura.get('pagamentos', 0))} | "
             f"Saldo a pagar: "
             f"{CurrencyFormatter.format(fatura.get('saldo_a_pagar', 0))}"
         )
@@ -464,7 +466,7 @@ class PainelFatura(QWidget):
 
             cor = (
                 ThemeManager.get_color("success")
-                if pago or tipo in {"CREDITO", "PAGAMENTO"}
+                if pago or valor < 0
                 else ThemeManager.get_color("danger")
             )
 
@@ -495,6 +497,9 @@ class PainelFatura(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem({
                 "COMPRA": "Compra",
                 "CREDITO": "Crédito",
+                "ESTORNO": "Estorno",
+                "AJUSTE": "Ajuste",
+                "ENCARGO": "Encargo",
                 "PAGAMENTO": "Pagamento",
             }.get(tipo, tipo)))
             self.table.setItem(row, 3, QTableWidgetItem(str(item.get("Categoria", ""))))

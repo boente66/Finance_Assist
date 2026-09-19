@@ -3,6 +3,8 @@ import sqlite3
 import logging
 import os
 import threading
+import calendar
+from datetime import datetime
 from contextlib import contextmanager
 
 from core.config import get_db_path
@@ -56,6 +58,7 @@ class Database:
 
         succeeded = False
         try:
+            self._backup_before_invoice_cycle_correction()
             self.create_tables()
             succeeded = True
         finally:
@@ -64,6 +67,40 @@ class Database:
                     Database._initialized_paths.add(key)
                 Database._initializing_paths.pop(key, None)
                 event.set()
+
+    def _backup_before_invoice_cycle_correction(self):
+        """Cria e valida uma cópia antes da migração financeira v7."""
+        if self.db_name == ":memory:" or not os.path.isfile(self.db_name):
+            return
+        tables = {
+            row[0] for row in self.connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        if "schema_migrations" not in tables or "usuarios" not in tables:
+            return
+        if self.connection.execute(
+            "SELECT 1 FROM schema_migrations WHERE Versao = 7"
+        ).fetchone():
+            return
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        backup_path = f"{self.db_name}.pre-migration-v7-{stamp}.bak"
+        destination = sqlite3.connect(backup_path)
+        try:
+            self.connection.backup(destination)
+            check = destination.execute("PRAGMA integrity_check").fetchone()[0]
+            if check != "ok":
+                raise sqlite3.DatabaseError(
+                    f"Backup pré-migração inválido: {check}"
+                )
+        except Exception:
+            destination.close()
+            try:
+                os.unlink(backup_path)
+            except OSError:
+                pass
+            raise
+        destination.close()
 
     # =====================================================
     # CONNECTION
@@ -374,15 +411,13 @@ CREATE TABLE IF NOT EXISTS lancamentos (
     ID_Conta INTEGER,
     ID_Transacao INTEGER,
     Tipo_Movimento TEXT NOT NULL DEFAULT 'COMPRA'
-        CHECK (Tipo_Movimento IN ('COMPRA','CREDITO','PAGAMENTO')),
+        CHECK (Tipo_Movimento IN (
+            'COMPRA','CREDITO','ESTORNO','AJUSTE','ENCARGO','PAGAMENTO'
+        )),
     ID_Lancamento_Origem INTEGER,
 
     FOREIGN KEY(ID_Cartao)
         REFERENCES credito(ID_Cartao)
-        ON DELETE CASCADE,
-
-    FOREIGN KEY(ID_Fatura)
-        REFERENCES faturas_cartao(ID_Fatura)
         ON DELETE CASCADE,
 
     FOREIGN KEY(ID_Categoria)
@@ -414,6 +449,7 @@ CREATE TABLE IF NOT EXISTS faturas_cartao (
     Status TEXT NOT NULL DEFAULT 'ABERTA'
         CHECK (Status IN ('ABERTA','FECHADA','PAGA')),
     Data_Fechamento TEXT NOT NULL,
+    Data_Vencimento TEXT,
     Fechada_Em TEXT,
     Paga_Em TEXT,
     Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -441,9 +477,6 @@ CREATE TABLE IF NOT EXISTS pagamentos_fatura (
 
     FOREIGN KEY(ID_Cartao)
         REFERENCES credito(ID_Cartao),
-
-    FOREIGN KEY(ID_Fatura)
-        REFERENCES faturas_cartao(ID_Fatura),
 
     FOREIGN KEY(ID_Conta)
         REFERENCES contas(ID_Conta),
@@ -1025,7 +1058,9 @@ ON recuperacao_senha(ID_Usuario);
             SET Tipo_Movimento = CASE
                 WHEN Tipo_Movimento = 'PAGAMENTO' THEN 'PAGAMENTO'
                 WHEN Valor < 0 THEN 'CREDITO'
-                WHEN Tipo_Movimento IN ('COMPRA','CREDITO','PAGAMENTO')
+                WHEN Tipo_Movimento IN (
+                    'COMPRA','CREDITO','ESTORNO','AJUSTE','ENCARGO','PAGAMENTO'
+                )
                     THEN Tipo_Movimento
                 ELSE 'COMPRA'
             END
@@ -1144,7 +1179,20 @@ ON recuperacao_senha(ID_Usuario);
                             '%04d-%02d-%02d',
                             base.Competencia_Ano,
                             base.Competencia_Mes,
-                            MIN(c.Dia_Fechamento, 28)
+                            MIN(
+                                c.Dia_Fechamento,
+                                CAST(strftime(
+                                    '%d',
+                                    date(
+                                        printf(
+                                            '%04d-%02d-01',
+                                            base.Competencia_Ano,
+                                            base.Competencia_Mes
+                                        ),
+                                        '+1 month', '-1 day'
+                                    )
+                                ) AS INTEGER)
+                            )
                         )
                     ) < date('now') THEN CURRENT_TIMESTAMP
                 END,
@@ -1191,45 +1239,6 @@ ON recuperacao_senha(ID_Usuario);
             )
             WHERE ID_Fatura IS NULL
         """)
-        self.connection.execute("""
-            INSERT INTO lancamentos (
-                ID_Cartao, Data, Competencia_Mes, Competencia_Ano,
-                Descricao, Valor, Num_Parcelas, Parcela_Atual, Paga,
-                Notas, Previsto, ID_Usuario, ID_Conta, ID_Transacao,
-                Tipo_Movimento
-            )
-            SELECT
-                p.ID_Cartao,
-                substr(COALESCE(p.Criado_Em, CURRENT_TIMESTAMP), 1, 10),
-                p.Competencia_Mes,
-                p.Competencia_Ano,
-                'Pagamento da fatura',
-                -ABS(p.Valor),
-                1, 1, 1,
-                'Pagamento migrado do histórico existente',
-                0, p.ID_Usuario, p.ID_Conta, p.ID_Transacao,
-                'PAGAMENTO'
-            FROM pagamentos_fatura p
-            WHERE NOT EXISTS (
-                SELECT 1 FROM lancamentos l
-                WHERE l.ID_Usuario = p.ID_Usuario
-                  AND l.ID_Cartao = p.ID_Cartao
-                  AND l.ID_Transacao = p.ID_Transacao
-                  AND l.Tipo_Movimento = 'PAGAMENTO'
-            )
-        """)
-        self.connection.execute("""
-            UPDATE lancamentos
-            SET ID_Fatura = (
-                SELECT f.ID_Fatura
-                FROM faturas_cartao f
-                WHERE f.ID_Cartao = lancamentos.ID_Cartao
-                  AND f.Competencia_Mes = lancamentos.Competencia_Mes
-                  AND f.Competencia_Ano = lancamentos.Competencia_Ano
-                  AND f.ID_Usuario = lancamentos.ID_Usuario
-            )
-            WHERE ID_Fatura IS NULL
-        """)
 
     def _invoice_cycles_valid(self):
         columns = self._table_columns('lancamentos')
@@ -1256,6 +1265,124 @@ ON recuperacao_senha(ID_Usuario);
                 for evento in ('insert', 'update')
             )
         )
+
+    @staticmethod
+    def _cycle_dates(mes, ano, dia_fechamento, dia_vencimento):
+        ultimo = calendar.monthrange(int(ano), int(mes))[1]
+        fechamento = datetime(
+            int(ano), int(mes), min(int(dia_fechamento), ultimo)
+        ).date()
+        venc_mes, venc_ano = int(mes), int(ano)
+        if int(dia_vencimento) <= int(dia_fechamento):
+            venc_mes += 1
+            if venc_mes == 13:
+                venc_mes, venc_ano = 1, venc_ano + 1
+        ultimo_venc = calendar.monthrange(venc_ano, venc_mes)[1]
+        vencimento = datetime(
+            venc_ano, venc_mes, min(int(dia_vencimento), ultimo_venc)
+        ).date()
+        return fechamento.isoformat(), vencimento.isoformat()
+
+    def _migration_007_invoice_cycle_correction(self):
+        self._add_column_if_missing(
+            'faturas_cartao', 'Data_Vencimento', 'TEXT'
+        )
+        ciclos = self.connection.execute("""
+            SELECT f.ID_Fatura, f.Competencia_Mes, f.Competencia_Ano,
+                   f.Status, c.Dia_Fechamento, c.Dia_Vencimento
+            FROM faturas_cartao f
+            JOIN credito c ON c.ID_Cartao = f.ID_Cartao
+        """).fetchall()
+        hoje = datetime.now().date().isoformat()
+        for ciclo in ciclos:
+            fechamento, vencimento = self._cycle_dates(
+                ciclo['Competencia_Mes'], ciclo['Competencia_Ano'],
+                ciclo['Dia_Fechamento'], ciclo['Dia_Vencimento'],
+            )
+            self.connection.execute("""
+                UPDATE faturas_cartao
+                SET Data_Fechamento = ?, Data_Vencimento = ?,
+                    Fechada_Em = CASE
+                        WHEN Status IN ('FECHADA','PAGA') THEN ?
+                        ELSE NULL
+                    END,
+                    Atualizado_Em = CURRENT_TIMESTAMP
+                WHERE ID_Fatura = ?
+            """, (fechamento, vencimento, fechamento, ciclo['ID_Fatura']))
+
+        # Remove somente a materialização duplicada da test.9 quando o
+        # pagamento oficial correspondente é inequívoco.
+        self.connection.execute("""
+            DELETE FROM lancamentos
+            WHERE Tipo_Movimento = 'PAGAMENTO'
+              AND EXISTS (
+                SELECT 1
+                FROM pagamentos_fatura p
+                WHERE p.ID_Transacao = lancamentos.ID_Transacao
+                  AND p.ID_Usuario = lancamentos.ID_Usuario
+                  AND p.ID_Cartao = lancamentos.ID_Cartao
+                  AND p.Competencia_Mes = lancamentos.Competencia_Mes
+                  AND p.Competencia_Ano = lancamentos.Competencia_Ano
+                  AND ABS(p.Valor - ABS(lancamentos.Valor)) < 0.005
+              )
+        """)
+
+        self.connection.execute("""
+            UPDATE faturas_cartao AS f
+            SET Status = CASE
+                    WHEN COALESCE((
+                        SELECT SUM(p.Valor) FROM pagamentos_fatura p
+                        WHERE p.ID_Fatura = f.ID_Fatura
+                    ), 0) > 0
+                     AND COALESCE((
+                        SELECT SUM(p.Valor) FROM pagamentos_fatura p
+                        WHERE p.ID_Fatura = f.ID_Fatura
+                    ), 0) + 0.005 >= MAX(COALESCE((
+                        SELECT SUM(l.Valor) FROM lancamentos l
+                        WHERE l.ID_Fatura = f.ID_Fatura
+                          AND l.Tipo_Movimento <> 'PAGAMENTO'
+                    ), 0), 0)
+                    THEN 'PAGA'
+                    WHEN date(f.Data_Fechamento) < date(?) THEN 'FECHADA'
+                    ELSE 'ABERTA'
+                END,
+                Paga_Em = CASE
+                    WHEN COALESCE((
+                        SELECT SUM(p.Valor) FROM pagamentos_fatura p
+                        WHERE p.ID_Fatura = f.ID_Fatura
+                    ), 0) > 0
+                    THEN COALESCE(Paga_Em, CURRENT_TIMESTAMP)
+                    ELSE NULL
+                END,
+                Atualizado_Em = CURRENT_TIMESTAMP
+        """, (hoje,))
+
+    def _invoice_cycle_correction_valid(self):
+        if 'Data_Vencimento' not in self._table_columns('faturas_cartao'):
+            return False
+        if self.connection.execute("""
+            SELECT 1 FROM faturas_cartao
+            WHERE Data_Vencimento IS NULL OR Data_Fechamento IS NULL
+            LIMIT 1
+        """).fetchone():
+            return False
+        if self.connection.execute("""
+            SELECT 1
+            FROM lancamentos l
+            JOIN pagamentos_fatura p
+              ON p.ID_Transacao = l.ID_Transacao
+             AND p.ID_Usuario = l.ID_Usuario
+             AND p.ID_Cartao = l.ID_Cartao
+             AND p.Competencia_Mes = l.Competencia_Mes
+             AND p.Competencia_Ano = l.Competencia_Ano
+             AND ABS(p.Valor - ABS(l.Valor)) < 0.005
+            WHERE l.Tipo_Movimento = 'PAGAMENTO'
+            LIMIT 1
+        """).fetchone():
+            return False
+        return self.connection.execute(
+            'PRAGMA integrity_check'
+        ).fetchone()[0] == 'ok'
 
     def _run_migrations(self):
         self._ensure_migration_table()
@@ -1286,6 +1413,9 @@ ON recuperacao_senha(ID_Usuario);
              self._payee_documents_valid, False),
             (6, 'invoice_cycles_and_movements', self._migration_006_invoice_cycles,
              self._invoice_cycles_valid, False),
+            (7, 'invoice_cycle_correction',
+             self._migration_007_invoice_cycle_correction,
+             self._invoice_cycle_correction_valid, False),
         )
         for migration in migrations:
             self._run_migration(*migration)

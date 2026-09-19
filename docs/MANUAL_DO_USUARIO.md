@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.9
+**Versão:** 2.1.0-test.10
 **Atualização:** 12 de setembro de 2026  
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.9>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.10>
 
 ## 1. Apresentação
 
@@ -70,13 +70,14 @@ disponível e separa compras, créditos, pagamentos e saldo a pagar.
 
 A fatura passa por **ABERTA**, **FECHADA** e **PAGA**. A fatura aberta recebe as
 compras atuais. No fechamento ela para de receber compras, continua pendente e
-o sistema abre a competência seguinte. O pagamento cria uma linha negativa na
-fatura e uma saída negativa na conta escolhida; ele não modifica nem apaga as
-compras positivas do histórico.
+o sistema abre a competência seguinte. O pagamento fica no histórico oficial da
+fatura e cria uma saída negativa na conta escolhida. Ele não é duplicado como
+movimento e não modifica nem apaga as compras positivas do histórico.
 
 Use **Adicionar crédito** para cashback, estorno, devolução, desconto ou ajuste.
 Informe um valor positivo: o sistema o exibe como redução negativa na fatura e
-recompõe o limite. No estorno, a compra original permanece registrada.
+recompõe o limite. No estorno, a compra original permanece registrada. O ajuste
+pode reduzir ou aumentar o total, conforme a natureza escolhida.
 
 ### Importação de faturas
 
@@ -139,7 +140,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.9_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.10_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
 
@@ -147,7 +148,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.9_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.10_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -174,8 +175,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.9: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.9>
+- Versão test.10: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.10>
 - Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_INTERFACE_BACKUP_TEST8.md>
 
-A versão 2.1.0-test.9 foi validada com 251 testes automatizados. Os instaladores
+A versão 2.1.0-test.10 foi validada com 263 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.

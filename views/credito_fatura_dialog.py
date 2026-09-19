@@ -29,6 +29,12 @@ class CreditoFaturaDialog(QDialog):
         form = QFormLayout()
         self.tipo_combo = QComboBox()
         self.tipo_combo.addItems(self.TIPOS)
+        self.natureza_combo = QComboBox()
+        self.natureza_combo.addItems(("Reduzir fatura", "Aumentar fatura"))
+        self.natureza_combo.setVisible(False)
+        self.tipo_combo.currentTextChanged.connect(
+            lambda tipo: self.natureza_combo.setVisible(tipo == "Ajuste")
+        )
         self.descricao_edit = QLineEdit()
         self.descricao_edit.setPlaceholderText("Ex.: Cashback da compra")
         self.valor_spin = QDoubleSpinBox()
@@ -55,6 +61,7 @@ class CreditoFaturaDialog(QDialog):
         self.notas_edit = QTextEdit()
         self.notas_edit.setMaximumHeight(80)
         form.addRow("Tipo:", self.tipo_combo)
+        form.addRow("Natureza do ajuste:", self.natureza_combo)
         form.addRow("Descrição:", self.descricao_edit)
         form.addRow("Valor positivo:", self.valor_spin)
         form.addRow("Data do crédito:", self.data_edit)
@@ -78,6 +85,10 @@ class CreditoFaturaDialog(QDialog):
                 "Tipo_Credito": tipo,
                 "Descricao": descricao,
                 "Valor": self.valor_spin.value(),
+                "Natureza_Ajuste": (
+                    "Aumentar" if self.natureza_combo.currentIndex() == 1
+                    else "Reduzir"
+                ),
                 "Data": self.data_edit.date().toString("yyyy-MM-dd"),
                 "ID_Lancamento_Origem": self.origem_combo.currentData(),
                 "Notas": self.notas_edit.toPlainText().strip(),

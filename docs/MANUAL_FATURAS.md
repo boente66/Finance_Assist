@@ -32,8 +32,9 @@ ou excluídos.
 - No dia de fechamento ela passa para **FECHADA** e mantém o saldo pendente.
 - O sistema abre a competência seguinte; compras posteriores entram somente
   nela.
-- Pagar registra uma linha negativa na fatura, uma saída negativa na conta e
-  muda o ciclo quitado para **PAGA**. As compras originais permanecem positivas.
+- Pagar registra o pagamento no histórico da fatura, uma saída negativa na
+  conta e muda o ciclo quitado para **PAGA**. O pagamento não é duplicado na
+  tabela de movimentos e as compras originais permanecem positivas.
 
 ## Adicionar crédito ou estorno
 

@@ -26,6 +26,22 @@ class PagamentoFaturaModel(Database):
             LIMIT 1
         """, (id_cartao, int(mes), int(ano), id_usuario))
 
+    def get_total_by_invoice(self, id_fatura):
+        row = self.fetch_one("""
+            SELECT COALESCE(SUM(Valor), 0) AS Total
+            FROM pagamentos_fatura
+            WHERE ID_Fatura = ?
+        """, (id_fatura,))
+        return float(row["Total"] if row else 0)
+
+    def get_total_by_card(self, id_cartao, id_usuario):
+        row = self.fetch_one("""
+            SELECT COALESCE(SUM(Valor), 0) AS Total
+            FROM pagamentos_fatura
+            WHERE ID_Cartao = ? AND ID_Usuario = ?
+        """, (id_cartao, id_usuario))
+        return float(row["Total"] if row else 0)
+
     def add_payment(
         self,
         chave_idempotencia,

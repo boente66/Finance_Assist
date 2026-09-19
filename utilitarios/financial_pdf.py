@@ -98,32 +98,41 @@ class FinancialPDF:
         return True
 
     @classmethod
-    def fatura(cls, path, cartao, lancamentos, mes, ano):
+    def fatura(cls, path, cartao, lancamentos, mes, ano, resumo=None):
         st = cls._styles(); nome = cartao.get("Nome") or "Cartão"
-        total = sum(float(i.get("Valor") or 0) for i in lancamentos)
-        compras = sum(
+        resumo = resumo or {}
+        total = resumo.get("total_fatura", sum(float(i.get("Valor") or 0) for i in lancamentos))
+        compras = resumo.get("compras", sum(
             float(i.get("Valor") or 0) for i in lancamentos
             if i.get("Tipo_Movimento", "COMPRA") == "COMPRA"
-        )
-        creditos = -sum(
+        ))
+        creditos = resumo.get("creditos", sum(
             float(i.get("Valor") or 0) for i in lancamentos
             if i.get("Tipo_Movimento") == "CREDITO"
-        )
-        pagamentos = -sum(
+        ))
+        estornos = resumo.get("estornos", sum(
             float(i.get("Valor") or 0) for i in lancamentos
-            if i.get("Tipo_Movimento") == "PAGAMENTO"
-        )
+            if i.get("Tipo_Movimento") == "ESTORNO"
+        ))
+        ajustes = resumo.get("ajustes", sum(
+            float(i.get("Valor") or 0) for i in lancamentos
+            if i.get("Tipo_Movimento") == "AJUSTE"
+        ))
+        pagamentos = resumo.get("pagamentos", 0)
+        saldo = resumo.get("saldo_a_pagar", max(total - pagamentos, 0))
         story = [Paragraph(f"Fatura do {nome}", st["title"]),
                  Paragraph(f"Competência: {int(mes):02d}/{int(ano)}", st["small"]), Spacer(1, 3*mm),
                  Paragraph(
                      f"Total da fatura / saldo a pagar: "
-                     f"{CurrencyFormatter.format(max(total, 0))}",
+                     f"{CurrencyFormatter.format(saldo)}",
                      st["total"],
                  ),
                  Paragraph(
                      f"Compras: {CurrencyFormatter.format(compras)} · "
-                     f"Créditos: -{CurrencyFormatter.format(creditos)} · "
-                     f"Pagamentos: -{CurrencyFormatter.format(pagamentos)}",
+                     f"Créditos: {CurrencyFormatter.format(creditos)} · "
+                     f"Estornos: {CurrencyFormatter.format(estornos)} · "
+                     f"Ajustes: {CurrencyFormatter.format(ajustes)} · "
+                     f"Pagamentos: {CurrencyFormatter.format(pagamentos)}",
                      st["small"],
                  ), Spacer(1, 6*mm)]
         rows = [["Data", "Lançamento", "Tipo", "Categoria", "Status", "Valor"]]
@@ -131,6 +140,9 @@ class FinancialPDF:
             tipo = {
                 "COMPRA": "Compra",
                 "CREDITO": "Crédito",
+                "ESTORNO": "Estorno",
+                "AJUSTE": "Ajuste",
+                "ENCARGO": "Encargo",
                 "PAGAMENTO": "Pagamento",
             }.get(i.get("Tipo_Movimento", "COMPRA"), "Compra")
             rows.append([DateFormatter.iso_to_br(i.get("Data", "")),

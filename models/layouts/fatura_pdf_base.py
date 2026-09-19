@@ -54,11 +54,7 @@ class FaturaPdfBaseLayout(BaseLayout):
         )
         tipo = "COMPRA"
         if valor < 0:
-            tipo = (
-                "PAGAMENTO"
-                if "PAGAMENTO" in descricao_normalizada
-                else "CREDITO"
-            )
+            tipo = "CREDITO"
         return {
             "Data": data,
             "Descricao": descricao.strip(),

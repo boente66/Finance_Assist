@@ -8,8 +8,8 @@ Cada tabela tem uma responsabilidade única:
 | --- | --- |
 | `credito` | Cadastro do cartão: limite, fechamento, vencimento e proprietário. |
 | `faturas_cartao` | Ciclo mensal do cartão e seu estado `ABERTA`, `FECHADA` ou `PAGA`. |
-| `lancamentos` | Movimentos da fatura: compra positiva, crédito negativo e pagamento negativo. |
-| `pagamentos_fatura` | Registro idempotente e auditável de cada pagamento. |
+| `lancamentos` | Movimentos da fatura: compra, crédito, estorno, ajuste e encargo. |
+| `pagamentos_fatura` | Fonte oficial, idempotente e auditável dos pagamentos. |
 | `transacoes` | Movimento real da conta bancária usada no pagamento. |
 | `contas` | Saldo da conta bancária. |
 
@@ -59,15 +59,17 @@ erDiagram
 - A combinação cartão, competência e usuário é única em `faturas_cartao`.
 - Gatilhos do SQLite recusam um `ID_Fatura` incompatível com cartão,
   competência ou usuário nos lançamentos e pagamentos.
-- Compra usa valor positivo. Cashback, estorno, devolução, desconto, ajuste e
-  pagamento usam valor negativo na fatura.
-- O pagamento cria uma saída negativa em `transacoes` e não altera o sinal das
-  compras já registradas.
+- Compra e encargo usam valor positivo. Crédito e estorno usam valor negativo;
+  ajuste pode ser positivo ou negativo.
+- O pagamento existe em `pagamentos_fatura`, cria uma saída negativa em
+  `transacoes` e não cria outro registro em `lancamentos`.
 - Ao fechar um ciclo, compras novas são vinculadas automaticamente à próxima
   competência aberta.
 - A migração é aditiva: cria e preenche vínculos sem apagar as tabelas ou os
   registros existentes.
 
-As colunas `ID_Cartao`, `Competencia_Mes`, `Competencia_Ano` e `ID_Usuario`
+Por compatibilidade entre bancos novos e migrados no SQLite, `ID_Fatura` nos
+filhos é validado por triggers e chave lógica. As colunas `ID_Cartao`,
+`Competencia_Mes`, `Competencia_Ano` e `ID_Usuario`
 permanecem nos registros filhos durante a compatibilidade com versões antigas.
 Elas são dados espelhados e validados, não uma segunda fonte de estado.
