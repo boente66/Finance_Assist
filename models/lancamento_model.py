@@ -38,6 +38,17 @@ class LancamentoModel(Database):
         if not cartao:
             raise PermissionError("Cartão não pertence ao usuário.")
 
+        tipo_movimento = dados.get("Tipo_Movimento", "COMPRA")
+        valor = float(dados["Valor"])
+        if tipo_movimento not in {"COMPRA", "CREDITO", "PAGAMENTO"}:
+            raise ValueError("Tipo de movimento da fatura inválido.")
+        if tipo_movimento == "COMPRA" and valor <= 0:
+            raise ValueError("Compra de cartão deve possuir valor positivo.")
+        if tipo_movimento in {"CREDITO", "PAGAMENTO"} and valor >= 0:
+            raise ValueError(
+                "Crédito ou pagamento de fatura deve possuir valor negativo."
+            )
+
         data = dados["Data"]
         if not isinstance(data, str):
             data = data.strftime("%Y-%m-%d")
@@ -45,6 +56,7 @@ class LancamentoModel(Database):
         sql = """
             INSERT INTO lancamentos (
                 ID_Cartao,
+                ID_Fatura,
                 Data,
                 Competencia_Mes,
                 Competencia_Ano,
@@ -59,18 +71,21 @@ class LancamentoModel(Database):
                 ID_Usuario,
                 ID_Conta,
                 ID_Transacao,
-                Previsto
+                Previsto,
+                Tipo_Movimento,
+                ID_Lancamento_Origem
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
         params = (
             dados["ID_Cartao"],
+            dados.get("ID_Fatura"),
             data,
             int(dados["Competencia_Mes"]),
             int(dados["Competencia_Ano"]),
             dados["Descricao"],
-            float(dados["Valor"]),
+            valor,
             dados.get("ID_Categoria"),
             dados.get("ID_Favorecido"),  # 🔥 NOVO
             int(dados.get("Num_Parcelas", 1)),
@@ -80,7 +95,9 @@ class LancamentoModel(Database):
             dados["ID_Usuario"],
             dados.get("ID_Conta"),
             dados.get("ID_Transacao"),
-            int(dados.get("Previsto", 0))
+            int(dados.get("Previsto", 0)),
+            tipo_movimento,
+            dados.get("ID_Lancamento_Origem")
         )
 
         self.execute_query(sql, params)
@@ -147,6 +164,13 @@ class LancamentoModel(Database):
         if not cartao:
             raise PermissionError("Cartão inválido.")
 
+        tipo_movimento = dados.get("Tipo_Movimento", "COMPRA")
+        valor = float(dados["Valor"])
+        if tipo_movimento != "COMPRA" or valor <= 0:
+            raise ValueError(
+                "Somente compras positivas podem ser editadas neste formulário."
+            )
+
         data = dados["Data"]
         if not isinstance(data, str):
             data = data.strftime("%Y-%m-%d")
@@ -163,14 +187,16 @@ class LancamentoModel(Database):
                 Num_Parcelas = ?,
                 Parcela_Atual = ?,
                 Notas = ?,
-                Previsto = ?
+                Previsto = ?,
+                Tipo_Movimento = ?,
+                ID_Lancamento_Origem = ?
             WHERE ID_Lancamento = ?
               AND ID_Usuario = ?
         """
 
         self.execute_query(sql, (
             dados["Descricao"],
-            float(dados["Valor"]),
+            valor,
             data,
             int(dados["Competencia_Mes"]),
             int(dados["Competencia_Ano"]),
@@ -180,6 +206,8 @@ class LancamentoModel(Database):
             int(dados.get("Parcela_Atual", 1)),
             dados.get("Notas"),
             int(dados.get("Previsto", 0)),
+            tipo_movimento,
+            dados.get("ID_Lancamento_Origem"),
             id_lancamento,
             id_usuario
         ))
@@ -269,6 +297,16 @@ class LancamentoModel(Database):
 
         return self.fetch_all(sql, (id_cartao, id_usuario))
 
+    def get_lancamentos_para_limite(self, id_cartao, id_usuario):
+        return self.fetch_all("""
+            SELECT *
+            FROM lancamentos
+            WHERE ID_Cartao = ?
+              AND ID_Usuario = ?
+              AND Previsto = 0
+            ORDER BY Data, ID_Lancamento
+        """, (id_cartao, id_usuario))
+
     # ============================================================
     # MARCAR COMO PAGO
     # ============================================================
@@ -304,6 +342,19 @@ class LancamentoModel(Database):
                 "Lançamento não encontrado ou já estava pago."
             )
 
+        return True
+
+    def marcar_fatura_como_quitada(
+        self, id_cartao, mes, ano, id_usuario
+    ):
+        self.execute_query("""
+            UPDATE lancamentos
+            SET Paga = 1, Previsto = 0
+            WHERE ID_Cartao = ?
+              AND Competencia_Mes = ?
+              AND Competencia_Ano = ?
+              AND ID_Usuario = ?
+        """, (id_cartao, int(mes), int(ano), id_usuario))
         return True
 
     # ============================================================

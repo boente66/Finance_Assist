@@ -6,8 +6,9 @@
 2. Escolha o mês e o ano da fatura.
 3. Use o filtro **Todos**, **Abertos** ou **Pagos**.
 
-O cabeçalho mostra limite, valor usado e limite disponível. A tabela apresenta
-data, descrição, categoria, valor e estado do lançamento. Em janelas estreitas,
+O cabeçalho mostra limite, valor usado e limite disponível. O resumo separa
+**Compras**, **Créditos**, **Pagamentos** e **Saldo a pagar**. A tabela apresenta
+data, descrição, categoria, valor e estado da fatura. Em janelas estreitas,
 os indicadores são reorganizados, os botões usam ícones e a fonte da tabela é
 reduzida para manter o conteúdo legível.
 
@@ -20,9 +21,27 @@ reduzida para manter o conteúdo legível.
   **Editar** e **Excluir**.
 
 **Copiar** guarda os dados do lançamento selecionado. **Colar** cria uma nova
-cópia na competência exibida e sempre a deixa em aberto. **Editar** altera apenas
+cópia na competência aberta exibida. **Editar** altera apenas
 o lançamento selecionado; as demais parcelas não são recriadas. **Excluir** pede
-confirmação. Lançamentos de uma fatura paga não podem ser editados ou excluídos.
+confirmação. Lançamentos de uma fatura fechada ou paga não podem ser editados
+ou excluídos.
+
+## Ciclo aberta, fechada e paga
+
+- A fatura **ABERTA** recebe compras da competência atual.
+- No dia de fechamento ela passa para **FECHADA** e mantém o saldo pendente.
+- O sistema abre a competência seguinte; compras posteriores entram somente
+  nela.
+- Pagar registra uma linha negativa na fatura, uma saída negativa na conta e
+  muda o ciclo quitado para **PAGA**. As compras originais permanecem positivas.
+
+## Adicionar crédito ou estorno
+
+Use **Adicionar crédito** para cashback, estorno, devolução, desconto ou ajuste.
+Digite o valor positivo; o sistema o grava com sinal negativo na fatura e
+recompõe o limite. Um estorno pode ser associado à compra original, que continua
+visível no histórico. Se o crédito chegar depois do fechamento, ele entra na
+competência aberta em que foi recebido.
 
 ## Importar uma fatura em PDF
 

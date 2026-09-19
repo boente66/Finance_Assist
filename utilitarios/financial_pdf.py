@@ -101,19 +101,44 @@ class FinancialPDF:
     def fatura(cls, path, cartao, lancamentos, mes, ano):
         st = cls._styles(); nome = cartao.get("Nome") or "Cartão"
         total = sum(float(i.get("Valor") or 0) for i in lancamentos)
-        abertos = sum(float(i.get("Valor") or 0) for i in lancamentos if not i.get("Paga"))
+        compras = sum(
+            float(i.get("Valor") or 0) for i in lancamentos
+            if i.get("Tipo_Movimento", "COMPRA") == "COMPRA"
+        )
+        creditos = -sum(
+            float(i.get("Valor") or 0) for i in lancamentos
+            if i.get("Tipo_Movimento") == "CREDITO"
+        )
+        pagamentos = -sum(
+            float(i.get("Valor") or 0) for i in lancamentos
+            if i.get("Tipo_Movimento") == "PAGAMENTO"
+        )
         story = [Paragraph(f"Fatura do {nome}", st["title"]),
                  Paragraph(f"Competência: {int(mes):02d}/{int(ano)}", st["small"]), Spacer(1, 3*mm),
-                 Paragraph(f"Total da fatura: {CurrencyFormatter.format(total)}", st["total"]),
-                 Paragraph(f"Em aberto: {CurrencyFormatter.format(abertos)}", st["small"]), Spacer(1, 6*mm)]
-        rows = [["Data", "Lançamento", "Categoria", "Parcela", "Status", "Valor"]]
+                 Paragraph(
+                     f"Total da fatura / saldo a pagar: "
+                     f"{CurrencyFormatter.format(max(total, 0))}",
+                     st["total"],
+                 ),
+                 Paragraph(
+                     f"Compras: {CurrencyFormatter.format(compras)} · "
+                     f"Créditos: -{CurrencyFormatter.format(creditos)} · "
+                     f"Pagamentos: -{CurrencyFormatter.format(pagamentos)}",
+                     st["small"],
+                 ), Spacer(1, 6*mm)]
+        rows = [["Data", "Lançamento", "Tipo", "Categoria", "Status", "Valor"]]
         for i in lancamentos:
+            tipo = {
+                "COMPRA": "Compra",
+                "CREDITO": "Crédito",
+                "PAGAMENTO": "Pagamento",
+            }.get(i.get("Tipo_Movimento", "COMPRA"), "Compra")
             rows.append([DateFormatter.iso_to_br(i.get("Data", "")),
                          Paragraph(str(i.get("Descricao") or ""), st["cell"]),
+                         tipo,
                          Paragraph(str(i.get("Categoria") or "Sem categoria"), st["cell"]),
-                         f"{i.get('Parcela_Atual',1)}/{i.get('Num_Parcelas',1)}",
                          "Pago" if i.get("Paga") else "Aberto",
                          CurrencyFormatter.format(float(i.get("Valor") or 0))])
-        story.append(cls._table(rows, [20*mm, 54*mm, 31*mm, 18*mm, 22*mm, 27*mm]))
+        story.append(cls._table(rows, [20*mm, 51*mm, 23*mm, 32*mm, 22*mm, 27*mm]))
         cls._doc(path).build(story)
         return True

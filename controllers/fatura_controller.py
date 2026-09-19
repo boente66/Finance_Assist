@@ -47,6 +47,16 @@ class FaturaController:
         payload["ID_Usuario"] = id_usuario
         return self.service.registrar_despesa_cartao(payload)
 
+    def adicionar_credito_fatura(self, dados: dict) -> bool:
+        payload = dict(dados)
+        payload["ID_Usuario"] = self.get_id_usuario()
+        return self.service.adicionar_credito_fatura(payload)
+
+    def listar_compras_cartao(self, id_cartao):
+        return self.service.listar_compras_cartao(
+            id_cartao, self.get_id_usuario()
+        )
+
     def importar_arquivo_fatura(
         self,
         caminho_arquivo,

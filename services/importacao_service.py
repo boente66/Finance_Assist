@@ -332,7 +332,7 @@ class ImportacaoService:
             resultado.append({
                 "Data": data,
                 "Descricao": descricao,
-                "Valor": abs(float(valor)),
+                "Valor": float(valor),
                 "ID_Usuario": id_usuario,
                 "ID_Cartao": id_cartao,
                 "Competencia_Mes": int(mes),
@@ -347,6 +347,11 @@ class ImportacaoService:
                 "CategoriaPai": item.get("CategoriaPai"),
                 "Subcategoria": item.get("Subcategoria"),
                 "ConfiancaIA": 0.0,
+                "Tipo_Movimento": item.get("Tipo_Movimento") or (
+                    "PAGAMENTO"
+                    if float(valor) < 0 and "pagamento" in descricao.lower()
+                    else "CREDITO" if float(valor) < 0 else "COMPRA"
+                ),
             })
 
         resultado = self.reconciliar_cartao(

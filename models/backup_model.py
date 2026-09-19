@@ -31,6 +31,7 @@ class BackupModel:
         "transacoes",
         "lancamentos",
         "pagamentos_fatura",
+        "faturas_cartao",
     )
 
     RESTORE_ORDER = (
@@ -39,6 +40,7 @@ class BackupModel:
         "categorias",
         "contas",
         "credito",
+        "faturas_cartao",
         "favorecido",
         "pessoa_fisica",
         "pessoa_juridica",

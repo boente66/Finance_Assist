@@ -38,25 +38,28 @@ def test_crud_copy_paste_and_paid_protection(tmp_path, monkeypatch):
     db, card, _ = _cenario(tmp_path, monkeypatch)
     controller = FaturaController()
     payload = {"ID_Cartao": card, "Descricao": "Compra original", "Valor": 25,
-               "Data": "2026-08-05", "Competencia_Mes": 8, "Competencia_Ano": 2026,
+               "Data": "2026-09-05", "Competencia_Mes": 9, "Competencia_Ano": 2026,
                "Num_Parcelas": 1}
     assert controller.registrar_despesa_cartao(payload)
-    item = controller.listar_lancamentos_fatura(card, 8, 2026)[0]
+    item = controller.listar_lancamentos_fatura(card, 9, 2026)[0]
     controller.atualizar_lancamento(item["ID_Lancamento"], {**item, "Descricao": "Compra editada"})
     assert controller.obter_lancamento(item["ID_Lancamento"])["Descricao"] == "Compra editada"
 
     app = QApplication.instance() or QApplication([])
-    view = PainelFatura(); view.set_cartao(controller.buscar_cartao_por_id(card)); view.set_competencia(8, 2026); view._carregar()
+    view = PainelFatura(); view.set_cartao(controller.buscar_cartao_por_id(card)); view.set_competencia(9, 2026); view._carregar()
     view.table.selectRow(0)
     assert view.copiar_lancamento()
     assert view.colar_lancamento()
-    assert len(controller.listar_lancamentos_fatura(card, 8, 2026)) == 2
+    assert len(controller.listar_lancamentos_fatura(card, 9, 2026)) == 2
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
     view.table.selectRow(0)
     assert view.excluir_lancamento()
-    assert len(controller.listar_lancamentos_fatura(card, 8, 2026)) == 1
-    remaining = controller.listar_lancamentos_fatura(card, 8, 2026)[0]
-    db.execute_query("UPDATE lancamentos SET Paga=1 WHERE ID_Lancamento=?", (remaining["ID_Lancamento"],))
+    assert len(controller.listar_lancamentos_fatura(card, 9, 2026)) == 1
+    remaining = controller.listar_lancamentos_fatura(card, 9, 2026)[0]
+    db.execute_query(
+        "UPDATE faturas_cartao SET Status='PAGA' WHERE ID_Fatura=?",
+        (remaining["ID_Fatura"],),
+    )
     try:
         controller.excluir_lancamento(remaining["ID_Lancamento"])
     except ValueError:

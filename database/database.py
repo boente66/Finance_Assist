@@ -357,6 +357,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
 CREATE TABLE IF NOT EXISTS lancamentos (
     ID_Lancamento INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Cartao INTEGER NOT NULL,
+    ID_Fatura INTEGER,
     Data TEXT NOT NULL,
     Competencia_Mes INTEGER NOT NULL,
     Competencia_Ano INTEGER NOT NULL,
@@ -372,9 +373,16 @@ CREATE TABLE IF NOT EXISTS lancamentos (
     ID_Usuario INTEGER,
     ID_Conta INTEGER,
     ID_Transacao INTEGER,
+    Tipo_Movimento TEXT NOT NULL DEFAULT 'COMPRA'
+        CHECK (Tipo_Movimento IN ('COMPRA','CREDITO','PAGAMENTO')),
+    ID_Lancamento_Origem INTEGER,
 
     FOREIGN KEY(ID_Cartao)
         REFERENCES credito(ID_Cartao)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY(ID_Fatura)
+        REFERENCES faturas_cartao(ID_Fatura)
         ON DELETE CASCADE,
 
     FOREIGN KEY(ID_Categoria)
@@ -395,12 +403,34 @@ CREATE TABLE IF NOT EXISTS lancamentos (
 );
 
 -- =====================================================
+-- CICLOS DE FATURA
+-- =====================================================
+CREATE TABLE IF NOT EXISTS faturas_cartao (
+    ID_Fatura INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Cartao INTEGER NOT NULL,
+    Competencia_Mes INTEGER NOT NULL,
+    Competencia_Ano INTEGER NOT NULL,
+    ID_Usuario INTEGER NOT NULL,
+    Status TEXT NOT NULL DEFAULT 'ABERTA'
+        CHECK (Status IN ('ABERTA','FECHADA','PAGA')),
+    Data_Fechamento TEXT NOT NULL,
+    Fechada_Em TEXT,
+    Paga_Em TEXT,
+    Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Atualizado_Em TEXT,
+    UNIQUE(ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario),
+    FOREIGN KEY(ID_Cartao) REFERENCES credito(ID_Cartao) ON DELETE CASCADE,
+    FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario) ON DELETE CASCADE
+);
+
+-- =====================================================
 -- PAGAMENTOS DE FATURA / IDEMPOTÊNCIA
 -- =====================================================
 CREATE TABLE IF NOT EXISTS pagamentos_fatura (
     ID_Pagamento INTEGER PRIMARY KEY AUTOINCREMENT,
     Chave_Idempotencia TEXT NOT NULL UNIQUE,
     ID_Cartao INTEGER NOT NULL,
+    ID_Fatura INTEGER,
     Competencia_Mes INTEGER NOT NULL,
     Competencia_Ano INTEGER NOT NULL,
     ID_Conta INTEGER NOT NULL,
@@ -411,6 +441,9 @@ CREATE TABLE IF NOT EXISTS pagamentos_fatura (
 
     FOREIGN KEY(ID_Cartao)
         REFERENCES credito(ID_Cartao),
+
+    FOREIGN KEY(ID_Fatura)
+        REFERENCES faturas_cartao(ID_Fatura),
 
     FOREIGN KEY(ID_Conta)
         REFERENCES contas(ID_Conta),
@@ -840,7 +873,7 @@ ON recuperacao_senha(ID_Usuario);
             ("ID_Usuario", "usuarios", "ID_Usuario"),
         )
         return (
-            self._table_columns("pagamentos_fatura") == required
+            required.issubset(self._table_columns("pagamentos_fatura"))
             and all(
                 self._foreign_key_exists(
                     "pagamentos_fatura", column, parent, parent_column
@@ -973,6 +1006,257 @@ ON recuperacao_senha(ID_Usuario);
                     return False
         return True
 
+    def _migration_006_invoice_cycles(self):
+        self._add_column_if_missing(
+            'lancamentos', 'Tipo_Movimento',
+            "TEXT NOT NULL DEFAULT 'COMPRA'"
+        )
+        self._add_column_if_missing(
+            'lancamentos', 'ID_Lancamento_Origem', 'INTEGER'
+        )
+        self._add_column_if_missing(
+            'lancamentos', 'ID_Fatura', 'INTEGER'
+        )
+        self._add_column_if_missing(
+            'pagamentos_fatura', 'ID_Fatura', 'INTEGER'
+        )
+        self.connection.execute("""
+            UPDATE lancamentos
+            SET Tipo_Movimento = CASE
+                WHEN Tipo_Movimento = 'PAGAMENTO' THEN 'PAGAMENTO'
+                WHEN Valor < 0 THEN 'CREDITO'
+                WHEN Tipo_Movimento IN ('COMPRA','CREDITO','PAGAMENTO')
+                    THEN Tipo_Movimento
+                ELSE 'COMPRA'
+            END
+        """)
+        self.connection.execute("""
+            CREATE TABLE IF NOT EXISTS faturas_cartao (
+                ID_Fatura INTEGER PRIMARY KEY AUTOINCREMENT,
+                ID_Cartao INTEGER NOT NULL,
+                Competencia_Mes INTEGER NOT NULL,
+                Competencia_Ano INTEGER NOT NULL,
+                ID_Usuario INTEGER NOT NULL,
+                Status TEXT NOT NULL DEFAULT 'ABERTA'
+                    CHECK (Status IN ('ABERTA','FECHADA','PAGA')),
+                Data_Fechamento TEXT NOT NULL,
+                Fechada_Em TEXT,
+                Paga_Em TEXT,
+                Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                Atualizado_Em TEXT,
+                UNIQUE(ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario),
+                FOREIGN KEY(ID_Cartao) REFERENCES credito(ID_Cartao)
+                    ON DELETE CASCADE,
+                FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario)
+                    ON DELETE CASCADE
+            )
+        """)
+        self.connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_faturas_cartao_usuario_status
+            ON faturas_cartao(ID_Usuario, ID_Cartao, Status)
+        """)
+        for tabela in ('lancamentos', 'pagamentos_fatura'):
+            for evento in ('INSERT', 'UPDATE'):
+                nome = f'validar_fatura_{tabela}_{evento.lower()}'
+                self.connection.execute(f"""
+                    CREATE TRIGGER IF NOT EXISTS {nome}
+                    BEFORE {evento} ON {tabela}
+                    WHEN NEW.ID_Fatura IS NOT NULL
+                     AND NOT EXISTS (
+                        SELECT 1
+                        FROM faturas_cartao f
+                        WHERE f.ID_Fatura = NEW.ID_Fatura
+                          AND f.ID_Cartao = NEW.ID_Cartao
+                          AND f.Competencia_Mes = NEW.Competencia_Mes
+                          AND f.Competencia_Ano = NEW.Competencia_Ano
+                          AND f.ID_Usuario = NEW.ID_Usuario
+                     )
+                    BEGIN
+                        SELECT RAISE(
+                            ABORT,
+                            'Fatura incompatível com cartão e competência'
+                        );
+                    END
+                """)
+        self.connection.execute("""
+            INSERT OR IGNORE INTO faturas_cartao (
+                ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario,
+                Status, Data_Fechamento, Fechada_Em, Paga_Em
+            )
+            SELECT
+                base.ID_Cartao,
+                base.Competencia_Mes,
+                base.Competencia_Ano,
+                base.ID_Usuario,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM pagamentos_fatura p
+                        WHERE p.ID_Cartao = base.ID_Cartao
+                          AND p.Competencia_Mes = base.Competencia_Mes
+                          AND p.Competencia_Ano = base.Competencia_Ano
+                          AND p.ID_Usuario = base.ID_Usuario
+                    ) THEN 'PAGA'
+                    WHEN date(
+                        printf(
+                            '%04d-%02d-%02d',
+                            base.Competencia_Ano,
+                            base.Competencia_Mes,
+                            MIN(
+                                c.Dia_Fechamento,
+                                CAST(strftime(
+                                    '%d',
+                                    date(
+                                        printf(
+                                            '%04d-%02d-01',
+                                            base.Competencia_Ano,
+                                            base.Competencia_Mes
+                                        ),
+                                        '+1 month', '-1 day'
+                                    )
+                                ) AS INTEGER)
+                            )
+                        )
+                    ) < date('now') THEN 'FECHADA'
+                    ELSE 'ABERTA'
+                END,
+                printf(
+                    '%04d-%02d-%02d',
+                    base.Competencia_Ano,
+                    base.Competencia_Mes,
+                    MIN(
+                        c.Dia_Fechamento,
+                        CAST(strftime(
+                            '%d',
+                            date(
+                                printf(
+                                    '%04d-%02d-01',
+                                    base.Competencia_Ano,
+                                    base.Competencia_Mes
+                                ),
+                                '+1 month', '-1 day'
+                            )
+                        ) AS INTEGER)
+                    )
+                ),
+                CASE
+                    WHEN date(
+                        printf(
+                            '%04d-%02d-%02d',
+                            base.Competencia_Ano,
+                            base.Competencia_Mes,
+                            MIN(c.Dia_Fechamento, 28)
+                        )
+                    ) < date('now') THEN CURRENT_TIMESTAMP
+                END,
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM pagamentos_fatura p
+                    WHERE p.ID_Cartao = base.ID_Cartao
+                      AND p.Competencia_Mes = base.Competencia_Mes
+                      AND p.Competencia_Ano = base.Competencia_Ano
+                      AND p.ID_Usuario = base.ID_Usuario
+                ) THEN CURRENT_TIMESTAMP END
+            FROM (
+                SELECT DISTINCT
+                    ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario
+                FROM lancamentos
+                WHERE ID_Usuario IS NOT NULL
+                UNION
+                SELECT DISTINCT
+                    ID_Cartao, Competencia_Mes, Competencia_Ano, ID_Usuario
+                FROM pagamentos_fatura
+            ) base
+            JOIN credito c ON c.ID_Cartao = base.ID_Cartao
+        """)
+        self.connection.execute("""
+            UPDATE lancamentos
+            SET ID_Fatura = (
+                SELECT f.ID_Fatura
+                FROM faturas_cartao f
+                WHERE f.ID_Cartao = lancamentos.ID_Cartao
+                  AND f.Competencia_Mes = lancamentos.Competencia_Mes
+                  AND f.Competencia_Ano = lancamentos.Competencia_Ano
+                  AND f.ID_Usuario = lancamentos.ID_Usuario
+            )
+            WHERE ID_Fatura IS NULL
+        """)
+        self.connection.execute("""
+            UPDATE pagamentos_fatura
+            SET ID_Fatura = (
+                SELECT f.ID_Fatura
+                FROM faturas_cartao f
+                WHERE f.ID_Cartao = pagamentos_fatura.ID_Cartao
+                  AND f.Competencia_Mes = pagamentos_fatura.Competencia_Mes
+                  AND f.Competencia_Ano = pagamentos_fatura.Competencia_Ano
+                  AND f.ID_Usuario = pagamentos_fatura.ID_Usuario
+            )
+            WHERE ID_Fatura IS NULL
+        """)
+        self.connection.execute("""
+            INSERT INTO lancamentos (
+                ID_Cartao, Data, Competencia_Mes, Competencia_Ano,
+                Descricao, Valor, Num_Parcelas, Parcela_Atual, Paga,
+                Notas, Previsto, ID_Usuario, ID_Conta, ID_Transacao,
+                Tipo_Movimento
+            )
+            SELECT
+                p.ID_Cartao,
+                substr(COALESCE(p.Criado_Em, CURRENT_TIMESTAMP), 1, 10),
+                p.Competencia_Mes,
+                p.Competencia_Ano,
+                'Pagamento da fatura',
+                -ABS(p.Valor),
+                1, 1, 1,
+                'Pagamento migrado do histórico existente',
+                0, p.ID_Usuario, p.ID_Conta, p.ID_Transacao,
+                'PAGAMENTO'
+            FROM pagamentos_fatura p
+            WHERE NOT EXISTS (
+                SELECT 1 FROM lancamentos l
+                WHERE l.ID_Usuario = p.ID_Usuario
+                  AND l.ID_Cartao = p.ID_Cartao
+                  AND l.ID_Transacao = p.ID_Transacao
+                  AND l.Tipo_Movimento = 'PAGAMENTO'
+            )
+        """)
+        self.connection.execute("""
+            UPDATE lancamentos
+            SET ID_Fatura = (
+                SELECT f.ID_Fatura
+                FROM faturas_cartao f
+                WHERE f.ID_Cartao = lancamentos.ID_Cartao
+                  AND f.Competencia_Mes = lancamentos.Competencia_Mes
+                  AND f.Competencia_Ano = lancamentos.Competencia_Ano
+                  AND f.ID_Usuario = lancamentos.ID_Usuario
+            )
+            WHERE ID_Fatura IS NULL
+        """)
+
+    def _invoice_cycles_valid(self):
+        columns = self._table_columns('lancamentos')
+        invoice_columns = self._table_columns('faturas_cartao')
+        return (
+            {
+                'Tipo_Movimento', 'ID_Lancamento_Origem', 'ID_Fatura'
+            }.issubset(columns)
+            and 'ID_Fatura' in self._table_columns('pagamentos_fatura')
+            and {
+                'ID_Fatura', 'ID_Cartao', 'Competencia_Mes',
+                'Competencia_Ano', 'ID_Usuario', 'Status',
+                'Data_Fechamento', 'Fechada_Em', 'Paga_Em'
+            }.issubset(invoice_columns)
+            and self._index_definition('idx_faturas_cartao_usuario_status')
+            is not None
+            and all(
+                self.connection.execute(
+                    "SELECT 1 FROM sqlite_master "
+                    "WHERE type = 'trigger' AND name = ?",
+                    (f'validar_fatura_{tabela}_{evento}',),
+                ).fetchone()
+                for tabela in ('lancamentos', 'pagamentos_fatura')
+                for evento in ('insert', 'update')
+            )
+        )
+
     def _run_migrations(self):
         self._ensure_migration_table()
         migrations = (
@@ -1000,6 +1284,8 @@ ON recuperacao_senha(ID_Usuario);
             (4, 'user_access_status', self._migration_004_user_access, self._user_access_valid, False),
             (5, 'payee_documents_by_user', self._migration_005_payee_documents,
              self._payee_documents_valid, False),
+            (6, 'invoice_cycles_and_movements', self._migration_006_invoice_cycles,
+             self._invoice_cycles_valid, False),
         )
         for migration in migrations:
             self._run_migration(*migration)

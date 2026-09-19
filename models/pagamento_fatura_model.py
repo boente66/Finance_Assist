@@ -30,6 +30,7 @@ class PagamentoFaturaModel(Database):
         self,
         chave_idempotencia,
         id_cartao,
+        id_fatura,
         mes,
         ano,
         id_conta,
@@ -41,6 +42,7 @@ class PagamentoFaturaModel(Database):
             INSERT INTO pagamentos_fatura (
                 Chave_Idempotencia,
                 ID_Cartao,
+                ID_Fatura,
                 Competencia_Mes,
                 Competencia_Ano,
                 ID_Conta,
@@ -48,10 +50,11 @@ class PagamentoFaturaModel(Database):
                 ID_Usuario,
                 Valor
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             chave_idempotencia,
             id_cartao,
+            id_fatura,
             int(mes),
             int(ano),
             id_conta,

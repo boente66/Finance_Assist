@@ -27,6 +27,7 @@ from utilitarios.ion_path import IonPath
 
 from views.fatura_dialog import FaturaDialog
 from views.editar_fatura_dialog import EditarFaturaDialog
+from views.credito_fatura_dialog import CreditoFaturaDialog
 from views.responsive_layout import FlowLayout
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class PainelFatura(QWidget):
         self.setWindowTitle(TranslatorApp.get("Fatura"))
 
         self.btn_lancar.setText(TranslatorApp.get("+ Lançar"))
+        self.btn_credito.setText(TranslatorApp.get("Adicionar crédito"))
         self.btn_pagar.setText(TranslatorApp.get("Pagar"))
         self.btn_exportar.setText(TranslatorApp.get("PDF"))
         self.btn_importar.setText(TranslatorApp.get("Importar fatura"))
@@ -80,6 +82,7 @@ class PainelFatura(QWidget):
         self.table.setHorizontalHeaderLabels([
             TranslatorApp.get("Data"),
             TranslatorApp.get("Descrição"),
+            TranslatorApp.get("Tipo"),
             TranslatorApp.get("Categoria"),
             TranslatorApp.get("Valor"),
             TranslatorApp.get("Status"),
@@ -165,6 +168,9 @@ class PainelFatura(QWidget):
         self.btn_lancar = btn("+ Lançar", self.add_transaction)
         self.btn_lancar.setIcon(self._icon("add"))
 
+        self.btn_credito = btn("Adicionar crédito", self.add_credit)
+        self.btn_credito.setIcon(self._icon("add"))
+
         self.btn_pagar = btn("Pagar", self.pagar_fatura)
         self.btn_pagar.setIcon(self._icon("pay"))
 
@@ -176,6 +182,7 @@ class PainelFatura(QWidget):
         self.btn_exportar.setObjectName("secondaryButton")
 
         self.toolbar.addWidget(self.btn_lancar)
+        self.toolbar.addWidget(self.btn_credito)
         self.toolbar.addWidget(self.btn_pagar)
         self.toolbar.addWidget(self.btn_exportar)
         self.toolbar.addWidget(self.btn_importar)
@@ -228,9 +235,9 @@ class PainelFatura(QWidget):
         layout.addWidget(self.import_progress)
 
         # TABELA
-        self.table = QTableWidget(0, 5)
+        self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([
-            "Data", "Descrição", "Categoria", "Valor", "Status"
+            "Data", "Descrição", "Tipo", "Categoria", "Valor", "Status"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -292,7 +299,7 @@ class PainelFatura(QWidget):
         font_size = 9 if width < 760 else 10
         self.table.setFont(QFont(self.font().family(), font_size))
         self.table.verticalHeader().setDefaultSectionSize(28 if width < 760 else 34)
-        for button in (self.btn_lancar, self.btn_pagar, self.btn_exportar,
+        for button in (self.btn_lancar, self.btn_credito, self.btn_pagar, self.btn_exportar,
                        self.btn_importar):
             button.setIconSize(QSize(15, 15) if width < 760 else QSize(18, 18))
             button.setToolButtonStyle(
@@ -415,13 +422,21 @@ class PainelFatura(QWidget):
         self.indicator_labels["disponivel"][1].setObjectName("positivo")
 
     def _render_resumo(self, fatura):
+        status = fatura.get("status", "ABERTA")
+        self.btn_pagar.setEnabled(
+            status == "FECHADA" and fatura.get("saldo_a_pagar", 0) > 0
+        )
+        self.btn_pagar.setToolTip(
+            "Disponível após o fechamento da fatura."
+            if status == "ABERTA" else ""
+        )
         self.resumo_label.setText(
-            f"{TranslatorApp.get('Fatura')}: "
-            f"{CurrencyFormatter.format(fatura.get('total', 0))} | "
-            f"{TranslatorApp.get('Abertos')}: "
-            f"{CurrencyFormatter.format(fatura.get('abertos', 0))} | "
-            f"{TranslatorApp.get('Pagos')}: "
-            f"{CurrencyFormatter.format(fatura.get('pagos', 0))}"
+            f"{status} | "
+            f"Compras: {CurrencyFormatter.format(fatura.get('compras', 0))} | "
+            f"Créditos: -{CurrencyFormatter.format(fatura.get('creditos', 0))} | "
+            f"Pagamentos: -{CurrencyFormatter.format(fatura.get('pagamentos', 0))} | "
+            f"Saldo a pagar: "
+            f"{CurrencyFormatter.format(fatura.get('saldo_a_pagar', 0))}"
         )
 
     def _render_futuras(self, futuras):
@@ -443,17 +458,23 @@ class PainelFatura(QWidget):
             self.table.insertRow(row)
 
             valor = float(item.get("Valor", 0))
-            pago = item.get("Paga")
+            tipo = item.get("Tipo_Movimento", "COMPRA")
+            status_fatura = item.get("Status_Fatura", "ABERTA")
+            pago = status_fatura == "PAGA"
 
             cor = (
                 ThemeManager.get_color("success")
-                if pago else ThemeManager.get_color("danger")
+                if pago or tipo in {"CREDITO", "PAGAMENTO"}
+                else ThemeManager.get_color("danger")
             )
 
-            status = (
-                TranslatorApp.get("Pago")
-                if pago else TranslatorApp.get("Aberto")
-            )
+            status = {
+                "ABERTA": TranslatorApp.get("Aberto"),
+                "FECHADA": "Fechada",
+                "PAGA": TranslatorApp.get("Pago"),
+            }.get(status_fatura, status_fatura)
+            if tipo == "PAGAMENTO":
+                status = "Registrado"
 
             descricao = item.get("Descricao", "")
 
@@ -471,19 +492,20 @@ class PainelFatura(QWidget):
             )
 
             self.table.setItem(row, 1, QTableWidgetItem(descricao))
-            self.table.setItem(
-                row,
-                2,
-                QTableWidgetItem(str(item.get("Categoria", "")))
-            )
+            self.table.setItem(row, 2, QTableWidgetItem({
+                "COMPRA": "Compra",
+                "CREDITO": "Crédito",
+                "PAGAMENTO": "Pagamento",
+            }.get(tipo, tipo)))
+            self.table.setItem(row, 3, QTableWidgetItem(str(item.get("Categoria", ""))))
 
             valor_item = QTableWidgetItem(CurrencyFormatter.format(valor))
             valor_item.setForeground(QColor(cor))
-            self.table.setItem(row, 3, valor_item)
+            self.table.setItem(row, 4, valor_item)
 
             status_item = QTableWidgetItem(status)
             status_item.setForeground(QColor(cor))
-            self.table.setItem(row, 4, status_item)
+            self.table.setItem(row, 5, status_item)
 
     # ======================================================
     # AÇÕES
@@ -600,6 +622,19 @@ class PainelFatura(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             self._carregar()
 
+    def add_credit(self):
+        if not self.cartao:
+            QMessageBox.warning(
+                self, TranslatorApp.get("Erro"),
+                TranslatorApp.get("Nenhum cartão selecionado.")
+            )
+            return
+        dialog = CreditoFaturaDialog(
+            self.cartao["ID_Cartao"], self
+        )
+        if dialog.exec_() == QDialog.Accepted:
+            self._carregar()
+
     def importar_fatura(self):
         if not self.cartao:
             QMessageBox.warning(
@@ -706,11 +741,7 @@ class PainelFatura(QWidget):
             ano
         )
 
-        total = sum(
-            float(l["Valor"])
-            for l in fatura
-            if not l.get("Paga")
-        )
+        total = sum(float(l["Valor"]) for l in fatura)
 
         if total <= 0:
             QMessageBox.information(

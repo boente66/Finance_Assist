@@ -48,10 +48,22 @@ class FaturaPdfBaseLayout(BaseLayout):
     @staticmethod
     def item(data, descricao, valor, mes, ano):
         atual, total = FaturaPdfBaseLayout.parcela(descricao)
+        valor = float(valor)
+        descricao_normalizada = FaturaPdfBaseLayout.texto_sem_acentos(
+            descricao
+        )
+        tipo = "COMPRA"
+        if valor < 0:
+            tipo = (
+                "PAGAMENTO"
+                if "PAGAMENTO" in descricao_normalizada
+                else "CREDITO"
+            )
         return {
             "Data": data,
             "Descricao": descricao.strip(),
-            "Valor": abs(float(valor)),
+            "Valor": valor,
+            "Tipo_Movimento": tipo,
             "Parcela_Atual": atual,
             "Num_Parcelas": total,
             "Competencia_Mes": int(mes),
