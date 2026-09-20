@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.10
-**Atualização:** 12 de setembro de 2026  
+**Versão:** 2.1.0-test.11
+**Atualização:** 20 de setembro de 2026
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.10>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.11>
 
 ## 1. Apresentação
 
@@ -102,6 +102,11 @@ cartão, tabela de todos os lançamentos e total.
 Em **Agendamentos**, registre receitas, despesas, transferências e faturas
 futuras. Use os filtros para localizar itens por período, origem, conta e status.
 
+A faixa **Planejamento por mês** mostra o mês atual e os três meses seguintes.
+Clique em um mês para exibir imediatamente somente os compromissos com data ou
+vencimento naquela competência. Os cartões de total são recalculados para o mês
+selecionado, facilitando comparar receitas, contas, faturas e resultado previsto.
+
 Quando habilitados pelo administrador, os alertas verificam agendamentos
 vencidos em segundo plano. A verificação funciona enquanto o Finance Assist
 estiver aberto.
@@ -140,7 +145,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.10_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.11_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
 
@@ -148,7 +153,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.10_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.11_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -175,8 +180,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.10: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.10>
+- Versão test.11: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.11>
 - Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_INTERFACE_BACKUP_TEST8.md>
 
-A versão 2.1.0-test.10 foi validada com 263 testes automatizados. Os instaladores
+A versão 2.1.0-test.11 foi validada com 265 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.

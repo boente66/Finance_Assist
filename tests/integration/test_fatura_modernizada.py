@@ -69,6 +69,26 @@ def test_crud_copy_paste_and_paid_protection(tmp_path, monkeypatch):
     view.close(); app.processEvents(); db.close()
 
 
+def test_historico_pago_permanece_visivel_e_tabela_tem_altura_util(tmp_path, monkeypatch):
+    db, card, account = _cenario(tmp_path, monkeypatch)
+    service = FaturaService(str(tmp_path / "fatura.db"))
+    service.registrar_despesa_cartao({
+        "ID_Usuario": 1, "ID_Cartao": card, "Descricao": "Compra preservada",
+        "Valor": 80, "Data": "2026-08-05", "Num_Parcelas": 1,
+    })
+    service.pagar_fatura(card, 8, 2026, account, 1)
+
+    app = QApplication.instance() or QApplication([])
+    view = PainelFatura()
+    view.set_cartao(FaturaController().buscar_cartao_por_id(card))
+    view.set_competencia(8, 2026)
+    view._carregar()
+    assert view.table.minimumHeight() >= 200
+    assert view.table.rowCount() == 1
+    assert view.table.item(0, 1).text().startswith("Compra preservada")
+    view.close(); app.processEvents(); db.close()
+
+
 def test_exportacoes_pdf_possuem_titulo_tabela_total_e_multiplas_paginas(tmp_path, monkeypatch):
     db, card, account = _cenario(tmp_path, monkeypatch)
     service = FaturaService(str(tmp_path / "fatura.db"))

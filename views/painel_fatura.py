@@ -246,8 +246,11 @@ class PainelFatura(QWidget):
         self.table.customContextMenuRequested.connect(self._abrir_menu_acoes)
         self.table.cellDoubleClicked.connect(lambda *_: self.editar_lancamento())
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        # A lista de faturas futuras pode ter muitas linhas. Sem uma altura
+        # mínima ela comprime completamente o histórico da fatura.
+        self.table.setMinimumHeight(210)
 
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
 
         # PAGINAÇÃO
         paginacao = QHBoxLayout()
@@ -279,6 +282,7 @@ class PainelFatura(QWidget):
         self.futuras_label = QLabel()
         self.futuras_label.setObjectName("muted")
         self.futuras_label.setWordWrap(True)
+        self.futuras_label.setMaximumHeight(92)
         layout.addWidget(self.futuras_label)
         self.set_compact_mode(False, self.width())
 
@@ -392,7 +396,15 @@ class PainelFatura(QWidget):
         total = painel.get("total_registros", 0)
         total_paginas = max(1, (total + self.limit - 1) // self.limit)
 
+        # Protege a navegação ao trocar de cartão/competência depois de ter
+        # avançado páginas em outra fatura.
+        if self.page >= total_paginas:
+            self.page = total_paginas - 1
+            return self._carregar()
+
         self.label_page.setText(f"{self.page + 1} / {total_paginas}")
+        self.btn_prev.setEnabled(self.page > 0)
+        self.btn_next.setEnabled(self.page + 1 < total_paginas)
 
     # ======================================================
     # RENDER

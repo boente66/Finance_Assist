@@ -272,6 +272,32 @@ def test_atualizacao_apos_pagamento_reflete_valor(db, db_path):
     assert service.get_financial_projection(user)["totais"]["faturas"] == Decimal("0.00")
 
 
+def test_seletor_mensal_mostra_mes_atual_e_posterior_instantaneamente(
+    db, db_path, qt_app
+):
+    user, _, _ = preparar(db, db_path)
+    current = date.today()
+    following = current + relativedelta(months=1)
+    adicionar_agendamento(db, user, 40)
+    db.execute_query(
+        "UPDATE agendamentos SET Data=? WHERE ID_Usuario=?",
+        (following.isoformat(), user),
+    )
+    adicionar_agendamento(db, user, 25)
+
+    view = make_view(db_path, qt_app)
+    assert len(view.month_buttons) >= 2
+    assert "Atual" in view.month_buttons[0].text()
+    assert [item["valor"] for item in view.filtered_data] == [Decimal("25.00")]
+
+    view.month_buttons[1].click()
+    qt_app.processEvents()
+    assert view.selected_month == (following.year, following.month)
+    assert [item["valor"] for item in view.filtered_data] == [Decimal("40.00")]
+    assert view.totals["pagar"] == Decimal("40.00")
+    view.close()
+
+
 def test_agendamento_manual_de_fatura_vinculado_evitar_duplicidade(db, db_path):
     user, _, cards = preparar(db, db_path)
     adicionar_compra(db, user, cards[0], 50)

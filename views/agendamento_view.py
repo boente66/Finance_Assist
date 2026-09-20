@@ -5,10 +5,12 @@ import logging
 import os
 from datetime import date, datetime, timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
-    QAbstractItemView, QComboBox, QFrame, QGridLayout, QHBoxLayout,
+    QAbstractItemView, QButtonGroup, QComboBox, QFrame, QGridLayout, QHBoxLayout,
     QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
@@ -40,6 +42,7 @@ class AgendamentoView(QWidget):
         self.data = []
         self.filtered_data = []
         self.totals = {}
+        self.selected_month = (date.today().year, date.today().month)
         self._icon_cache = {}
         self._loading_error = None
         self._init_ui()
@@ -97,6 +100,34 @@ class AgendamentoView(QWidget):
             button.setIcon(self._icon(icon))
             self.actions_layout.addWidget(button)
         root.addLayout(self.actions_layout)
+
+        month_frame = QFrame()
+        month_frame.setObjectName("card")
+        month_box = QHBoxLayout(month_frame)
+        month_box.setContentsMargins(10, 8, 10, 8)
+        month_box.setSpacing(7)
+        self.month_caption = QLabel("Planejamento por mês:")
+        self.month_caption.setObjectName("cardTitle")
+        month_box.addWidget(self.month_caption)
+        self.month_group = QButtonGroup(self)
+        self.month_group.setExclusive(True)
+        self.month_buttons = []
+        current = date.today().replace(day=1)
+        for offset in range(4):
+            reference = current + relativedelta(months=offset)
+            button = QPushButton()
+            button.setObjectName("filterButton")
+            button.setCheckable(True)
+            button.setProperty("month_reference", (reference.year, reference.month))
+            button.clicked.connect(
+                lambda _=False, ref=(reference.year, reference.month): self.select_month(*ref)
+            )
+            self.month_group.addButton(button)
+            self.month_buttons.append(button)
+            month_box.addWidget(button)
+        self.month_buttons[0].setChecked(True)
+        month_box.addStretch()
+        root.addWidget(month_frame)
 
         filters = QFrame()
         filters.setObjectName("card")
@@ -213,6 +244,13 @@ class AgendamentoView(QWidget):
         self.setWindowTitle(TranslatorApp.get("Agendamentos"))
         self.title.setText(TranslatorApp.get("Agendamentos"))
         self.subtitle.setText(TranslatorApp.get("Planeje receitas, pagamentos e transferências futuras"))
+        self.month_caption.setText(TranslatorApp.get("Planejamento por mês:"))
+        current = date.today().replace(day=1)
+        for offset, button in enumerate(self.month_buttons):
+            reference = current + relativedelta(months=offset)
+            month = DateFormatter.map_nome_mes(reference.month)
+            suffix = f" ({TranslatorApp.get('Atual')})" if offset == 0 else ""
+            button.setText(f"{month[:3]} {reference.year}{suffix}")
         self.refresh_btn.setText(TranslatorApp.get("Atualizar"))
         self.period_combo.setItemText(0, TranslatorApp.get("3 meses"))
         self.period_combo.setItemText(1, TranslatorApp.get("6 meses"))
@@ -301,6 +339,13 @@ class AgendamentoView(QWidget):
             button.setChecked(item_code == code)
         self.load_data()
 
+    def select_month(self, year, month):
+        """Seleciona uma competência e atualiza a tabela sem consultar o banco."""
+        self.selected_month = (int(year), int(month))
+        for button in self.month_buttons:
+            button.setChecked(button.property("month_reference") == self.selected_month)
+        self.apply_filter()
+
     def _quick_filter(self):
         return next((code for code, button in self.quick_buttons.items() if button.isChecked()), self.FILTER_ALL)
 
@@ -315,6 +360,12 @@ class AgendamentoView(QWidget):
         executed = {"EXECUTADO", "PAGO"}
         filtered = []
         for item in self.data:
+            try:
+                item_date = datetime.strptime(item.get("data") or "", "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                continue
+            if (item_date.year, item_date.month) != self.selected_month:
+                continue
             if quick == self.FILTER_RECEIVE and item["tipo"] != "Contas a Receber":
                 continue
             if quick == self.FILTER_PAY and item["tipo"] != "Contas a Pagar":
@@ -341,7 +392,27 @@ class AgendamentoView(QWidget):
             filtered.append(item)
         self.filtered_data = filtered
         self._render_rows(filtered)
+        self._render_month_totals(filtered)
         self._atualizar_textos()
+
+    def _render_month_totals(self, items):
+        pending = {"AGENDADO", "ATRASADO", "PENDENTE", "A_PAGAR"}
+        totals = {key: 0 for key in (
+            "receber", "agendamentos_pagar", "faturas", "pagar", "resultado"
+        )}
+        for item in items:
+            if item.get("status") not in pending or not item.get("incluir_totais"):
+                continue
+            value = item.get("valor", 0)
+            if item.get("tipo_origem") == "FATURA_CARTAO":
+                totals["faturas"] += value
+            elif item.get("tipo") == "Contas a Receber":
+                totals["receber"] += value
+            elif item.get("tipo") == "Contas a Pagar":
+                totals["agendamentos_pagar"] += value
+        totals["pagar"] = totals["agendamentos_pagar"] + totals["faturas"]
+        totals["resultado"] = totals["receber"] - totals["pagar"]
+        self.totals = totals
 
     def _render_rows(self, items):
         self.table.setRowCount(0)
