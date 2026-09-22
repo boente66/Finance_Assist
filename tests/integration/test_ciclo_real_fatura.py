@@ -1,3 +1,5 @@
+from datetime import date
+
 from services.fatura_service import FaturaService
 import pytest
 
@@ -25,7 +27,13 @@ def movimentos(db, cartao, mes):
     """, (cartao, mes))
 
 
-def test_ciclo_creditos_pagamento_e_limite_real(db, db_path):
+def test_ciclo_creditos_pagamento_e_limite_real(db, db_path, monkeypatch):
+    class ScenarioDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 9, 19)
+
+    monkeypatch.setattr("services.fatura_service.date", ScenarioDate)
     usuario = criar_usuario(db, "ciclo_real")
     conta = criar_conta(db, usuario, "Conta pagamento", 3000)
     cartao = criar_cartao(db, usuario)

@@ -219,10 +219,13 @@ class PainelAccount(QWidget):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._abrir_menu_contextual)
         self.table.cellDoubleClicked.connect(lambda *_: self.edit_transaction())
-        layout.addWidget(self.table)
+        self.table.setMinimumHeight(200)
+        layout.addWidget(self.table, 1)
 
         # PAGINAÇÃO
-        pag = QHBoxLayout()
+        self.pagination_widget = QWidget()
+        pag = QHBoxLayout(self.pagination_widget)
+        pag.setContentsMargins(0, 0, 0, 0)
 
         self.btn_prev = QToolButton()
         self.btn_prev.setText("◀")
@@ -243,7 +246,7 @@ class PainelAccount(QWidget):
         pag.addWidget(self.lbl_page)
         pag.addWidget(self.btn_next)
 
-        layout.addLayout(pag)
+        layout.addWidget(self.pagination_widget)
 
         # RESUMO
         self.resumo = QLabel()
@@ -336,6 +339,9 @@ class PainelAccount(QWidget):
             f"{TranslatorApp.get('Página')} "
             f"{self.pagina_atual + 1} / {total_paginas}"
         )
+        self.btn_prev.setEnabled(self.pagina_atual > 0)
+        self.btn_next.setEnabled(self.pagina_atual + 1 < total_paginas)
+        self.pagination_widget.setVisible(total_paginas > 1)
 
         self._preencher(pagina)
 

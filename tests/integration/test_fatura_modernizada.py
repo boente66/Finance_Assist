@@ -1,5 +1,6 @@
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
 from PyPDF2 import PdfReader
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -37,25 +38,32 @@ def _cenario(tmp_path, monkeypatch):
 def test_crud_copy_paste_and_paid_protection(tmp_path, monkeypatch):
     db, card, _ = _cenario(tmp_path, monkeypatch)
     controller = FaturaController()
+    competence = date.today() + relativedelta(months=1)
     payload = {"ID_Cartao": card, "Descricao": "Compra original", "Valor": 25,
-               "Data": "2026-09-05", "Competencia_Mes": 9, "Competencia_Ano": 2026,
+               "Data": competence.replace(day=5).isoformat(),
+               "Competencia_Mes": competence.month,
+               "Competencia_Ano": competence.year,
                "Num_Parcelas": 1}
     assert controller.registrar_despesa_cartao(payload)
-    item = controller.listar_lancamentos_fatura(card, 9, 2026)[0]
+    item = controller.listar_lancamentos_fatura(
+        card, competence.month, competence.year
+    )[0]
     controller.atualizar_lancamento(item["ID_Lancamento"], {**item, "Descricao": "Compra editada"})
     assert controller.obter_lancamento(item["ID_Lancamento"])["Descricao"] == "Compra editada"
 
     app = QApplication.instance() or QApplication([])
-    view = PainelFatura(); view.set_cartao(controller.buscar_cartao_por_id(card)); view.set_competencia(9, 2026); view._carregar()
+    view = PainelFatura(); view.set_cartao(controller.buscar_cartao_por_id(card)); view.set_competencia(competence.month, competence.year); view._carregar()
     view.table.selectRow(0)
     assert view.copiar_lancamento()
     assert view.colar_lancamento()
-    assert len(controller.listar_lancamentos_fatura(card, 9, 2026)) == 2
+    assert len(controller.listar_lancamentos_fatura(card, competence.month, competence.year)) == 2
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
     view.table.selectRow(0)
     assert view.excluir_lancamento()
-    assert len(controller.listar_lancamentos_fatura(card, 9, 2026)) == 1
-    remaining = controller.listar_lancamentos_fatura(card, 9, 2026)[0]
+    assert len(controller.listar_lancamentos_fatura(card, competence.month, competence.year)) == 1
+    remaining = controller.listar_lancamentos_fatura(
+        card, competence.month, competence.year
+    )[0]
     db.execute_query(
         "UPDATE faturas_cartao SET Status='PAGA' WHERE ID_Fatura=?",
         (remaining["ID_Fatura"],),
@@ -86,7 +94,24 @@ def test_historico_pago_permanece_visivel_e_tabela_tem_altura_util(tmp_path, mon
     assert view.table.minimumHeight() >= 200
     assert view.table.rowCount() == 1
     assert view.table.item(0, 1).text().startswith("Compra preservada")
+    assert view.pagination_widget.isHidden()
     view.close(); app.processEvents(); db.close()
+
+
+def test_proximas_faturas_nao_incluem_competencia_passada(tmp_path, monkeypatch):
+    db, card, _ = _cenario(tmp_path, monkeypatch)
+    service = FaturaService(str(tmp_path / "fatura.db"))
+    for month, description in ((8, "Compra passada"), (10, "Compra futura")):
+        service.registrar_despesa_cartao({
+            "ID_Usuario": 1, "ID_Cartao": card, "Descricao": description,
+            "Valor": 25, "Data": f"2026-{month:02d}-05", "Num_Parcelas": 1,
+            "Competencia_Mes": month, "Competencia_Ano": 2026,
+        })
+
+    panel = service.get_painel_cartao(card, 9, 2026, 1)
+    assert "08/2026" not in panel["futuras"]
+    assert panel["futuras"] == {"10/2026": 25.0}
+    db.close()
 
 
 def test_exportacoes_pdf_possuem_titulo_tabela_total_e_multiplas_paginas(tmp_path, monkeypatch):

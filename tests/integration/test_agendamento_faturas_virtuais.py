@@ -287,7 +287,7 @@ def test_seletor_mensal_mostra_mes_atual_e_posterior_instantaneamente(
 
     view = make_view(db_path, qt_app)
     assert len(view.month_buttons) >= 2
-    assert "Atual" in view.month_buttons[0].text()
+    assert view.month_buttons[0].text().endswith("• Atual")
     assert [item["valor"] for item in view.filtered_data] == [Decimal("25.00")]
 
     view.month_buttons[1].click()

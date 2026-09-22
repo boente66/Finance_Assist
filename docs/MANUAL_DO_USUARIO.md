@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.11
-**Atualização:** 20 de setembro de 2026
+**Versão:** 2.1.0-test.12
+**Atualização:** 21 de setembro de 2026
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.11>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.12>
 
 ## 1. Apresentação
 
@@ -68,6 +68,10 @@ Cadastre o cartão com nome, limite, fechamento e vencimento. Selecione o cartã
 o mês e o ano para consultar a fatura. O painel informa limite, valor usado,
 disponível e separa compras, créditos, pagamentos e saldo a pagar.
 
+A tabela mantém espaço para os lançamentos e oculta a paginação quando existe
+somente uma página. **Próximas faturas** apresenta apenas competências posteriores
+ao mês consultado; competências antigas não são exibidas como futuras.
+
 A fatura passa por **ABERTA**, **FECHADA** e **PAGA**. A fatura aberta recebe as
 compras atuais. No fechamento ela para de receber compras, continua pendente e
 o sistema abre a competência seguinte. O pagamento fica no histórico oficial da
@@ -106,6 +110,8 @@ A faixa **Planejamento por mês** mostra o mês atual e os três meses seguintes
 Clique em um mês para exibir imediatamente somente os compromissos com data ou
 vencimento naquela competência. Os cartões de total são recalculados para o mês
 selecionado, facilitando comparar receitas, contas, faturas e resultado previsto.
+O mês selecionado possui destaque visual. Em janelas menores, colunas auxiliares
+são ocultadas para preservar data, descrição, valores e status sem cortar a tabela.
 
 Quando habilitados pelo administrador, os alertas verificam agendamentos
 vencidos em segundo plano. A verificação funciona enquanto o Finance Assist
@@ -145,7 +151,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.11_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.12_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
 
@@ -153,7 +159,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.11_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.12_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -180,8 +186,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.11: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.11>
+- Versão test.12: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.12>
 - Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_INTERFACE_BACKUP_TEST8.md>
 
-A versão 2.1.0-test.11 foi validada com 265 testes automatizados. Os instaladores
+A versão 2.1.0-test.12 foi validada com 267 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.

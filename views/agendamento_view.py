@@ -60,7 +60,7 @@ class AgendamentoView(QWidget):
     def _init_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
-        root.setSpacing(14)
+        root.setSpacing(10)
 
         header = QHBoxLayout()
         titles = QVBoxLayout()
@@ -177,6 +177,7 @@ class AgendamentoView(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setMinimumHeight(180)
         self.table.verticalHeader().setVisible(False)
         header_view = self.table.horizontalHeader()
         header_view.setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -208,17 +209,27 @@ class AgendamentoView(QWidget):
 
     def set_compact_mode(self, compact, available_width=None):
         width = int(available_width or self.width())
-        columns = 5 if width >= 1200 else 3 if width >= 820 else 2
+        columns = 5 if width >= 920 else 3 if width >= 700 else 2
         for item in self.summary_widgets:
             self.summary_layout.removeWidget(item)
         for index, item in enumerate(self.summary_widgets):
             self.summary_layout.addWidget(item, index // columns, index % columns)
         for column in range(5):
             self.summary_layout.setColumnStretch(column, 1 if column < columns else 0)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        if width >= 980:
-            self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-            self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        # Em larguras comuns, mantém as colunas financeiras essenciais legíveis.
+        # As informações ocultas continuam disponíveis ao abrir/editar a linha.
+        hidden = set()
+        if width < 1120:
+            hidden.update((1, 3, 9))  # período, origem e detalhe
+        if width < 820:
+            hidden.update((4, 5))  # categoria e favorecido/cartão
+        for column in range(self.table.columnCount()):
+            self.table.setColumnHidden(column, column in hidden)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        if width >= 1120:
+            header.setSectionResizeMode(5, QHeaderView.Stretch)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -249,8 +260,8 @@ class AgendamentoView(QWidget):
         for offset, button in enumerate(self.month_buttons):
             reference = current + relativedelta(months=offset)
             month = DateFormatter.map_nome_mes(reference.month)
-            suffix = f" ({TranslatorApp.get('Atual')})" if offset == 0 else ""
-            button.setText(f"{month[:3]} {reference.year}{suffix}")
+            suffix = f" • {TranslatorApp.get('Atual')}" if offset == 0 else ""
+            button.setText(f"{month[:3]}/{reference.year}{suffix}")
         self.refresh_btn.setText(TranslatorApp.get("Atualizar"))
         self.period_combo.setItemText(0, TranslatorApp.get("3 meses"))
         self.period_combo.setItemText(1, TranslatorApp.get("6 meses"))

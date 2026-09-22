@@ -221,6 +221,7 @@ QLabel#pageTitle {{ font-size: {title_size}pt; font-weight: 700; color: {c['text
 QLabel#pageSubtitle, QLabel#secondary, QLabel#muted {{ color: {c['text_secondary']}; font-size: {subtitle_size}pt; }}
 QLabel#cardTitle {{ color: {c['text_secondary']}; font-weight: 600; }}
 QLabel#cardValue {{ color: {c['primary']}; font-size: 15pt; font-weight: 700; }}
+QLabel#invoiceSummary {{ color: {c['primary']}; font-size: 12pt; font-weight: 700; }}
 QLabel#positivo {{ color: {c['success']}; font-weight: 700; }}
 QLabel#negativo {{ color: {c['danger']}; font-weight: 700; }}
 QLabel#warning {{ color: {c['warning']}; font-weight: 700; }}
@@ -229,7 +230,17 @@ QPushButton:hover, QToolButton:hover {{ background-color: {c['primary_hover']}; 
 QPushButton:disabled, QToolButton:disabled {{ background: {c['disabled_background']}; color: {c['disabled_text']}; border-color: {c['border']}; }}
 QPushButton#secondaryButton, QToolButton#secondaryButton {{ background: {c['surface']}; color: {c['text_primary']}; border-color: {c['border']}; }}
 QPushButton#dangerButton, QToolButton#dangerButton {{ background: transparent; color: {c['danger']}; border-color: {c['danger']}; }}
-QPushButton#filterButton:checked {{ background: {c['primary']}; color: white; }}
+QPushButton#filterButton {{
+    background: {c['surface_alt']}; color: {c['text_primary']};
+    border-color: {c['border']};
+}}
+QPushButton#filterButton:hover {{
+    background: {c['selection']}; border-color: {c['focus']};
+}}
+QPushButton#filterButton:checked {{
+    background: {c['primary']}; color: white; border-color: {c['primary']};
+    font-weight: 600;
+}}
 QPushButton#circularAddButton {{
     background: {c['primary']}; color: white; border: 1px solid {c['primary']};
     border-radius: 18px; padding: 0; min-width: 36px; max-width: 36px;

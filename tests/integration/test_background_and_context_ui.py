@@ -48,6 +48,8 @@ def test_tabelas_usam_menu_contextual_sem_botao_acoes(tmp_path, monkeypatch):
     assert not hasattr(account_view, "btn_editar")
     assert account_view.btn_prev.objectName() == "circularNavButton"
     assert invoice_view.btn_next.width() == 38
+    assert account_view.table.minimumHeight() >= 200
+    assert account_view.pagination_widget.isHidden()
     account_view.close(); invoice_view.close(); app.processEvents(); db.close()
 
 

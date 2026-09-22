@@ -194,8 +194,6 @@ class PainelFatura(QWidget):
         self.filtro_combo.currentIndexChanged.connect(self._on_filtro_changed)
 
         self.lbl_status = QLabel("Status:")
-        self.toolbar.addWidget(self.lbl_status)
-        self.toolbar.addWidget(self.filtro_combo)
 
         layout.addLayout(self.toolbar)
 
@@ -226,6 +224,8 @@ class PainelFatura(QWidget):
         self.filters_layout.addWidget(self.mes_combo)
         self.filters_layout.addWidget(self.lbl_ano)
         self.filters_layout.addWidget(self.ano_combo)
+        self.filters_layout.addWidget(self.lbl_status)
+        self.filters_layout.addWidget(self.filtro_combo)
 
         layout.addLayout(self.filters_layout)
 
@@ -253,7 +253,9 @@ class PainelFatura(QWidget):
         layout.addWidget(self.table, 1)
 
         # PAGINAÇÃO
-        paginacao = QHBoxLayout()
+        self.pagination_widget = QWidget()
+        paginacao = QHBoxLayout(self.pagination_widget)
+        paginacao.setContentsMargins(0, 0, 0, 0)
 
         self.btn_prev = QPushButton("◀")
         self.btn_next = QPushButton("▶")
@@ -272,17 +274,17 @@ class PainelFatura(QWidget):
         paginacao.addWidget(self.btn_next)
         paginacao.addStretch()
 
-        layout.addLayout(paginacao)
+        layout.addWidget(self.pagination_widget)
 
         self.resumo_label = QLabel()
-        self.resumo_label.setObjectName("cardValue")
+        self.resumo_label.setObjectName("invoiceSummary")
         self.resumo_label.setWordWrap(True)
         layout.addWidget(self.resumo_label)
 
         self.futuras_label = QLabel()
         self.futuras_label.setObjectName("muted")
-        self.futuras_label.setWordWrap(True)
-        self.futuras_label.setMaximumHeight(92)
+        self.futuras_label.setWordWrap(False)
+        self.futuras_label.setMaximumHeight(34)
         layout.addWidget(self.futuras_label)
         self.set_compact_mode(False, self.width())
 
@@ -405,6 +407,7 @@ class PainelFatura(QWidget):
         self.label_page.setText(f"{self.page + 1} / {total_paginas}")
         self.btn_prev.setEnabled(self.page > 0)
         self.btn_next.setEnabled(self.page + 1 < total_paginas)
+        self.pagination_widget.setVisible(total_paginas > 1)
 
     # ======================================================
     # RENDER
@@ -454,15 +457,18 @@ class PainelFatura(QWidget):
         )
 
     def _render_futuras(self, futuras):
-        texto = f"{TranslatorApp.get('Próximas faturas')}:\n"
+        texto = f"{TranslatorApp.get('Próximas faturas')}: "
 
         if not futuras:
             texto += TranslatorApp.get("Nenhuma")
         else:
-            for mes, valor in futuras.items():
-                texto += f"{mes} → {CurrencyFormatter.format(valor)}\n"
+            texto += "  |  ".join(
+                f"{mes} → {CurrencyFormatter.format(valor)}"
+                for mes, valor in futuras.items()
+            )
 
         self.futuras_label.setText(texto)
+        self.futuras_label.setToolTip(texto)
 
     def _render_tabela(self, dados):
         self.table.setRowCount(0)

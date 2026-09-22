@@ -845,7 +845,7 @@ class FaturaService:
                 else:
                     l["Categoria"] = "Sem categoria"
                 fatura_atual.append(l)
-            else:
+            elif (comp_ano, comp_mes) > (int(ano), int(mes)):
                 chave = f"{comp_mes:02d}/{comp_ano}"
                 futuras.setdefault(chave, 0)
                 futuras[chave] += valor
@@ -918,7 +918,10 @@ class FaturaService:
                 "data_fechamento": ciclo["Data_Fechamento"],
                 "data_vencimento": ciclo["Data_Vencimento"],
             },
-            "futuras": dict(sorted(futuras.items())),
+            "futuras": dict(sorted(
+                futuras.items(),
+                key=lambda item: (int(item[0][3:]), int(item[0][:2])),
+            )),
             "lancamentos": fatura_paginada,
             "total_registros": total_registros
         }

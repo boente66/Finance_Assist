@@ -284,6 +284,23 @@ def test_agendamentos_funciona_reduzido(monkeypatch, app):
     view.close()
 
 
+def test_agendamentos_prioriza_tabela_em_largura_comum(monkeypatch, app):
+    monkeypatch.setattr(schedule_module, "ScheduleController", EmptyScheduleController)
+    view = schedule_module.AgendamentoView(schedule_controller=EmptyScheduleController())
+    view.set_compact_mode(False, 1050)
+    assert view.table.minimumHeight() >= 180
+    assert view.table.isColumnHidden(1)
+    assert view.table.isColumnHidden(3)
+    assert view.table.isColumnHidden(9)
+    assert not view.table.isColumnHidden(2)
+    positions = [
+        view.summary_layout.getItemPosition(view.summary_layout.indexOf(item))[:2]
+        for item in view.summary_widgets
+    ]
+    assert all(row == 0 for row, _ in positions)
+    view.close()
+
+
 @pytest.mark.parametrize("theme", [
     "Primavera", "Noite Intensa", "Prosperidade", "Verão Quente", "Personalizado",
 ])
