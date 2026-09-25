@@ -84,7 +84,7 @@ class TranslatorApp:
         if cls._current_lang == lang:
             return
 
-        print("Definindo idioma:", lang)
+        logger.info("Definindo idioma: %s", lang)
 
         cls._current_lang = lang
         cls.translate_all()

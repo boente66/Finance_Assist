@@ -24,6 +24,13 @@ Esses itens são cobertos pelos testes em `tests/integration/`.
 - [ ] Migração de valores monetários para `Decimal` ou centavos inteiros.
 - [ ] Melhorias gerais de acessibilidade e experiência de uso.
 
+## Revisão geral e fiscal — setembro de 2026
+
+O informe bancário foi separado do modelo fiscal da fonte pagadora, com dados
+explícitos, validação e isolamento por usuário. A análise de arquitetura, temas,
+traduções, interface e riscos remanescentes está em
+[`docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md`](docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md).
+
 ## Atualização test.6
 
 Causas, soluções, preservação dos bancos e evidências de validação:

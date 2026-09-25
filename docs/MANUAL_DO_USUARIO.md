@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.12
-**Atualização:** 21 de setembro de 2026
+**Versão:** 2.1.0-test.13
+**Atualização:** 24 de setembro de 2026
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.12>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.13>
 
 ## 1. Apresentação
 
@@ -123,6 +123,21 @@ Abra **Relatórios**, selecione período, conta e filtros. Atualize a consulta a
 de exportar. Se algum dado não aparecer, confira filtros, período, conta
 selecionada e atualize a página.
 
+### Informe de rendimentos
+
+Na seção **Informe de Rendimentos**, escolha uma das opções:
+
+- **Relatório financeiro auxiliar** soma as receitas e despesas registradas. Ele
+  ajuda na conferência, mas não decide se um valor é tributável ou dedutível.
+- **Modelo fiscal por fonte pagadora** reproduz os quadros do comprovante da
+  Receita com os valores que você transcrever do documento recebido.
+
+Para usar o modelo fiscal, clique em **Adicionar/editar dados fiscais**, informe ano, nome e
+CPF/CNPJ da fonte, natureza do rendimento e copie os valores do comprovante.
+Salve, selecione a fonte e clique em **Visualizar**. Cadastre separadamente cada
+fonte pagadora. Confira o PDF gerado com o documento original antes de utilizar
+os dados na declaração.
+
 ## 8. Backup e restauração
 
 ### Backup manual
@@ -151,7 +166,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.12_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.13_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
 
@@ -159,7 +174,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.12_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.13_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -186,8 +201,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.12: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.12>
-- Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_INTERFACE_BACKUP_TEST8.md>
+- Versão test.13: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.13>
+- Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md>
 
-A versão 2.1.0-test.12 foi validada com 267 testes automatizados. Os instaladores
+A versão 2.1.0-test.13 foi validada com 269 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.

@@ -137,3 +137,61 @@ def test_period_query_error_clears_previous_report(report_data, monkeypatch):
     assert view.table_anual.columnCount() == 1
     app.processEvents()
     view.close()
+
+
+def test_dados_fiscais_sao_explicitos_validados_e_isolados(report_data):
+    report_data.execute_query(
+        "UPDATE usuarios SET CPF='52998224725' WHERE ID_Usuario=1"
+    )
+    controller = RelatorioController()
+    ano = date.today().year
+    dados = {
+        'Ano_Calendario': ano,
+        'Fonte_Nome': 'Empresa Teste',
+        'Fonte_Documento': '12.345.678/0001-95',
+        'Natureza_Rendimento': 'Rendimentos do trabalho assalariado',
+        'Rendimentos_Tributaveis': 1234.56,
+        'Previdencia_Oficial': 100,
+        'IRRF': 25,
+    }
+    salvo = controller.salvar_informe_fiscal(dados)
+    assert salvo['Fonte_Documento'] == '12345678000195'
+    texto = controller.gerar_comprovante_fiscal(ano, salvo['ID_Informe'])
+    assert 'COMPROVANTE DE RENDIMENTOS PAGOS' in texto
+    assert '1.234,56' in texto and '25,00' in texto
+    assert 'Dados transcritos pelo usuário' in texto
+
+    Session.set_usuario({'ID_Usuario': 2, 'Nome': 'U2', 'Nivel_Acesso': 'usuario'})
+    assert RelatorioController().informes_fiscais(ano) == []
+    Session.set_usuario({'ID_Usuario': 1, 'Nome': 'U1', 'Nivel_Acesso': 'usuario'})
+
+    app = QApplication.instance() or QApplication([])
+    view = RelatorioView()
+    view.combo_tipo_informe.setCurrentIndex(
+        view.combo_tipo_informe.findData('fiscal')
+    )
+    assert not view.combo_fonte_fiscal.isHidden()
+    assert view.combo_fonte_fiscal.currentData() == salvo['ID_Informe']
+    assert 'COMPROVANTE DE RENDIMENTOS PAGOS' in view.text.toPlainText()
+    view.close()
+    app.processEvents()
+
+
+def test_informe_fiscal_nao_inventa_valores_do_extrato(report_data):
+    report_data.execute_query(
+        "UPDATE usuarios SET CPF='52998224725' WHERE ID_Usuario=1"
+    )
+    transaction(report_data, 5000)
+    controller = RelatorioController()
+    with pytest.raises(ValueError, match='fonte pagadora'):
+        controller.service.gerar_comprovante_fiscal(
+            1, date.today().year
+        )
+    with pytest.raises(ValueError, match='não podem ser negativos'):
+        controller.salvar_informe_fiscal({
+            'Ano_Calendario': date.today().year,
+            'Fonte_Nome': 'Fonte',
+            'Fonte_Documento': '52998224725',
+            'Natureza_Rendimento': 'Salário',
+            'IRRF': -1,
+        })

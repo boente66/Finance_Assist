@@ -64,3 +64,14 @@ class RelatorioController:
         except Exception as e:
             logger.error("Erro ao formatar texto do informe: %s", e, exc_info=True)
             return None
+
+    def informes_fiscais(self, ano):
+        return self.service.informes_fiscais(ano, self._get_usuario_id())
+
+    def salvar_informe_fiscal(self, dados):
+        return self.service.salvar_informe_fiscal(dados, self._get_usuario_id())
+
+    def gerar_comprovante_fiscal(self, ano, id_informe):
+        return self.service.gerar_comprovante_fiscal(
+            self._get_usuario_id(), ano, id_informe
+        )

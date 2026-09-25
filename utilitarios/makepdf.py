@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 
 logger = logging.getLogger(__name__)
@@ -185,12 +186,17 @@ class MakePDF:
             y = height - 80
 
             for linha in conteudo.split("\n"):
-                c.drawString(50, y, linha)
-                y -= 18
-
-                if y < 50:
-                    c.showPage()
-                    y = height - 50
+                partes = textwrap.wrap(
+                    linha, width=88, replace_whitespace=False,
+                    drop_whitespace=False,
+                ) or [""]
+                for parte in partes:
+                    c.drawString(50, y, parte.strip())
+                    y -= 18
+                    if y < 50:
+                        c.showPage()
+                        c.setFont("Helvetica", 12)
+                        y = height - 50
 
             c.save()
             return True

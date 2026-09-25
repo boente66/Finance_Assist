@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QSplitter,
     QPushButton,
     QListWidget,
@@ -26,6 +27,7 @@ from utilitarios.makepdf import MakePDF
 from utilitarios.currency_formatter import CurrencyFormatter
 from core.translator_app import TranslatorApp
 from core.theme_manager import ThemeManager
+from views.informe_fiscal_dialog import InformeFiscalDialog
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +114,10 @@ class RelatorioView(QWidget):
         )
         self.btn_gerar_anual.clicked.connect(self.load_anual)
         self.combo_anual.currentIndexChanged.connect(self.load_anual)
-        self.combo_inf.currentIndexChanged.connect(self.preview)
+        self.combo_inf.currentIndexChanged.connect(self._ano_informe_alterado)
+        self.combo_tipo_informe.currentIndexChanged.connect(self._modo_informe_alterado)
+        self.combo_fonte_fiscal.currentIndexChanged.connect(self.preview)
+        self.btn_dados_fiscais.clicked.connect(self._editar_dados_fiscais)
 
         self.btn_gerar_diario.clicked.connect(
             self.load_diario
@@ -204,6 +209,17 @@ class RelatorioView(QWidget):
 
         self.btn_print.setText(
             TranslatorApp.get("Imprimir")
+        )
+        self.btn_dados_fiscais.setText(
+            TranslatorApp.get("Adicionar/editar dados fiscais")
+        )
+        self.combo_tipo_informe.setItemText(
+            self.combo_tipo_informe.findData('auxiliar'),
+            TranslatorApp.get('Relatório financeiro auxiliar'),
+        )
+        self.combo_tipo_informe.setItemText(
+            self.combo_tipo_informe.findData('fiscal'),
+            TranslatorApp.get('Modelo fiscal por fonte pagadora'),
         )
 
         self._atualizar_cards_textos()
@@ -572,7 +588,7 @@ class RelatorioView(QWidget):
         w = QWidget()
         layout = QVBoxLayout(w)
 
-        ctrl = QHBoxLayout()
+        ctrl = QGridLayout()
 
         self.lbl_ano_base = QLabel()
 
@@ -583,15 +599,33 @@ class RelatorioView(QWidget):
             for a in range(ano, ano - 6, -1)
         ])
 
+        self.combo_tipo_informe = QComboBox()
+        self.combo_tipo_informe.addItem(
+            TranslatorApp.get('Relatório financeiro auxiliar'), 'auxiliar'
+        )
+        self.combo_tipo_informe.addItem(
+            TranslatorApp.get('Modelo fiscal por fonte pagadora'), 'fiscal'
+        )
+        self.combo_fonte_fiscal = QComboBox()
+        self.combo_fonte_fiscal.setMinimumWidth(190)
+        self.combo_fonte_fiscal.setVisible(False)
+        self.btn_dados_fiscais = QPushButton(
+            TranslatorApp.get('Adicionar/editar dados fiscais')
+        )
+
         self.btn_preview = QPushButton()
         self.btn_pdf = QPushButton()
         self.btn_print = QPushButton()
 
-        ctrl.addWidget(self.lbl_ano_base)
-        ctrl.addWidget(self.combo_inf)
-        ctrl.addWidget(self.btn_preview)
-        ctrl.addWidget(self.btn_pdf)
-        ctrl.addWidget(self.btn_print)
+        ctrl.addWidget(self.lbl_ano_base, 0, 0)
+        ctrl.addWidget(self.combo_inf, 0, 1)
+        ctrl.addWidget(self.combo_tipo_informe, 0, 2, 1, 2)
+        ctrl.addWidget(self.combo_fonte_fiscal, 1, 0, 1, 2)
+        ctrl.addWidget(self.btn_dados_fiscais, 1, 2)
+        ctrl.addWidget(self.btn_preview, 1, 3)
+        ctrl.addWidget(self.btn_pdf, 1, 4)
+        ctrl.addWidget(self.btn_print, 1, 5)
+        ctrl.setColumnStretch(2, 1)
 
         layout.addLayout(ctrl)
 
@@ -604,7 +638,12 @@ class RelatorioView(QWidget):
 
     def preview(self):
         try:
-            txt = self.controller.gerar_texto_informe(int(self.combo_inf.currentText()))
+            ano = int(self.combo_inf.currentText())
+            if self.combo_tipo_informe.currentData() == 'fiscal':
+                informe_id = self.combo_fonte_fiscal.currentData()
+                txt = self.controller.gerar_comprovante_fiscal(ano, informe_id)
+            else:
+                txt = self.controller.gerar_texto_informe(ano)
         except Exception:
             logger.exception("Erro ao carregar informe")
             txt = None
@@ -612,6 +651,55 @@ class RelatorioView(QWidget):
         self.btn_pdf.setEnabled(txt is not None)
         self.btn_print.setEnabled(txt is not None)
         return txt is not None
+
+    def _modo_informe_alterado(self):
+        fiscal = self.combo_tipo_informe.currentData() == 'fiscal'
+        self.combo_fonte_fiscal.setVisible(fiscal)
+        if fiscal:
+            self._carregar_fontes_fiscais()
+        self.preview()
+
+    def _ano_informe_alterado(self):
+        if self.combo_tipo_informe.currentData() == 'fiscal':
+            self._carregar_fontes_fiscais()
+        self.preview()
+
+    def _carregar_fontes_fiscais(self):
+        selecionado = self.combo_fonte_fiscal.currentData()
+        self.combo_fonte_fiscal.blockSignals(True)
+        self.combo_fonte_fiscal.clear()
+        try:
+            ano = int(self.combo_inf.currentText())
+            for item in self.controller.informes_fiscais(ano):
+                self.combo_fonte_fiscal.addItem(
+                    item['Fonte_Nome'], item['ID_Informe']
+                )
+        except Exception:
+            logger.exception('Erro ao carregar fontes pagadoras')
+        index = self.combo_fonte_fiscal.findData(selecionado)
+        if index >= 0:
+            self.combo_fonte_fiscal.setCurrentIndex(index)
+        self.combo_fonte_fiscal.blockSignals(False)
+
+    def _editar_dados_fiscais(self):
+        ano = int(self.combo_inf.currentText())
+        selecionado = self.combo_fonte_fiscal.currentData()
+        dados = next(
+            (
+                item for item in self.controller.informes_fiscais(ano)
+                if item['ID_Informe'] == selecionado
+            ),
+            None,
+        )
+        dialog = InformeFiscalDialog(
+            self.controller, ano, dados, self
+        )
+        if dialog.exec_():
+            self.combo_tipo_informe.setCurrentIndex(
+                self.combo_tipo_informe.findData('fiscal')
+            )
+            self._carregar_fontes_fiscais()
+            self.preview()
 
     def export_pdf(self):
         if not self.preview():
@@ -629,9 +717,14 @@ class RelatorioView(QWidget):
         )
 
         if path:
+            titulo = (
+                TranslatorApp.get('Comprovante de Rendimentos')
+                if self.combo_tipo_informe.currentData() == 'fiscal'
+                else TranslatorApp.get('Relatório financeiro auxiliar')
+            )
             MakePDF.gerar_pdf(
                 path,
-                TranslatorApp.get("Informe de Rendimentos"),
+                titulo,
                 txt
             )
 

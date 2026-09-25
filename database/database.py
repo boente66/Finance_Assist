@@ -490,6 +490,49 @@ CREATE TABLE IF NOT EXISTS pagamentos_fatura (
 );
 
 -- =====================================================
+-- DADOS FISCAIS INFORMADOS PELA FONTE PAGADORA
+-- =====================================================
+CREATE TABLE IF NOT EXISTS informes_fiscais (
+    ID_Informe INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Usuario INTEGER NOT NULL,
+    Ano_Calendario INTEGER NOT NULL CHECK (Ano_Calendario BETWEEN 1900 AND 9999),
+    Fonte_Nome TEXT NOT NULL,
+    Fonte_Documento TEXT NOT NULL,
+    Natureza_Rendimento TEXT NOT NULL,
+    Rendimentos_Tributaveis REAL NOT NULL DEFAULT 0 CHECK (Rendimentos_Tributaveis >= 0),
+    Previdencia_Oficial REAL NOT NULL DEFAULT 0 CHECK (Previdencia_Oficial >= 0),
+    Previdencia_Complementar REAL NOT NULL DEFAULT 0 CHECK (Previdencia_Complementar >= 0),
+    Pensao_Alimenticia REAL NOT NULL DEFAULT 0 CHECK (Pensao_Alimenticia >= 0),
+    IRRF REAL NOT NULL DEFAULT 0 CHECK (IRRF >= 0),
+    Parcela_Isenta_65 REAL NOT NULL DEFAULT 0 CHECK (Parcela_Isenta_65 >= 0),
+    Diarias_Ajudas_Custo REAL NOT NULL DEFAULT 0 CHECK (Diarias_Ajudas_Custo >= 0),
+    Pensao_Molestia_Grave REAL NOT NULL DEFAULT 0 CHECK (Pensao_Molestia_Grave >= 0),
+    Lucros_Dividendos REAL NOT NULL DEFAULT 0 CHECK (Lucros_Dividendos >= 0),
+    Valores_Empresario REAL NOT NULL DEFAULT 0 CHECK (Valores_Empresario >= 0),
+    Indenizacoes REAL NOT NULL DEFAULT 0 CHECK (Indenizacoes >= 0),
+    Isentos_Outros REAL NOT NULL DEFAULT 0 CHECK (Isentos_Outros >= 0),
+    Decimo_Terceiro REAL NOT NULL DEFAULT 0 CHECK (Decimo_Terceiro >= 0),
+    IRRF_Decimo_Terceiro REAL NOT NULL DEFAULT 0 CHECK (IRRF_Decimo_Terceiro >= 0),
+    Exclusivos_Outros REAL NOT NULL DEFAULT 0 CHECK (Exclusivos_Outros >= 0),
+    RRA_Meses INTEGER NOT NULL DEFAULT 0 CHECK (RRA_Meses >= 0),
+    RRA_Tributacao TEXT NOT NULL DEFAULT 'EXCLUSIVA'
+        CHECK (RRA_Tributacao IN ('EXCLUSIVA','AJUSTE_ANUAL')),
+    RRA_Rendimentos REAL NOT NULL DEFAULT 0 CHECK (RRA_Rendimentos >= 0),
+    RRA_Previdencia_Oficial REAL NOT NULL DEFAULT 0 CHECK (RRA_Previdencia_Oficial >= 0),
+    RRA_Pensao_Alimenticia REAL NOT NULL DEFAULT 0 CHECK (RRA_Pensao_Alimenticia >= 0),
+    RRA_IRRF REAL NOT NULL DEFAULT 0 CHECK (RRA_IRRF >= 0),
+    RRA_Despesas_Judiciais REAL NOT NULL DEFAULT 0 CHECK (RRA_Despesas_Judiciais >= 0),
+    Informacoes_Complementares TEXT,
+    Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Atualizado_Em TEXT,
+    UNIQUE(ID_Usuario, Ano_Calendario, Fonte_Documento),
+    FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_informes_fiscais_usuario_ano
+ON informes_fiscais(ID_Usuario, Ano_Calendario);
+
+-- =====================================================
 -- METAS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS metas (

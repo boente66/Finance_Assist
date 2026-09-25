@@ -44,3 +44,25 @@ class NameFormat:
             return NameFormat.formatCNPJ(valor)
 
         return valor
+
+    @staticmethod
+    def documento_valido(valor):
+        numero = NameFormat.somente_numeros(valor)
+        if len(numero) not in (11, 14) or numero == numero[0] * len(numero):
+            return False
+
+        def digito(base, pesos):
+            resto = sum(int(n) * peso for n, peso in zip(base, pesos)) % 11
+            return '0' if resto < 2 else str(11 - resto)
+
+        if len(numero) == 11:
+            primeiro = digito(numero[:9], range(10, 1, -1))
+            segundo = digito(numero[:9] + primeiro, range(11, 1, -1))
+            return numero[-2:] == primeiro + segundo
+
+        primeiro = digito(numero[:12], (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2))
+        segundo = digito(
+            numero[:12] + primeiro,
+            (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2),
+        )
+        return numero[-2:] == primeiro + segundo

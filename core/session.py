@@ -1,6 +1,10 @@
 # core/session.py
 
+import logging
+
 from core.config import DEFAULT_DB_PATH
+
+logger = logging.getLogger(__name__)
 
 class Session:
     """
@@ -162,7 +166,7 @@ class Session:
             try:
                 callback(idioma)
             except Exception:
-                pass
+                logger.exception("Falha ao notificar mudança de idioma")
 
     # ---------------------------------------
     # LISTENERS — TEMA
@@ -179,4 +183,4 @@ class Session:
                 if callable(callback):
                     callback(tema)
             except Exception:
-                pass
+                logger.exception("Falha ao notificar mudança de tema")

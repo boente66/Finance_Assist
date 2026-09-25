@@ -26,6 +26,44 @@ TRADUCOES = {
     }
 }
 
+# Textos essenciais ficam disponíveis sem depender do pacote opcional Argos.
+TRADUCOES["en"].update({
+    "Relatórios": "Reports",
+    "Informe de Rendimentos": "Income statement",
+    "Ano Base:": "Base year:",
+    "Visualizar": "Preview",
+    "Imprimir": "Print",
+    "Relatório financeiro auxiliar": "Auxiliary financial report",
+    "Modelo fiscal por fonte pagadora": "Tax form by payer",
+    "Dados fiscais": "Tax data",
+    "Adicionar/editar dados fiscais": "Add/edit tax data",
+    "Dados fiscais da fonte pagadora": "Payer tax data",
+    "Ano-calendário:": "Calendar year:",
+    "Fonte pagadora:": "Payer:",
+    "CPF/CNPJ da fonte:": "Payer CPF/CNPJ:",
+    "Natureza do rendimento:": "Income type:",
+    "Informações complementares:": "Additional information:",
+    "Dados inválidos": "Invalid data",
+})
+TRADUCOES["es"].update({
+    "Relatórios": "Informes",
+    "Informe de Rendimentos": "Informe de ingresos",
+    "Ano Base:": "Año base:",
+    "Visualizar": "Vista previa",
+    "Imprimir": "Imprimir",
+    "Relatório financeiro auxiliar": "Informe financiero auxiliar",
+    "Modelo fiscal por fonte pagadora": "Modelo fiscal por pagador",
+    "Dados fiscais": "Datos fiscales",
+    "Adicionar/editar dados fiscais": "Añadir/editar datos fiscales",
+    "Dados fiscais da fonte pagadora": "Datos fiscales del pagador",
+    "Ano-calendário:": "Año natural:",
+    "Fonte pagadora:": "Pagador:",
+    "CPF/CNPJ da fonte:": "CPF/CNPJ del pagador:",
+    "Natureza do rendimento:": "Naturaleza de los ingresos:",
+    "Informações complementares:": "Información adicional:",
+    "Dados inválidos": "Datos no válidos",
+})
+
 DEFAULT_LANG = "pt"
 
 

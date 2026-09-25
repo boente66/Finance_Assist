@@ -73,3 +73,62 @@ class RelatorioModel(Database):
 
     def get_informe_gastos(self, ano, id_usuario):
         return self._informe(ano, id_usuario, False)
+
+    def get_informes_fiscais(self, ano, id_usuario):
+        return self.fetch_all("""
+            SELECT * FROM informes_fiscais
+            WHERE Ano_Calendario = ? AND ID_Usuario = ?
+            ORDER BY Fonte_Nome, ID_Informe
+        """, (int(ano), id_usuario))
+
+    def salvar_informe_fiscal(self, dados, id_usuario):
+        campos = (
+            'Ano_Calendario', 'Fonte_Nome', 'Fonte_Documento',
+            'Natureza_Rendimento', 'Rendimentos_Tributaveis',
+            'Previdencia_Oficial', 'Previdencia_Complementar',
+            'Pensao_Alimenticia', 'IRRF', 'Parcela_Isenta_65',
+            'Diarias_Ajudas_Custo', 'Pensao_Molestia_Grave',
+            'Lucros_Dividendos', 'Valores_Empresario', 'Indenizacoes',
+            'Isentos_Outros', 'Decimo_Terceiro',
+            'IRRF_Decimo_Terceiro', 'Exclusivos_Outros',
+            'RRA_Meses', 'RRA_Tributacao', 'RRA_Rendimentos', 'RRA_Previdencia_Oficial',
+            'RRA_Pensao_Alimenticia', 'RRA_IRRF', 'RRA_Despesas_Judiciais',
+            'Informacoes_Complementares',
+        )
+        valores = [dados[campo] for campo in campos]
+        self.execute_query(f"""
+            INSERT INTO informes_fiscais (ID_Usuario, {', '.join(campos)})
+            VALUES (?, {', '.join('?' for _ in campos)})
+            ON CONFLICT(ID_Usuario, Ano_Calendario, Fonte_Documento)
+            DO UPDATE SET
+                Fonte_Nome=excluded.Fonte_Nome,
+                Natureza_Rendimento=excluded.Natureza_Rendimento,
+                Rendimentos_Tributaveis=excluded.Rendimentos_Tributaveis,
+                Previdencia_Oficial=excluded.Previdencia_Oficial,
+                Previdencia_Complementar=excluded.Previdencia_Complementar,
+                Pensao_Alimenticia=excluded.Pensao_Alimenticia,
+                IRRF=excluded.IRRF,
+                Parcela_Isenta_65=excluded.Parcela_Isenta_65,
+                Diarias_Ajudas_Custo=excluded.Diarias_Ajudas_Custo,
+                Pensao_Molestia_Grave=excluded.Pensao_Molestia_Grave,
+                Lucros_Dividendos=excluded.Lucros_Dividendos,
+                Valores_Empresario=excluded.Valores_Empresario,
+                Indenizacoes=excluded.Indenizacoes,
+                Isentos_Outros=excluded.Isentos_Outros,
+                Decimo_Terceiro=excluded.Decimo_Terceiro,
+                IRRF_Decimo_Terceiro=excluded.IRRF_Decimo_Terceiro,
+                Exclusivos_Outros=excluded.Exclusivos_Outros,
+                RRA_Meses=excluded.RRA_Meses,
+                RRA_Tributacao=excluded.RRA_Tributacao,
+                RRA_Rendimentos=excluded.RRA_Rendimentos,
+                RRA_Previdencia_Oficial=excluded.RRA_Previdencia_Oficial,
+                RRA_Pensao_Alimenticia=excluded.RRA_Pensao_Alimenticia,
+                RRA_IRRF=excluded.RRA_IRRF,
+                RRA_Despesas_Judiciais=excluded.RRA_Despesas_Judiciais,
+                Informacoes_Complementares=excluded.Informacoes_Complementares,
+                Atualizado_Em=CURRENT_TIMESTAMP
+        """, [id_usuario, *valores])
+        return self.fetch_one("""
+            SELECT * FROM informes_fiscais
+            WHERE ID_Usuario=? AND Ano_Calendario=? AND Fonte_Documento=?
+        """, (id_usuario, dados['Ano_Calendario'], dados['Fonte_Documento']))
