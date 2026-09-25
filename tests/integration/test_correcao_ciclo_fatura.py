@@ -112,6 +112,35 @@ def test_importacao_ignora_pagamento_textual(db, db_path):
     assert db.fetch_one("SELECT COUNT(*) AS n FROM lancamentos")["n"] == 0
 
 
+def test_edicao_move_vinculo_para_fatura_de_destino_sem_duplicar(db, db_path):
+    usuario = criar_usuario(db, "edicao_competencia")
+    cartao = criar_cartao(db, usuario)
+    service = FaturaService(db_path)
+    registrar(service, usuario, cartao, "2026-11-01", 75)
+    item = db.fetch_one("SELECT * FROM lancamentos WHERE ID_Cartao=?", (cartao,))
+    fatura_origem = item["ID_Fatura"]
+
+    service.atualizar_lancamento(item["ID_Lancamento"], {
+        **dict(item),
+        "Data": "2026-12-01",
+        "Competencia_Mes": 12,
+        "Competencia_Ano": 2026,
+    }, usuario)
+
+    movido = db.fetch_one(
+        "SELECT * FROM lancamentos WHERE ID_Lancamento=?",
+        (item["ID_Lancamento"],),
+    )
+    assert movido["ID_Fatura"] != fatura_origem
+    assert (movido["Competencia_Mes"], movido["Competencia_Ano"]) == (12, 2026)
+    assert service.obter_fatura(cartao, 11, 2026, usuario) == []
+    assert len(service.obter_fatura(cartao, 12, 2026, usuario)) == 1
+    assert db.fetch_one(
+        "SELECT COUNT(*) AS n FROM lancamentos WHERE ID_Lancamento=?",
+        (item["ID_Lancamento"],),
+    )["n"] == 1
+
+
 def test_ajuste_pode_reduzir_ou_aumentar_fatura(db, db_path):
     usuario = criar_usuario(db, "ajustes")
     cartao = criar_cartao(db, usuario)

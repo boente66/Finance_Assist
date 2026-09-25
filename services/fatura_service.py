@@ -440,27 +440,47 @@ class FaturaService:
         ]
 
     def atualizar_lancamento(self, id_lancamento, dados, id_usuario):
-        atual = self.obter_lancamento(id_lancamento, id_usuario)
-        if not atual:
-            raise ValueError("Lançamento não encontrado.")
-        ciclo = self.sincronizar_ciclo(
-            atual["ID_Cartao"],
-            atual["Competencia_Mes"],
-            atual["Competencia_Ano"],
-            id_usuario,
-        )
-        if ciclo["Status"] != "ABERTA":
-            raise ValueError(
-                "Somente lançamentos de uma fatura aberta podem ser editados."
+        with self.lancamento_model.unit_of_work(
+            self.credito_model,
+            self.lancamento_model.credito,
+            self.ciclo_model,
+            immediate=True,
+        ):
+            atual = self.obter_lancamento(id_lancamento, id_usuario)
+            if not atual:
+                raise ValueError("Lançamento não encontrado.")
+            ciclo_atual = self.sincronizar_ciclo(
+                atual["ID_Cartao"],
+                atual["Competencia_Mes"],
+                atual["Competencia_Ano"],
+                id_usuario,
             )
-        if atual.get("Tipo_Movimento", "COMPRA") != "COMPRA":
-            raise ValueError(
-                "Créditos e pagamentos não podem ser editados como compra."
+            if ciclo_atual["Status"] != "ABERTA":
+                raise ValueError(
+                    "Somente lançamentos de uma fatura aberta podem ser editados."
+                )
+            if atual.get("Tipo_Movimento", "COMPRA") != "COMPRA":
+                raise ValueError(
+                    "Créditos e pagamentos não podem ser editados como compra."
+                )
+            payload = dict(atual)
+            payload.update(dados)
+            payload["ID_Cartao"] = atual["ID_Cartao"]
+            ciclo_destino = self.sincronizar_ciclo(
+                atual["ID_Cartao"],
+                payload["Competencia_Mes"],
+                payload["Competencia_Ano"],
+                id_usuario,
+                payload.get("Data"),
             )
-        payload = dict(atual)
-        payload.update(dados)
-        payload["ID_Cartao"] = atual["ID_Cartao"]
-        resultado = self.lancamento_model.update_lancamento(id_lancamento, payload, id_usuario)
+            if ciclo_destino["Status"] != "ABERTA":
+                raise ValueError(
+                    "A compra não pode ser movida para uma fatura fechada ou paga."
+                )
+            payload["ID_Fatura"] = ciclo_destino["ID_Fatura"]
+            resultado = self.lancamento_model.update_lancamento(
+                id_lancamento, payload, id_usuario
+            )
         self._clear_cache()
         return resultado
 

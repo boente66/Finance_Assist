@@ -185,6 +185,7 @@ class LancamentoModel(Database):
                 Data = ?,
                 Competencia_Mes = ?,
                 Competencia_Ano = ?,
+                ID_Fatura = ?,
                 ID_Categoria = ?,
                 ID_Favorecido = ?,  -- 🔥 NOVO
                 Num_Parcelas = ?,
@@ -203,6 +204,7 @@ class LancamentoModel(Database):
             data,
             int(dados["Competencia_Mes"]),
             int(dados["Competencia_Ano"]),
+            dados.get("ID_Fatura"),
             dados.get("ID_Categoria"),
             dados.get("ID_Favorecido"),  # 🔥 NOVO
             int(dados.get("Num_Parcelas", 1)),
@@ -227,20 +229,37 @@ class LancamentoModel(Database):
                c.Nome AS Categoria,
                f.Nome AS Favorecido
         FROM lancamentos l
+        LEFT JOIN faturas_cartao ciclo
+            ON ciclo.ID_Fatura = l.ID_Fatura
         LEFT JOIN categorias c
             ON c.ID_Categoria = l.ID_Categoria
         LEFT JOIN favorecido f
             ON f.ID_Favorecido = l.ID_Favorecido
         WHERE l.ID_Cartao = ?
           AND l.ID_Usuario = ?
-          AND l.Competencia_Mes = ?
-          AND l.Competencia_Ano = ?
+          AND (
+                (
+                    ciclo.ID_Cartao = l.ID_Cartao
+                    AND ciclo.ID_Usuario = l.ID_Usuario
+                    AND ciclo.Competencia_Mes = ?
+                    AND ciclo.Competencia_Ano = ?
+                )
+                OR (
+                    l.ID_Fatura IS NULL
+                    AND l.Competencia_Mes = ?
+                    AND l.Competencia_Ano = ?
+                )
+          )
         ORDER BY l.Data
         """
 
         return self.fetch_all(
             sql,
-            (id_cartao, id_usuario, int(mes), int(ano))
+            (
+                id_cartao, id_usuario,
+                int(mes), int(ano),
+                int(mes), int(ano),
+            )
         )
 
     # ============================================================
