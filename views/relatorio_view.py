@@ -461,9 +461,9 @@ class RelatorioView(QWidget):
         try:
             dias = self.input_days.currentData()
 
-            data = self.controller.relatorio_diario(dias)
+            resumo = self.controller.resumo_relatorio_diario(dias)
 
-            if data is None:
+            if resumo is None:
                 self._reset_summary()
                 self._error(
                     self.table,
@@ -471,20 +471,15 @@ class RelatorioView(QWidget):
                 )
                 return
 
+            data = resumo["dados"]
             if not data:
                 self._reset_summary()
                 self._empty(self.table)
                 return
 
-            receitas = sum(
-                float(r.get("Receita", 0) or 0)
-                for r in data
-            )
-            despesas = sum(
-                float(r.get("Despesa", 0) or 0)
-                for r in data
-            )
-            saldo = receitas - despesas
+            receitas = resumo["receitas"]
+            despesas = resumo["despesas"]
+            saldo = resumo["saldo"]
 
             self.lbl_receita.setText(
                 CurrencyFormatter.format(receitas)

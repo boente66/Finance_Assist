@@ -3,13 +3,19 @@ from typing import List, Optional, Callable
 
 from core.session import Session
 from services.importacao_service import ImportacaoService
-from controllers.transaction_controller import TransactionController
+from services.transaction_service import TransactionService
+from services.reconciliacao_importacao_service import ReconciliacaoImportacaoService
 
 
 logger = logging.getLogger(__name__)
 
 
 class IAImportController:
+    STATUS_NOVO = ReconciliacaoImportacaoService.NOVO
+    STATUS_DUPLICADO = ReconciliacaoImportacaoService.DUPLICADO
+    STATUS_POSSIVEL_DUPLICADO = (
+        ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO
+    )
     """
     Controller responsável por:
 
@@ -21,7 +27,7 @@ class IAImportController:
 
     def __init__(self):
         self.import_service = ImportacaoService()
-        self.transaction_controller = TransactionController()
+        self.transaction_service = TransactionService()
 
 
     def get_id_usuario(self):
@@ -72,8 +78,9 @@ class IAImportController:
             return 0
 
         try:
-            total = self.transaction_controller.salvar_lote_importado(
-                lista_lancamentos
+            total = self.transaction_service.salvar_lote_importado(
+                lista_lancamentos,
+                self.get_id_usuario(),
             )
 
             return total

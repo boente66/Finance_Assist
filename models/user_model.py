@@ -187,6 +187,18 @@ class UserModel(Database):
         """
         return self.fetch_one(query, (id_usuario,))
 
+    def find_conflicting_identity(self, login, email, exclude_user_id):
+        """Localiza conflito de login/e-mail sem expor SQL ao serviço."""
+        return self.fetch_one(
+            """
+            SELECT ID_Usuario
+            FROM usuarios
+            WHERE (Login = ? OR Email = ?)
+              AND ID_Usuario <> ?
+            """,
+            (login, email, exclude_user_id),
+        )
+
     def count_admins(self):
         """
         Retorna quantidade de usuários com nível admin.

@@ -22,13 +22,14 @@ from utilitarios.date_formatter import DateFormatter
 
 from views.editar_transacao_dialog import EditTransactionDialog
 from controllers.category_controller import CategoryController
+from controllers.ia_import_controller import IAImportController
 
 from core.translator_app import TranslatorApp
-from services.reconciliacao_importacao_service import (
-    ReconciliacaoImportacaoService,
-)
-
 logger = logging.getLogger(__name__)
+
+STATUS_NOVO = IAImportController.STATUS_NOVO
+STATUS_DUPLICADO = IAImportController.STATUS_DUPLICADO
+STATUS_POSSIVEL_DUPLICADO = IAImportController.STATUS_POSSIVEL_DUPLICADO
 
 
 class ImportacaoTemporariaDialog(QDialog):
@@ -162,7 +163,7 @@ class ImportacaoTemporariaDialog(QDialog):
                 status_item.setText(self._texto_status(
                     item.get(
                         "StatusImportacao",
-                        ReconciliacaoImportacaoService.NOVO,
+                        STATUS_NOVO,
                     )
                 ))
         self._atualizar_resumo()
@@ -178,7 +179,7 @@ class ImportacaoTemporariaDialog(QDialog):
 
             chk = QCheckBox()
             chk.setChecked(bool(lanc.get("Importar", True)))
-            if lanc.get("StatusImportacao") == ReconciliacaoImportacaoService.DUPLICADO:
+            if lanc.get("StatusImportacao") == STATUS_DUPLICADO:
                 chk.setEnabled(False)
             chk.stateChanged.connect(self._atualizar_resumo)
 
@@ -189,7 +190,7 @@ class ImportacaoTemporariaDialog(QDialog):
             )
 
             status = lanc.get(
-                "StatusImportacao", ReconciliacaoImportacaoService.NOVO
+                "StatusImportacao", STATUS_NOVO
             )
             status_item = self._set_item(
                 row, self.COL_STATUS, self._texto_status(status)
@@ -261,35 +262,35 @@ class ImportacaoTemporariaDialog(QDialog):
 
     def _texto_status(self, status):
         textos = {
-            ReconciliacaoImportacaoService.NOVO: "Novo",
-            ReconciliacaoImportacaoService.DUPLICADO: "Duplicado",
-            ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO: "Possível duplicado",
+            STATUS_NOVO: "Novo",
+            STATUS_DUPLICADO: "Duplicado",
+            STATUS_POSSIVEL_DUPLICADO: "Possível duplicado",
         }
         return TranslatorApp.get(textos.get(status, str(status)))
 
     def _atualizar_resumo(self, *_):
         contagens = {
-            ReconciliacaoImportacaoService.NOVO: 0,
-            ReconciliacaoImportacaoService.DUPLICADO: 0,
-            ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO: 0,
+            STATUS_NOVO: 0,
+            STATUS_DUPLICADO: 0,
+            STATUS_POSSIVEL_DUPLICADO: 0,
         }
         selecionados = 0
         for row, item in enumerate(self.lancamentos):
             status = item.get(
-                "StatusImportacao", ReconciliacaoImportacaoService.NOVO
+                "StatusImportacao", STATUS_NOVO
             )
             contagens[status] = contagens.get(status, 0) + 1
             checkbox = self.table.cellWidget(row, self.COL_IMPORTAR)
             if checkbox and checkbox.isChecked():
                 selecionados += 1
         self.lbl_novos.setText(
-            f"{TranslatorApp.get('Novos')}: {contagens[ReconciliacaoImportacaoService.NOVO]}"
+            f"{TranslatorApp.get('Novos')}: {contagens[STATUS_NOVO]}"
         )
         self.lbl_duplicados.setText(
-            f"{TranslatorApp.get('Duplicados')}: {contagens[ReconciliacaoImportacaoService.DUPLICADO]}"
+            f"{TranslatorApp.get('Duplicados')}: {contagens[STATUS_DUPLICADO]}"
         )
         self.lbl_possiveis.setText(
-            f"{TranslatorApp.get('Possíveis')}: {contagens[ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO]}"
+            f"{TranslatorApp.get('Possíveis')}: {contagens[STATUS_POSSIVEL_DUPLICADO]}"
         )
         self.lbl_selecionados.setText(
             f"{TranslatorApp.get('Selecionados')}: {selecionados}"
@@ -422,16 +423,16 @@ class ImportacaoTemporariaDialog(QDialog):
             if chk and chk.isChecked():
                 item = dict(self.lancamentos[row])
                 status = item.get("StatusImportacao")
-                if status == ReconciliacaoImportacaoService.DUPLICADO:
+                if status == STATUS_DUPLICADO:
                     continue
-                if status == ReconciliacaoImportacaoService.POSSIVEL_DUPLICADO:
+                if status == STATUS_POSSIVEL_DUPLICADO:
                     item["_ConfirmadoPossivel"] = True
                 selecionados.append(item)
 
         if not selecionados:
             if self.lancamentos and all(
                 item.get("StatusImportacao")
-                == ReconciliacaoImportacaoService.DUPLICADO
+                == STATUS_DUPLICADO
                 for item in self.lancamentos
             ):
                 self.lancamentos = []

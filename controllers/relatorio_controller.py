@@ -32,6 +32,15 @@ class RelatorioController:
             logger.error("Erro ao gerar relatório diário: %s", e, exc_info=True)
             return None
 
+    def resumo_relatorio_diario(self, dias):
+        try:
+            return self.service.resumo_relatorio_diario(
+                dias, self._get_usuario_id()
+            )
+        except Exception as e:
+            logger.error("Erro ao resumir relatório diário: %s", e, exc_info=True)
+            return None
+
     # ---------------------------------------------------------
     # RELATÓRIO ANUAL
     # ---------------------------------------------------------

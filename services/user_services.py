@@ -151,18 +151,10 @@ class UserService:
             if user_data.get("Senha"):
                 self._validate_password_or_raise(user_data.get("Senha"))
 
-            existente = self.user_model.fetch_one(
-                """
-                SELECT ID_Usuario
-                FROM usuarios
-                WHERE (Login = ? OR Email = ?)
-                  AND ID_Usuario <> ?
-                """,
-                (
-                    user_data.get("Login"),
-                    user_data.get("Email"),
-                    id_usuario_alvo
-                )
+            existente = self.user_model.find_conflicting_identity(
+                user_data.get("Login"),
+                user_data.get("Email"),
+                id_usuario_alvo,
             )
 
             if existente:
@@ -207,14 +199,10 @@ class UserService:
             if not user_data.get("Nome") or not user_data.get("Login") or not user_data.get("Email"):
                 raise ValueError("Dados obrigatórios ausentes.")
 
-            existente = self.user_model.fetch_one(
-                """
-                SELECT ID_Usuario
-                FROM usuarios
-                WHERE (Login = ? OR Email = ?)
-                  AND ID_Usuario <> ?
-                """,
-                (user_data.get("Login"), user_data.get("Email"), id_usuario),
+            existente = self.user_model.find_conflicting_identity(
+                user_data.get("Login"),
+                user_data.get("Email"),
+                id_usuario,
             )
             if existente:
                 return False

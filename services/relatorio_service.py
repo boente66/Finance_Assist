@@ -27,6 +27,18 @@ class RelatorioService:
             raise ValueError("O período deve ser maior que zero.")
         return self.model.get_relatorio_diario(dias, id_usuario)
 
+    def resumo_relatorio_diario(self, dias, id_usuario):
+        """Entrega dados e totais prontos; a View apenas apresenta o resultado."""
+        dados = self.relatorio_diario(dias, id_usuario)
+        receitas = sum(float(item.get("Receita", 0) or 0) for item in dados)
+        despesas = sum(float(item.get("Despesa", 0) or 0) for item in dados)
+        return {
+            "dados": dados,
+            "receitas": receitas,
+            "despesas": despesas,
+            "saldo": receitas - despesas,
+        }
+
     def anos_disponiveis(self, id_usuario):
         return self.model.get_anos_disponiveis(id_usuario)
 

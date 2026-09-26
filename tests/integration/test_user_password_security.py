@@ -133,6 +133,9 @@ class UserModelStub:
     def user_exists(self, *_args):
         return False
 
+    def find_conflicting_identity(self, *_args):
+        return None
+
     def count_admins(self):
         return 1
 
