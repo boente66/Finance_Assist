@@ -222,6 +222,18 @@ class FaturaController:
             status=status
         )
 
+    def obter_resumo_fatura(self, id_cartao, mes, ano):
+        painel = self.service.get_painel_cartao(
+            id_cartao=id_cartao,
+            mes=mes,
+            ano=ano,
+            id_usuario=self.get_id_usuario(),
+            page=0,
+            limit=1,
+            status="Todos",
+        )
+        return (painel or {}).get("fatura", {})
+
 
     def listar_faturas_projetadas(self, quantidade_meses=6):
         return self.service.listar_faturas_projetadas(

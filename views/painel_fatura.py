@@ -758,13 +758,13 @@ class PainelFatura(QWidget):
         mes = int(self.mes_combo.currentData())
         ano = int(self.ano_combo.currentText())
 
-        fatura = self.controller.obter_fatura_mes(
+        resumo_fatura = self.controller.obter_resumo_fatura(
             self.cartao["ID_Cartao"],
             mes,
             ano
         )
 
-        total = sum(float(l["Valor"]) for l in fatura)
+        total = float(resumo_fatura.get("saldo_a_pagar", 0) or 0)
 
         if total <= 0:
             QMessageBox.information(
