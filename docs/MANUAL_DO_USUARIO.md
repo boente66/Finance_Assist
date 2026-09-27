@@ -117,6 +117,29 @@ Quando habilitados pelo administrador, os alertas verificam agendamentos
 vencidos em segundo plano. A verificação funciona enquanto o Finance Assist
 estiver aberto.
 
+### Dívidas e empréstimos
+
+Abra **Dívidas e Empréstimos** no menu lateral para acompanhar contratos,
+parcelas, saldo devedor e vencimentos.
+
+- Use **Nova dívida** e escolha `FIXO` quando o contrato tiver parcelas
+  definidas. O Finance Assist cria as parcelas e os agendamentos sem movimentar
+  o saldo da conta.
+- Escolha `LIVRE` quando não houver quantidade ou valor fixo de parcelas. Use
+  **Agendar pagamento** sempre que desejar criar uma previsão.
+- Execute a previsão na tela **Agendamentos** para gerar a saída real na conta,
+  registrar o pagamento, atualizar a parcela e reduzir o saldo devedor.
+- Use **Registrar pagamento** para uma baixa direta. Informe separadamente o
+  valor pago, juros, multa e desconto; a tela mostra a amortização no histórico.
+- Dê duplo clique ou use **Ver parcelas** para consultar parcelas e pagamentos.
+- Os filtros permitem localizar credor, contrato, descrição e status, além de
+  ordenar por vencimento, credor de A a Z ou maior saldo.
+- **Encerrar** cancela previsões pendentes e marca a dívida como renegociada ou
+  cancelada. Uma dívida é marcada como quitada automaticamente ao zerar o saldo.
+
+O cartão informativo apresenta o próximo compromisso e os alertas em segundo
+plano identificam a dívida, parcela, valor e vencimento atrasado.
+
 ## 7. Relatórios
 
 Abra **Relatórios**, selecione período, conta e filtros. Atualize a consulta antes

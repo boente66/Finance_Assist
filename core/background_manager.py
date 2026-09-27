@@ -104,7 +104,22 @@ class BackgroundManager(QObject):
                        AND Status IN ('AGENDADO','ATRASADO') AND date(Data)<date('now')""",
                     (user_id,),
                 ).fetchone()[0]
-            if overdue:
+                debt_due = conn.execute(
+                    """SELECT d.Descricao, p.Numero_Parcela,
+                              MAX(p.Valor_Previsto-p.Valor_Pago, 0), p.Data_Vencimento
+                       FROM divida_parcelas p
+                       JOIN dividas d ON d.ID_Divida=p.ID_Divida
+                       WHERE d.ID_Usuario=? AND p.Status='ATRASADA'
+                       ORDER BY date(p.Data_Vencimento) LIMIT 1""",
+                    (user_id,),
+                ).fetchone()
+            if debt_due:
+                self.notification.emit(
+                    "Dívida com parcela atrasada",
+                    f"{debt_due[0]} · parcela {debt_due[1]} · "
+                    f"R$ {debt_due[2]:,.2f} · venceu em {debt_due[3]}",
+                )
+            elif overdue:
                 self.notification.emit("Finance Assist", f"Você possui {overdue} agendamento(s) vencido(s).")
             config[key] = datetime.now().isoformat()
             salvar_config(config)

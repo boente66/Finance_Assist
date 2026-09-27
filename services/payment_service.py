@@ -5,6 +5,7 @@ from core.operation_result import operation_result
 from database.database import DatabaseError
 from services.transaction_service import TransactionService
 from services.schedule_service import ScheduleService
+from services.divida_service import DividaService
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class PaymentService:
     def __init__(self, db_name=None):
         self.transaction_service = TransactionService(db_name)
         self.schedule_service = ScheduleService(db_name)
+        self.divida_service = DividaService(db_name)
 
     def baixar_agendamento(self, dados_execucao: dict, id_usuario: int):
         try:
@@ -32,6 +34,25 @@ class PaymentService:
             id_agendamento = dados_execucao.get("ID_Agendamento")
             if not id_agendamento:
                 raise ValueError("ID_Agendamento é obrigatório.")
+
+            agendamento_divida = self.schedule_service.schedule_model.get_schedule_by_id(
+                id_agendamento, id_usuario
+            )
+            if agendamento_divida and agendamento_divida.get("ID_Divida"):
+                pagamento_id = self.divida_service.executar_agendamento(
+                    agendamento_divida, dados_execucao, id_usuario
+                )
+                transacao = self.transaction_service.transaction_model.get_transaction_by_schedule(
+                    id_agendamento, id_usuario
+                )
+                return operation_result(
+                    True, "OK", "Parcela da dívida paga com sucesso.",
+                    {
+                        "ID_Agendamento": id_agendamento,
+                        "ID_Pagamento_Divida": pagamento_id,
+                        "ID_Transacao": transacao["ID_Transacao"] if transacao else None,
+                    },
+                )
 
             transaction_model = self.transaction_service.transaction_model
             account_model = self.transaction_service.account_model

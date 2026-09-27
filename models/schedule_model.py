@@ -51,6 +51,30 @@ class ScheduleModel(Database):
               AND ID_Usuario = ?
         """, (schedule_id, id_usuario))
 
+    def link_debt_installment(self, schedule_id, debt_id, installment_id, user_id):
+        cursor = self.execute_query("""
+            UPDATE agendamentos
+            SET ID_Divida=?, ID_Parcela_Divida=?
+            WHERE ID_Agendamento=? AND ID_Usuario=?
+        """, (debt_id, installment_id, schedule_id, user_id))
+        if cursor.rowcount != 1:
+            raise ValueError("Agendamento da parcela não encontrado.")
+
+    def get_by_debt_installment(self, debt_id, installment_id, user_id):
+        return self.fetch_one("""
+            SELECT * FROM agendamentos
+            WHERE ID_Divida=? AND ID_Parcela_Divida=? AND ID_Usuario=?
+              AND Status IN ('AGENDADO','ATRASADO')
+            ORDER BY ID_Agendamento LIMIT 1
+        """, (debt_id, installment_id, user_id))
+
+    def cancel_by_debt(self, debt_id, user_id):
+        self.execute_query("""
+            UPDATE agendamentos SET Status='CANCELADO', Ativo=0
+            WHERE ID_Divida=? AND ID_Usuario=?
+              AND Status IN ('AGENDADO','ATRASADO')
+        """, (debt_id, user_id))
+
     # ------------------------------------------------------------------
     # SELECT TODOS
     # ------------------------------------------------------------------

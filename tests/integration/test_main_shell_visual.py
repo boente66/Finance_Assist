@@ -23,5 +23,6 @@ def test_shell_principal_mantem_navegacao_e_expoe_configuracoes(monkeypatch):
     assert view.btn_logout.property("fullText")
     assert view.btn_logout.toolTip()
     assert view.user_card.objectName() == "sidebarUserCard"
-    assert len(view._menu_buttons) == 8
+    assert len(view._menu_buttons) == 9
+    assert view.btn_dividas in [button for button, _ in view._menu_buttons]
     view.close()

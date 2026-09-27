@@ -342,6 +342,13 @@ class MainView(QMainWindow):
         )
 
         add_btn(
+            "btn_dividas",
+            "Dívidas e Empréstimos",
+            ("views.divida_view", "DividaView"),
+            "dividas"
+        )
+
+        add_btn(
             "btn_configuracoes",
             "Configurações",
             ("views.configuracoes_view", "ConfiguracoesView"),
@@ -513,6 +520,10 @@ class MainView(QMainWindow):
 
         self.btn_agendamentos.setText(
             TranslatorApp.get("Agendamentos")
+        )
+
+        self.btn_dividas.setText(
+            TranslatorApp.get("Dívidas e Empréstimos")
         )
 
         self.btn_configuracoes.setText(

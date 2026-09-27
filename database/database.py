@@ -363,6 +363,8 @@ CREATE TABLE IF NOT EXISTS agendamentos (
     ID_Favorecido INTEGER,
     ID_Conta INTEGER,
     ID_Cartao INTEGER,
+    ID_Divida INTEGER,
+    ID_Parcela_Divida INTEGER,
     ID_Usuario INTEGER NOT NULL,
 
     Recorrente INTEGER DEFAULT 0,
@@ -488,6 +490,79 @@ CREATE TABLE IF NOT EXISTS pagamentos_fatura (
         REFERENCES usuarios(ID_Usuario)
         ON DELETE CASCADE
 );
+
+-- =====================================================
+-- DÍVIDAS, PARCELAS E PAGAMENTOS
+-- =====================================================
+CREATE TABLE IF NOT EXISTS dividas (
+    ID_Divida INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Usuario INTEGER NOT NULL,
+    ID_Favorecido INTEGER,
+    Numero_Contrato TEXT,
+    Tipo_Divida TEXT NOT NULL,
+    Tipo_Parcelamento TEXT NOT NULL DEFAULT 'FIXO'
+        CHECK (Tipo_Parcelamento IN ('FIXO','LIVRE')),
+    Descricao TEXT NOT NULL,
+    Valor_Emprestado REAL NOT NULL CHECK (Valor_Emprestado > 0),
+    Valor_Total_Contrato REAL NOT NULL CHECK (Valor_Total_Contrato > 0),
+    Saldo_Devedor REAL NOT NULL CHECK (Saldo_Devedor >= 0),
+    Quantidade_Parcelas INTEGER,
+    Valor_Parcela REAL,
+    Taxa_Juros REAL DEFAULT 0,
+    Data_Contratacao TEXT NOT NULL,
+    Primeiro_Vencimento TEXT,
+    Dia_Vencimento INTEGER,
+    Status TEXT NOT NULL DEFAULT 'ATIVA'
+        CHECK (Status IN ('ATIVA','QUITADA','ATRASADA','RENEGOCIADA','CANCELADA')),
+    Observacao TEXT,
+    Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Atualizado_Em TEXT,
+    FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario) ON DELETE CASCADE,
+    FOREIGN KEY(ID_Favorecido) REFERENCES favorecido(ID_Favorecido)
+);
+
+CREATE TABLE IF NOT EXISTS divida_parcelas (
+    ID_Parcela INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Divida INTEGER NOT NULL,
+    Numero_Parcela INTEGER NOT NULL,
+    Data_Vencimento TEXT NOT NULL,
+    Valor_Previsto REAL NOT NULL CHECK (Valor_Previsto > 0),
+    Valor_Pago REAL NOT NULL DEFAULT 0 CHECK (Valor_Pago >= 0),
+    Status TEXT NOT NULL DEFAULT 'PENDENTE'
+        CHECK (Status IN ('PENDENTE','PARCIAL','PAGA','ATRASADA','CANCELADA')),
+    Data_Pagamento TEXT,
+    Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(ID_Divida, Numero_Parcela),
+    FOREIGN KEY(ID_Divida) REFERENCES dividas(ID_Divida) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS pagamentos_divida (
+    ID_Pagamento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Chave_Idempotencia TEXT NOT NULL UNIQUE,
+    ID_Divida INTEGER NOT NULL,
+    ID_Parcela INTEGER,
+    ID_Conta INTEGER NOT NULL,
+    ID_Transacao INTEGER NOT NULL UNIQUE,
+    ID_Usuario INTEGER NOT NULL,
+    Valor_Pago REAL NOT NULL CHECK (Valor_Pago > 0),
+    Valor_Juros REAL NOT NULL DEFAULT 0 CHECK (Valor_Juros >= 0),
+    Valor_Multa REAL NOT NULL DEFAULT 0 CHECK (Valor_Multa >= 0),
+    Valor_Desconto REAL NOT NULL DEFAULT 0 CHECK (Valor_Desconto >= 0),
+    Valor_Amortizado REAL NOT NULL CHECK (Valor_Amortizado >= 0),
+    Data_Pagamento TEXT NOT NULL,
+    Observacao TEXT,
+    Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(ID_Divida) REFERENCES dividas(ID_Divida),
+    FOREIGN KEY(ID_Parcela) REFERENCES divida_parcelas(ID_Parcela),
+    FOREIGN KEY(ID_Conta) REFERENCES contas(ID_Conta),
+    FOREIGN KEY(ID_Transacao) REFERENCES transacoes(ID_Transacao),
+    FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dividas_usuario_status
+ON dividas(ID_Usuario, Status);
+CREATE INDEX IF NOT EXISTS idx_divida_parcelas_vencimento
+ON divida_parcelas(ID_Divida, Data_Vencimento, Status);
 
 -- =====================================================
 -- DADOS FISCAIS INFORMADOS PELA FONTE PAGADORA
@@ -1427,6 +1502,128 @@ ON recuperacao_senha(ID_Usuario);
             'PRAGMA integrity_check'
         ).fetchone()[0] == 'ok'
 
+    def _migration_008_debt_module(self):
+        self.connection.executescript("""
+            CREATE TABLE IF NOT EXISTS dividas (
+                ID_Divida INTEGER PRIMARY KEY AUTOINCREMENT,
+                ID_Usuario INTEGER NOT NULL,
+                ID_Favorecido INTEGER,
+                Numero_Contrato TEXT,
+                Tipo_Divida TEXT NOT NULL,
+                Tipo_Parcelamento TEXT NOT NULL DEFAULT 'FIXO'
+                    CHECK (Tipo_Parcelamento IN ('FIXO','LIVRE')),
+                Descricao TEXT NOT NULL,
+                Valor_Emprestado REAL NOT NULL CHECK (Valor_Emprestado > 0),
+                Valor_Total_Contrato REAL NOT NULL CHECK (Valor_Total_Contrato > 0),
+                Saldo_Devedor REAL NOT NULL CHECK (Saldo_Devedor >= 0),
+                Quantidade_Parcelas INTEGER,
+                Valor_Parcela REAL,
+                Taxa_Juros REAL DEFAULT 0,
+                Data_Contratacao TEXT NOT NULL,
+                Primeiro_Vencimento TEXT,
+                Dia_Vencimento INTEGER,
+                Status TEXT NOT NULL DEFAULT 'ATIVA'
+                    CHECK (Status IN ('ATIVA','QUITADA','ATRASADA','RENEGOCIADA','CANCELADA')),
+                Observacao TEXT,
+                Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                Atualizado_Em TEXT,
+                FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario) ON DELETE CASCADE,
+                FOREIGN KEY(ID_Favorecido) REFERENCES favorecido(ID_Favorecido)
+            );
+            CREATE TABLE IF NOT EXISTS divida_parcelas (
+                ID_Parcela INTEGER PRIMARY KEY AUTOINCREMENT,
+                ID_Divida INTEGER NOT NULL,
+                Numero_Parcela INTEGER NOT NULL,
+                Data_Vencimento TEXT NOT NULL,
+                Valor_Previsto REAL NOT NULL CHECK (Valor_Previsto > 0),
+                Valor_Pago REAL NOT NULL DEFAULT 0 CHECK (Valor_Pago >= 0),
+                Status TEXT NOT NULL DEFAULT 'PENDENTE'
+                    CHECK (Status IN ('PENDENTE','PARCIAL','PAGA','ATRASADA','CANCELADA')),
+                Data_Pagamento TEXT,
+                Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(ID_Divida, Numero_Parcela),
+                FOREIGN KEY(ID_Divida) REFERENCES dividas(ID_Divida) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS pagamentos_divida (
+                ID_Pagamento INTEGER PRIMARY KEY AUTOINCREMENT,
+                Chave_Idempotencia TEXT NOT NULL UNIQUE,
+                ID_Divida INTEGER NOT NULL,
+                ID_Parcela INTEGER,
+                ID_Conta INTEGER NOT NULL,
+                ID_Transacao INTEGER NOT NULL UNIQUE,
+                ID_Usuario INTEGER NOT NULL,
+                Valor_Pago REAL NOT NULL CHECK (Valor_Pago > 0),
+                Valor_Juros REAL NOT NULL DEFAULT 0 CHECK (Valor_Juros >= 0),
+                Valor_Multa REAL NOT NULL DEFAULT 0 CHECK (Valor_Multa >= 0),
+                Valor_Desconto REAL NOT NULL DEFAULT 0 CHECK (Valor_Desconto >= 0),
+                Valor_Amortizado REAL NOT NULL CHECK (Valor_Amortizado >= 0),
+                Data_Pagamento TEXT NOT NULL,
+                Observacao TEXT,
+                Criado_Em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(ID_Divida) REFERENCES dividas(ID_Divida),
+                FOREIGN KEY(ID_Parcela) REFERENCES divida_parcelas(ID_Parcela),
+                FOREIGN KEY(ID_Conta) REFERENCES contas(ID_Conta),
+                FOREIGN KEY(ID_Transacao) REFERENCES transacoes(ID_Transacao),
+                FOREIGN KEY(ID_Usuario) REFERENCES usuarios(ID_Usuario) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_dividas_usuario_status
+                ON dividas(ID_Usuario, Status);
+            CREATE INDEX IF NOT EXISTS idx_divida_parcelas_vencimento
+                ON divida_parcelas(ID_Divida, Data_Vencimento, Status);
+        """)
+        self._add_column_if_missing("agendamentos", "ID_Divida", "INTEGER")
+        self._add_column_if_missing(
+            "agendamentos", "ID_Parcela_Divida", "INTEGER"
+        )
+        self.connection.executescript("""
+            CREATE TRIGGER IF NOT EXISTS validar_agendamento_divida_insert
+            BEFORE INSERT ON agendamentos WHEN NEW.ID_Divida IS NOT NULL
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (
+                    SELECT 1 FROM dividas d WHERE d.ID_Divida=NEW.ID_Divida
+                      AND d.ID_Usuario=NEW.ID_Usuario
+                ) THEN RAISE(ABORT, 'Dívida inválida para o usuário') END;
+                SELECT CASE WHEN NEW.ID_Parcela_Divida IS NOT NULL AND NOT EXISTS (
+                    SELECT 1 FROM divida_parcelas p
+                    WHERE p.ID_Parcela=NEW.ID_Parcela_Divida
+                      AND p.ID_Divida=NEW.ID_Divida
+                ) THEN RAISE(ABORT, 'Parcela inválida para a dívida') END;
+            END;
+            CREATE TRIGGER IF NOT EXISTS validar_agendamento_divida_update
+            BEFORE UPDATE OF ID_Divida, ID_Parcela_Divida, ID_Usuario ON agendamentos
+            WHEN NEW.ID_Divida IS NOT NULL
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (
+                    SELECT 1 FROM dividas d WHERE d.ID_Divida=NEW.ID_Divida
+                      AND d.ID_Usuario=NEW.ID_Usuario
+                ) THEN RAISE(ABORT, 'Dívida inválida para o usuário') END;
+                SELECT CASE WHEN NEW.ID_Parcela_Divida IS NOT NULL AND NOT EXISTS (
+                    SELECT 1 FROM divida_parcelas p
+                    WHERE p.ID_Parcela=NEW.ID_Parcela_Divida
+                      AND p.ID_Divida=NEW.ID_Divida
+                ) THEN RAISE(ABORT, 'Parcela inválida para a dívida') END;
+            END;
+        """)
+
+    def _debt_module_valid(self):
+        tables = {
+            row[0] for row in self.connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        columns = self._table_columns("agendamentos")
+        triggers = {
+            row[0] for row in self.connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='trigger'"
+            ).fetchall()
+        }
+        return (
+            {"dividas", "divida_parcelas", "pagamentos_divida"} <= tables
+            and {"ID_Divida", "ID_Parcela_Divida"} <= columns
+            and {"validar_agendamento_divida_insert",
+                 "validar_agendamento_divida_update"} <= triggers
+        )
+
     def _run_migrations(self):
         self._ensure_migration_table()
         migrations = (
@@ -1459,6 +1656,8 @@ ON recuperacao_senha(ID_Usuario);
             (7, 'invoice_cycle_correction',
              self._migration_007_invoice_cycle_correction,
              self._invoice_cycle_correction_valid, False),
+            (8, 'debt_module', self._migration_008_debt_module,
+             self._debt_module_valid, False),
         )
         for migration in migrations:
             self._run_migration(*migration)
