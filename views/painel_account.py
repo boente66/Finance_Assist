@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QMenu,
     QApplication,
 )
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtGui import QColor, QFont, QIcon
 
 from controllers.transaction_controller import TransactionController
@@ -69,6 +69,8 @@ class PainelAccount(QWidget):
         self.pagina_atual = 0
         self.itens_por_pagina = 50
         self.texto_busca = ""
+        self.import_worker = None
+        self._close_pending = False
 
         self.progress_bar = QProgressDialog(self)
         self.progress_bar.setWindowModality(Qt.WindowModal)
@@ -552,6 +554,18 @@ class PainelAccount(QWidget):
             return
 
         try:
+            senha_pdf = None
+            if arquivo.lower().endswith(".pdf"):
+                from PyPDF2 import PdfReader
+                if PdfReader(arquivo).is_encrypted:
+                    senha_pdf, ok = QInputDialog.getText(
+                        self,
+                        TranslatorApp.get("Extrato protegido"),
+                        TranslatorApp.get("Digite a senha do PDF:"),
+                        QLineEdit.Password,
+                    )
+                    if not ok:
+                        return
             from workers.import_worker import ImportWorker
 
             self.progress_bar.setValue(0)
@@ -562,6 +576,7 @@ class PainelAccount(QWidget):
                 caminho_arquivo=arquivo,
                 id_conta=self.conta["ID_Conta"],
                 parent=self,
+                senha_pdf=senha_pdf,
             )
 
             self.import_worker.progress.connect(self._mostrar_progresso_importacao)
@@ -569,6 +584,7 @@ class PainelAccount(QWidget):
             self.import_worker.finished.connect(self._on_importacao_finalizada)
 
             self.import_worker.error.connect(self._on_importacao_erro)
+            self.import_worker.stopped.connect(self._on_import_worker_stopped)
 
             self.import_worker.start()
 
@@ -695,7 +711,19 @@ class PainelAccount(QWidget):
     # ==================================================
     # CICLO DE VIDA
     # ==================================================
+    def _on_import_worker_stopped(self):
+        if self._close_pending:
+            QTimer.singleShot(0, self.close)
+
     def closeEvent(self, event):
+        worker = self.import_worker
+        if worker is not None and worker.isRunning():
+            worker.cancel()
+            if not worker.wait(250):
+                self._close_pending = True
+                event.ignore()
+                return
+        self.import_worker = None
         try:
             TranslatorApp.unbind(self)
         except Exception:

@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
+import threading
 from typing import Optional
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
 logger = logging.getLogger(__name__)
+
+
+class ImportCancelledError(Exception):
+    """Interrompe cooperativamente uma importação entre suas etapas."""
 
 
 class ImportWorker(QThread):
@@ -29,6 +34,7 @@ class ImportWorker(QThread):
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(list)
     error = pyqtSignal(str)
+    stopped = pyqtSignal()
 
     def __init__(
         self,
@@ -46,14 +52,12 @@ class ImportWorker(QThread):
         self.id_conta = id_conta
         self.tipo_destino = tipo_destino
         self.senha_pdf = senha_pdf
-        self._cancelado = False
+        self._cancel_event = threading.Event()
 
     def run(self):
         try:
-            if self._cancelado:
-                return
-
-            self.progress.emit(0, "Iniciando importação...")
+            self._check_cancelled()
+            self._emit_progress(0, "Iniciando importação...")
 
             if self.tipo_destino == "cartao":
                 lancamentos = self.controller.importar_arquivo_fatura(
@@ -66,29 +70,39 @@ class ImportWorker(QThread):
                 lancamentos = self.controller.importar_arquivo(
                     caminho_arquivo=self.caminho_arquivo,
                     id_conta=self.id_conta,
-                    progress_callback=self._emit_progress
+                    progress_callback=self._emit_progress,
+                    senha_pdf=self.senha_pdf,
                 )
 
-            if self._cancelado:
-                return
-
-            self.progress.emit(100, "Importação finalizada.")
+            self._check_cancelled()
+            self._emit_progress(100, "Importação finalizada.")
 
             self.finished.emit(
                 lancamentos if isinstance(lancamentos, list) else []
             )
 
+        except ImportCancelledError:
+            logger.info("Importação cancelada: %s", self.caminho_arquivo)
         except Exception as e:
             logger.exception("Erro no ImportWorker")
-            self.error.emit(str(e))
+            if not self.is_cancelled():
+                self.error.emit(str(e))
+        finally:
+            self.stopped.emit()
 
     def cancel(self):
-        self._cancelado = True
-        self.progress.emit(0, "Importação cancelada.")
+        self._cancel_event.set()
+        self.requestInterruption()
+
+    def is_cancelled(self):
+        return self._cancel_event.is_set() or self.isInterruptionRequested()
+
+    def _check_cancelled(self):
+        if self.is_cancelled():
+            raise ImportCancelledError("Importação cancelada.")
 
     def _emit_progress(self, progresso, mensagem=None):
-        if self._cancelado:
-            return
+        self._check_cancelled()
 
         try:
             progresso = int(progresso)

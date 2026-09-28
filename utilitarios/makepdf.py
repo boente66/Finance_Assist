@@ -42,7 +42,7 @@ class MakePDF:
     # LEITURA SIMPLES (PyPDF2)
     # ==========================================================
     @staticmethod
-    def importar_pdf(caminho_arquivo, senha=None):
+    def importar_pdf(caminho_arquivo, senha=None, progress_callback=None):
         try:
             from PyPDF2 import PdfReader
 
@@ -51,7 +51,13 @@ class MakePDF:
                 raise ValueError("Senha da fatura PDF incorreta ou não informada.")
             texto = ""
 
-            for page in reader.pages:
+            total = max(len(reader.pages), 1)
+            for indice, page in enumerate(reader.pages, 1):
+                if progress_callback:
+                    progress_callback(
+                        15 + int(10 * indice / total),
+                        f"Extraindo página {indice} de {total}...",
+                    )
                 texto += page.extract_text() or ""
 
             return texto
@@ -66,12 +72,14 @@ class MakePDF:
     # LEITURA AVANÇADA (pdfplumber + OCR)
     # ==========================================================
     @staticmethod
-    def ler_pdf(caminho_arquivo, senha=None):
+    def ler_pdf(caminho_arquivo, senha=None, progress_callback=None):
         try:
             # Faturas digitais preservam melhor a ordem dos lançamentos pelo
             # fluxo textual. A leitura tabular continua como fallback para
             # extratos bancários e PDFs sem texto utilizável.
-            texto_digital = MakePDF.importar_pdf(caminho_arquivo, senha)
+            texto_digital = MakePDF.importar_pdf(
+                caminho_arquivo, senha, progress_callback
+            )
             marcador = (texto_digital or "").lower()
             if len(marcador.strip()) >= 100 and "fatura" in marcador and (
                 "nubank" in marcador or "picpay mastercard" in marcador
@@ -86,7 +94,13 @@ class MakePDF:
             texto = ""
 
             with pdfplumber.open(caminho_arquivo, password=senha) as pdf:
-                for pagina in pdf.pages:
+                total = max(len(pdf.pages), 1)
+                for indice, pagina in enumerate(pdf.pages, 1):
+                    if progress_callback:
+                        progress_callback(
+                            25 + int(7 * indice / total),
+                            f"Analisando página {indice} de {total}...",
+                        )
 
                     tabela = pagina.extract_table()
 
@@ -105,6 +119,8 @@ class MakePDF:
                             texto += texto_bruto + "\n"
 
             if not texto.strip():
+                if progress_callback:
+                    progress_callback(33, "Preparando reconhecimento OCR...")
                 if getattr(sys, 'frozen', False) and sys.platform.startswith('linux'):
                     return MakePDF._ocr_pdf_sistema(caminho_arquivo)
                 imagens = pdf2image.convert_from_path(

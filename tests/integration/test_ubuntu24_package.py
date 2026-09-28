@@ -17,7 +17,8 @@ def test_noble_variant_keeps_identity_and_rebuilds():
     assert 'LIBC_DEPENDENCY="libc6 (>= 2.39)"' in script
     assert 'GLIB_DEPENDENCY="libglib2.0-0t64"' in script
     assert 'exige recompilação do executável' in script
-    assert '"${VERSION_ID:-}" != "24.04"' in script
+    assert '"${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "24.04"' in script
+    assert '"${ID:-}" == "linuxmint" && "${VERSION_ID:-}" == 22.*' in script
 
 
 @pytest.mark.skipif(os.name != 'posix', reason='Build DEB requires Linux')

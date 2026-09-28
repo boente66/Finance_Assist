@@ -45,7 +45,8 @@ class ImportacaoService:
         caminho_arquivo: str,
         id_usuario: int,
         id_conta: int,
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        senha_pdf: str | None = None,
     ) -> List[dict]:
 
         if not caminho_arquivo:
@@ -66,7 +67,8 @@ class ImportacaoService:
             conteudo = self._ler_conteudo(
                 caminho_arquivo=caminho_arquivo,
                 extensao=extensao,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                senha_pdf=senha_pdf,
             )
 
             if not conteudo:
@@ -152,7 +154,9 @@ class ImportacaoService:
                 if progress_callback:
                     progress_callback(15, "Extraindo texto do PDF...")
 
-                return self.pdf_service.ler_texto(caminho_arquivo, senha_pdf)
+                return self.pdf_service.ler_texto(
+                    caminho_arquivo, senha_pdf, progress_callback
+                )
 
             case ".csv":
                 if progress_callback:
@@ -375,36 +379,61 @@ class ImportacaoService:
             if isinstance(valor, (int, float)):
                 return float(valor)
 
-            valor_str = str(valor).strip()
+            valor_str = str(valor).strip().replace("\u00a0", "")
+            negativo = "-" in valor_str or "−" in valor_str
+            if valor_str.startswith("(") and valor_str.endswith(")"):
+                negativo = True
+                valor_str = valor_str[1:-1]
+            valor_str = valor_str.replace(" ", "").replace("+", "")
+            valor_str = valor_str.replace("-", "").replace("−", "")
+            valor_str = re.sub(r"^(?:R\$|BRL)", "", valor_str, flags=re.I)
+            if not valor_str or not re.fullmatch(r"\d+(?:[.,]\d+)*", valor_str):
+                raise ValueError("formato numérico inválido")
 
-            negativo = (
-                "-" in valor_str
-                or "−" in valor_str
-            )
+            ponto = valor_str.rfind(".")
+            virgula = valor_str.rfind(",")
+            if ponto >= 0 and virgula >= 0:
+                decimal = "." if ponto > virgula else ","
+                milhares = "," if decimal == "." else "."
+                inteiro, centavos = valor_str.rsplit(decimal, 1)
+                if len(centavos) not in {1, 2} or not self._milhares_validos(
+                    inteiro, milhares
+                ):
+                    raise ValueError("separadores numéricos ambíguos")
+                normalizado = inteiro.replace(milhares, "") + "." + centavos
+            elif ponto >= 0 or virgula >= 0:
+                separador = "." if ponto >= 0 else ","
+                partes = valor_str.split(separador)
+                if len(partes) == 2 and len(partes[1]) in {1, 2}:
+                    normalizado = partes[0] + "." + partes[1]
+                elif len(partes) > 2 and self._milhares_validos(
+                    valor_str, separador
+                ):
+                    normalizado = "".join(partes)
+                else:
+                    # Um único separador seguido de três dígitos pode ser
+                    # decimal ou milhar; importar sem certeza alteraria valor.
+                    raise ValueError("separador numérico ambíguo")
+            else:
+                normalizado = valor_str
 
-            valor_str = (
-                valor_str
-                .replace("R$", "")
-                .replace(" ", "")
-                .replace("+", "")
-                .replace("-", "")
-                .replace("−", "")
-            )
-
-            if "," in valor_str:
-                valor_str = (
-                    valor_str
-                    .replace(".", "")
-                    .replace(",", ".")
-                )
-
-            numero = float(valor_str)
+            numero = float(normalizado)
 
             return -numero if negativo else numero
 
         except Exception:
             logger.warning("Valor inválido na importação: %s", valor)
             return None
+
+    @staticmethod
+    def _milhares_validos(valor, separador):
+        partes = valor.split(separador)
+        return (
+            len(partes) >= 2
+            and 1 <= len(partes[0]) <= 3
+            and partes[0].isdigit()
+            and all(len(parte) == 3 and parte.isdigit() for parte in partes[1:])
+        )
 
     # ======================================================
     # LIMPEZA DE DESCRIÇÃO BANCÁRIA

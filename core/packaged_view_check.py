@@ -69,6 +69,13 @@ def run_check():
     fixtures = {'usuario_logado': user, 'usuario': user, 'controller': controller,
                 'transacao': {}, 'lancamentos': [], 'tooltip': 'Adicionar',
                 'symbol': '+', 'label': 'Teste',
+                'divida': {
+                    'ID_Divida': 1, 'Descricao': 'Empréstimo de teste',
+                    'Credor': 'Banco de teste',
+                    'Tipo_Parcelamento': 'LIVRE', 'Saldo_Devedor': 100,
+                    'Valor_Total_Contrato': 100, 'Status': 'ATIVA',
+                    'Parcelas': [],
+                },
                 'lancamento': {
                     'ID_Lancamento': 1, 'ID_Cartao': 1,
                     'Descricao': 'Teste', 'Valor': 1,

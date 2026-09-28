@@ -102,6 +102,37 @@ def test_divida_livre_nao_gera_parcelas_e_aceita_amortizacao(db, db_path):
     assert debt["Saldo_Devedor"] == 800
 
 
+def test_pagamentos_manuais_identicos_sao_operacoes_distintas(db, db_path):
+    usuario = criar_usuario(db, "divida_manual_repetida")
+    conta = criar_conta(db, usuario, "Conta", 1000)
+    service = DividaService(db_path)
+    debt_id = service.criar(dados_divida("LIVRE"), usuario)
+    pagamento = {
+        "ID_Divida": debt_id,
+        "ID_Conta": conta,
+        "Valor_Pago": 100,
+        "Data_Pagamento": "2026-09-27",
+    }
+
+    primeiro = service.registrar_pagamento(pagamento, usuario)
+    segundo = service.registrar_pagamento(pagamento, usuario)
+
+    assert primeiro != segundo
+    assert db.fetch_one(
+        "SELECT COUNT(*) AS n FROM pagamentos_divida WHERE ID_Divida=?",
+        (debt_id,),
+    )["n"] == 2
+    assert db.fetch_one(
+        "SELECT COUNT(*) AS n FROM transacoes WHERE ID_Conta=?", (conta,)
+    )["n"] == 2
+    assert db.fetch_one(
+        "SELECT Saldo_Atual FROM contas WHERE ID_Conta=?", (conta,)
+    )["Saldo_Atual"] == 800
+    assert db.fetch_one(
+        "SELECT Saldo_Devedor FROM dividas WHERE ID_Divida=?", (debt_id,)
+    )["Saldo_Devedor"] == 800
+
+
 def test_divida_livre_permite_agendamento_sem_reduzir_saldo(db, db_path):
     usuario = criar_usuario(db, "divida_livre_agendada")
     service = DividaService(db_path)

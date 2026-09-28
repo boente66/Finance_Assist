@@ -1,7 +1,4 @@
 from database.database import Database
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class ScheduleModel(Database):
@@ -99,16 +96,7 @@ class ScheduleModel(Database):
         ORDER BY date(a.Data), a.ID_Agendamento
         """
 
-        try:
-            return self.fetch_all(query, (id_usuario,))
-        except Exception as e:
-            logger.error(
-                "Erro ao carregar agendamentos do usuário %s: %s",
-                id_usuario,
-                e,
-                exc_info=True,
-            )
-            return []
+        return self.fetch_all(query, (id_usuario,))
 
     # ------------------------------------------------------------------
     # SELECT PRÓXIMOS
@@ -129,16 +117,7 @@ class ScheduleModel(Database):
         LIMIT 5
         """
 
-        try:
-            return self.fetch_all(query, (id_usuario,))
-        except Exception as e:
-            logger.error(
-                "Erro ao obter próximos agendamentos do usuário %s: %s",
-                id_usuario,
-                e,
-                exc_info=True,
-            )
-            return []
+        return self.fetch_all(query, (id_usuario,))
 
     # ------------------------------------------------------------------
     # SELECT POR ID
@@ -164,17 +143,7 @@ class ScheduleModel(Database):
           AND a.ID_Usuario = ?
         """
 
-        try:
-            return self.fetch_one(query, (schedule_id, id_usuario))
-        except Exception as e:
-            logger.error(
-                "Erro ao buscar agendamento %s do usuário %s: %s",
-                schedule_id,
-                id_usuario,
-                e,
-                exc_info=True,
-            )
-            return None
+        return self.fetch_one(query, (schedule_id, id_usuario))
 
     def get_schedule_owner(self, schedule_id: int):
         return self.fetch_one("""
@@ -312,12 +281,4 @@ class ScheduleModel(Database):
           AND Status IN ('AGENDADO', 'ATRASADO')
         """
 
-        try:
-            return self.fetch_all(query, (id_conta, id_usuario))
-        except Exception as e:
-            logger.error(
-                "Erro ao buscar agendamentos da conta: %s",
-                e,
-                exc_info=True,
-            )
-            return []
+        return self.fetch_all(query, (id_conta, id_usuario))

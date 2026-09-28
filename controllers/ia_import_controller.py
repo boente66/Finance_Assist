@@ -43,7 +43,8 @@ class IAImportController:
         self,
         caminho_arquivo: str,
         id_conta: int,
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        senha_pdf: str | None = None,
     ) -> List[dict]:
         id_usuario = self.get_id_usuario()
 
@@ -58,7 +59,8 @@ class IAImportController:
                 caminho_arquivo=caminho_arquivo,
                 id_usuario=id_usuario,
                 id_conta=id_conta,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                senha_pdf=senha_pdf,
             )
 
             return dados if isinstance(dados, list) else []

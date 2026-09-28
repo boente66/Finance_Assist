@@ -158,6 +158,9 @@ class UserModelStub:
     def fetch_one(self, *_args):
         return None
 
+    def find_conflicting_identity(self, *_args):
+        return None
+
     def update_user(self, user_id, data):
         self.updated = (user_id, data)
 

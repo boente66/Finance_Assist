@@ -1,6 +1,7 @@
 """Regras de negócio de dívidas, parcelas e pagamentos."""
 
 import hashlib
+import uuid
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -179,10 +180,10 @@ class DividaService:
         payment_date = self._date(
             dados.get("Data_Pagamento") or date.today()
         ).isoformat()
-        key_base = dados.get("Chave_Idempotencia") or (
-            f"{id_usuario}:{debt['ID_Divida']}:{installment_id}:"
-            f"{payment_date}:{paid}:{amortized}"
-        )
+        # Repetições automáticas precisam da chave estável fornecida pelo
+        # agendamento. Pagamentos manuais iguais são operações financeiras
+        # distintas e, portanto, recebem uma chave própria.
+        key_base = dados.get("Chave_Idempotencia") or f"manual:{uuid.uuid4().hex}"
         key = hashlib.sha256(str(key_base).encode()).hexdigest()
 
         participants = [

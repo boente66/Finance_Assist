@@ -7,11 +7,14 @@ class PdfService:
     NÃO contém regra de negócio.
     """
 
-    def ler_texto(self, caminho_arquivo: str, senha: str | None = None) -> str | None:
+    def ler_texto(
+        self, caminho_arquivo: str, senha: str | None = None,
+        progress_callback=None,
+    ) -> str | None:
         if not caminho_arquivo:
             return None
 
-        return MakePDF.ler_pdf(caminho_arquivo, senha)
+        return MakePDF.ler_pdf(caminho_arquivo, senha, progress_callback)
 
     def gerar_pdf(
         self,

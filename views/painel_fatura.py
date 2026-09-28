@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QFrame, QProgressBar, QMenu, QApplication, QLineEdit
 )
 from PyQt5.QtGui import QColor, QIcon, QFont
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QTimer
 
 from controllers.fatura_controller import FaturaController
 from controllers.account_controller import AccountController
@@ -47,6 +47,8 @@ class PainelFatura(QWidget):
         self.filtro_status = "Todos"
         self._icon_cache = {}
         self._updating = False
+        self.import_worker = None
+        self._close_pending = False
 
         hoje = datetime.today()
         self.mes_atual = hoje.month
@@ -704,6 +706,7 @@ class PainelFatura(QWidget):
                 self._on_importacao_fatura_finalizada
             )
             self.import_worker.error.connect(self._on_importacao_fatura_erro)
+            self.import_worker.stopped.connect(self._on_import_worker_stopped)
             self.import_worker.start()
         except Exception as exc:
             self.import_progress.hide()
@@ -905,7 +908,19 @@ class PainelFatura(QWidget):
     # ======================================================
     # CICLO DE VIDA
     # ======================================================
+    def _on_import_worker_stopped(self):
+        if self._close_pending:
+            QTimer.singleShot(0, self.close)
+
     def closeEvent(self, event):
+        worker = self.import_worker
+        if worker is not None and worker.isRunning():
+            worker.cancel()
+            if not worker.wait(250):
+                self._close_pending = True
+                event.ignore()
+                return
+        self.import_worker = None
         try:
             TranslatorApp.unbind(self)
         except Exception:

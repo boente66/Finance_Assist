@@ -17,10 +17,11 @@ TARGET_DESCRIPTION="Compatível com Ubuntu 22.04, 24.04 e 26.04 LTS em arquitetu
 case "$TARGET_BASE" in
     ubuntu22.04) ;;
     ubuntu24.04)
-        # Do not relabel a Jammy executable as a Noble build.
+        # Ubuntu 24.04 and Mint 22 share the Noble/glibc 2.39 runtime base.
         . /etc/os-release
-        if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "24.04" ]]; then
-            printf 'A variante Ubuntu 24.04 deve ser compilada no Ubuntu 24.04.\n' >&2
+        if ! { [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "24.04" ]] ||
+               [[ "${ID:-}" == "linuxmint" && "${VERSION_ID:-}" == 22.* && "${UBUNTU_CODENAME:-}" == "noble" ]]; }; then
+            printf 'A variante Noble deve ser compilada no Ubuntu 24.04 ou Linux Mint 22.x.\n' >&2
             exit 1
         fi
         if [[ "${FINANCE_ASSIST_SKIP_PYINSTALLER:-0}" == "1" ]]; then

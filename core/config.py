@@ -4,9 +4,12 @@
 import os
 import sys
 import tempfile
+import logging
 from pathlib import Path
 
 from database.json_database import JsonDatabase
+
+logger = logging.getLogger(__name__)
 
 
 RUNTIME_ENV_VARIABLE = "FINANCE_ASSIST_ENV"
@@ -128,14 +131,16 @@ def carregar_config():
     try:
         return _normalizar_config(_config_db.load())
     except Exception:
-        return DEFAULTS.copy()
+        logger.exception("Não foi possível carregar a configuração")
+        raise
 
 
 def salvar_config(config: dict):
     try:
         return _config_db.save(_normalizar_config(config))
     except Exception:
-        return False
+        logger.exception("Não foi possível salvar a configuração")
+        raise
 
 
 def get_db_path():
