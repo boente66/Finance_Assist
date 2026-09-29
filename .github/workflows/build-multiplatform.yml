@@ -185,8 +185,10 @@ jobs:
         include:
           - runner: macos-15-intel
             arch: x64
+            torch-version: 2.2.2
           - runner: macos-14
             arch: arm64
+            torch-version: 2.6.0
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -199,7 +201,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install torch==2.6.0
+          .venv/bin/pip install torch==${{ matrix.torch-version }}
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install pytest
       - name: Testes de empacotamento
@@ -211,7 +213,7 @@ jobs:
       - name: Gerar aplicativo macOS
         run: packaging/macos/build_macos.sh
       - uses: actions/upload-artifact@v6
-        if: always()
+        if: success()
         with:
           name: finance-assist-macos-${{ matrix.arch }}
           path: |
