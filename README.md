@@ -2,21 +2,25 @@
   <img src="assets/icons/finance_assist.svg" alt="Logotipo do Finance Assist" width="88">
   <h1>Finance Assist</h1>
   <p><strong>Gestão financeira pessoal em uma aplicação desktop organizada, segura e executada localmente.</strong></p>
-  <p>Versão atual: <code>2.1.0-test.14</code> · Estágio: teste multiplataforma</p>
+  <p>Versão atual: <code>2.1.0-test.15</code> · Estágio: teste multiplataforma</p>
 </div>
 
-[![Versão](https://img.shields.io/badge/versão-2.1.0--test.14-1597c5)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14)
-[![Windows](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14)
-[![Testes](https://img.shields.io/badge/testes-290%20aprovados-2ea44f)](docs/releases/v2.1.0-test.14.md)
+[![Versão](https://img.shields.io/badge/versão-2.1.0--test.15-1597c5)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15)
+[![Windows](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15)
+[![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-000000?logo=apple&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15)
+[![Testes](https://img.shields.io/badge/testes-290%20aprovados-2ea44f)](docs/releases/v2.1.0-test.15.md)
 
-**[Baixar a versão test.14](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14)**
+**[Baixar a versão test.15](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15)**
 · **[Manual do usuário](docs/MANUAL_DO_USUARIO.md)**
 · **[Manual em DOCX](DOCUMENTA%C3%87%C3%83O%20DO%20SISTEMA%20CONTROLE%20FINANCEIRO.docx)**
 · **[Auditoria técnica](docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md)**
 
-### Novidades da test.14
+### Novidades da test.15
 
+- build oficial Ubuntu 24.04/Mint 22 validado no runner Noble;
+- suíte Linux dividida para evitar interrupção após 74%;
+- aplicativos macOS para Intel x64 e Apple Silicon arm64;
 - informe financeiro e modelo fiscal separados, sem inferir IRRF do extrato;
 - cadastro validado por ano e fonte pagadora com os quadros fiscais 1 a 7;
 - PDF com quebra de linhas e controles responsivos na tela de relatórios;
@@ -72,18 +76,18 @@ THE QT COMPANY, 2025).
 | Item | Situação atual |
 |---|---|
 | Nome comercial | Finance Assist |
-| Versão da aplicação | `2.1.0-test.14` |
-| Versão do pacote Debian | `2.1.0~test14` |
+| Versão da aplicação | `2.1.0-test.15` |
+| Versão do pacote Debian | `2.1.0~test15` |
 | Branch principal | `main` |
 | Repositório oficial | [boente66/Finance_Assist](https://github.com/boente66/Finance_Assist) |
-| Distribuição publicada | DEB Ubuntu `amd64` e ZIP Windows `x64`, ambos de teste |
-| Sistemas-alvo | Ubuntu 22.04, 24.04 e 26.04 LTS `amd64`; Windows 11 `x64` |
+| Distribuição publicada | DEB Ubuntu, ZIP Windows e aplicativos macOS, todos de teste |
+| Sistemas-alvo | Ubuntu 22.04/24.04/26.04 `amd64`; Windows 11 `x64`; macOS Intel e Apple Silicon |
 | Windows 10 | pacote tecnicamente executável, porém o sistema encerrou suporte oficial em 14/10/2025 |
-| macOS | sem pacote oficial nesta versão |
+| macOS | pacotes de teste x64 e arm64, sem assinatura Apple |
 | Licença | proprietária, source-available e limitada a uso não comercial |
 
 As notas específicas da versão estão em
-[`docs/releases/v2.1.0-test.14.md`](docs/releases/v2.1.0-test.14.md). O relatório
+[`docs/releases/v2.1.0-test.15.md`](docs/releases/v2.1.0-test.15.md). O relatório
 de compatibilidade e banco está em
 [`docs/RELATORIO_COMPATIBILIDADE_E_DADOS.md`](docs/RELATORIO_COMPATIBILIDADE_E_DADOS.md).
 A auditoria
@@ -337,10 +341,10 @@ backups, logs, caches, configuração local nem ambiente virtual.
 
 Downloads diretos da versão de teste:
 
-- [Instalador Linux DEB](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.14/finance-assist_2.1.0-test.14_amd64.deb)
-- [Checksum Linux](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.14/finance-assist_2.1.0-test.14_amd64.deb.sha256)
-- [Pacote Windows ZIP](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.14/finance-assist_2.1.0-test.14_windows-x64.zip)
-- [Checksum Windows](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.14/finance-assist_2.1.0-test.14_windows-x64.zip.sha256)
+- [Instalador Linux DEB](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.15/finance-assist_2.1.0-test.15_amd64.deb)
+- [Checksum Linux](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.15/finance-assist_2.1.0-test.15_amd64.deb.sha256)
+- [Pacote Windows ZIP](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.15/finance-assist_2.1.0-test.15_windows-x64.zip)
+- [Checksum Windows](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.15/finance-assist_2.1.0-test.15_windows-x64.zip.sha256)
 
 A revisão de relatórios e encerramento de acesso está em
 [`docs/RELATORIOS_CONTAS_FAVORECIDOS_TEST6.md`](docs/RELATORIOS_CONTAS_FAVORECIDOS_TEST6.md).
@@ -352,18 +356,18 @@ registros financeiros. No perfil, **Encerrar minha conta** solicita a senha,
 bloqueia novos acessos e mantém o histórico; o último administrador é protegido.
 
 Baixe o `.deb` e o checksum correspondente no
-[Release v2.1.0-test.14](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14).
+[Release v2.1.0-test.15](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15).
 
 Confira a integridade do arquivo:
 
 ```bash
-sha256sum -c finance-assist_2.1.0-test.14_amd64.deb.sha256
+sha256sum -c finance-assist_2.1.0-test.15_amd64.deb.sha256
 ```
 
 Instale o pacote:
 
 ```bash
-sudo apt install ./finance-assist_2.1.0-test.14_amd64.deb
+sudo apt install ./finance-assist_2.1.0-test.15_amd64.deb
 ```
 
 Depois da instalação, procure por **Finance Assist (Teste)** no menu de
@@ -385,18 +389,18 @@ Para Ubuntu 24.04 e Mint 22.x, existe também um pacote **recompilado no Ubuntu
 24.04**, identificado no nome do arquivo. O Mint 22.2 utiliza essa base, conforme
 as [notas oficiais do Mint](https://www.linuxmint.com/rel_zara.php).
 
-- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.14/finance-assist_2.1.0-test.14_ubuntu24.04_amd64.deb)
-- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.14/finance-assist_2.1.0-test.14_ubuntu24.04_amd64.deb.sha256)
+- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.15/finance-assist_2.1.0-test.15_ubuntu24.04_amd64.deb)
+- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.15/finance-assist_2.1.0-test.15_ubuntu24.04_amd64.deb.sha256)
 
 ```bash
-sha256sum -c finance-assist_2.1.0-test.14_ubuntu24.04_amd64.deb.sha256
-sudo apt install ./finance-assist_2.1.0-test.14_ubuntu24.04_amd64.deb
+sha256sum -c finance-assist_2.1.0-test.15_ubuntu24.04_amd64.deb.sha256
+sudo apt install ./finance-assist_2.1.0-test.15_ubuntu24.04_amd64.deb
 finance-assist-test
 ```
 
 Mantém o nome instalado `finance-assist-test` e o diretório de dados: é uma
 atualização alternativa, não uma segunda aplicação. A versão Debian é
-`2.1.0~test14+ubuntu24.04.1`, com dependências Noble (`libglib2.0-0t64` e
+`2.1.0~test15+ubuntu24.04.1`, com dependências Noble (`libglib2.0-0t64` e
 `libc6 >= 2.39`). Não instale essa variante no Ubuntu 22.04; use o DEB anterior.
 
 A versão anterior (test.5) foi validada no Ubuntu 24.04 em [CI](https://github.com/boente66/Finance_Assist/actions/runs/34102270517):
@@ -409,7 +413,7 @@ completa do comando `apt install`, sem dados pessoais. Não force dependências.
 
 ### 9.3 Windows
 
-Baixe `finance-assist_2.1.0-test.14_windows-x64.zip`, verifique o arquivo
+Baixe `finance-assist_2.1.0-test.15_windows-x64.zip`, verifique o arquivo
 `.sha256`, extraia a pasta e execute `FinanceAssist-test.exe`. O artefato é
 compilado em Windows Server 2022 e tem como alvo Windows 11 `x64`. O Windows 10
 encerrou o suporte oficial da Microsoft em 14 de outubro de 2025; por isso,
@@ -418,7 +422,7 @@ eventual funcionamento nesse sistema não representa suporte ou homologação.
 No PowerShell, confira a integridade com:
 
 ```powershell
-Get-FileHash .\finance-assist_2.1.0-test.14_windows-x64.zip -Algorithm SHA256
+Get-FileHash .\finance-assist_2.1.0-test.15_windows-x64.zip -Algorithm SHA256
 ```
 
 Compare o resultado com o conteúdo do arquivo de checksum publicado na release.
@@ -433,6 +437,19 @@ Para recompilar o pacote Windows, use `packaging/windows/build_windows.ps1`
 em uma instalação do Visual Studio com ferramentas C++ e runtime redistribuível
 x64. O script seleciona o runtime completo para impedir a mistura de DLLs MSVC
 antigas e novas no executável.
+
+### 9.4 macOS
+
+Escolha o arquivo conforme o processador:
+
+- `finance-assist_2.1.0-test.15_macos-arm64.zip`: Apple Silicon (M1 ou posterior);
+- `finance-assist_2.1.0-test.15_macos-x64.zip`: Macs Intel.
+
+Confira o `.sha256`, extraia o ZIP e mova **Finance Assist Test.app** para
+Aplicativos. Esta versão de teste não possui assinatura/notarização Apple. Na
+primeira abertura, use **Configurações do Sistema → Privacidade e Segurança →
+Abrir Mesmo Assim** caso o Gatekeeper bloqueie o aplicativo. Nunca desative o
+Gatekeeper globalmente. Para OCR, instale Poppler e Tesseract com Homebrew.
 
 ## 10. Testes e qualidade
 

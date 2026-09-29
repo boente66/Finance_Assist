@@ -2,14 +2,58 @@ name: DEB separado Ubuntu 24.04 e Mint 22.x
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*-test.*"
 
 permissions:
   contents: read
 
 jobs:
-  noble-deb:
+  noble-tests:
+    name: Noble - testes ${{ matrix.group }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ["a-m", "n-z"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Dependências Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0t64 libx11-6 libxcb1 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxext6 libxkbcommon-x11-0 libxrender1
+      - name: Ambiente de testes
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install pytest
+      - name: Testes A-M
+        if: matrix.group == 'a-m'
+        env:
+          QT_QPA_PLATFORM: offscreen
+          FINANCE_ASSIST_ENV: test
+          FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
+        run: .venv/bin/python -m pytest -q tests/integration/test_[a-m]*.py
+      - name: Testes N-Z e interface
+        if: matrix.group == 'n-z'
+        env:
+          QT_QPA_PLATFORM: offscreen
+          FINANCE_ASSIST_ENV: test
+          FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
+        run: .venv/bin/python -m pytest -q tests/integration/test_[n-z]*.py tests/interface
+
+  noble-deb:
+    needs: noble-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -19,7 +63,7 @@ jobs:
       - name: Dependências nativas Noble
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev xvfb xauth libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0t64 libx11-6 libxcb1 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxext6 libxkbcommon-x11-0 libxrender1
+          sudo apt-get install -y dpkg-dev xvfb xauth libdbus-1-3 libfontconfig1 libgl1 libglib2.0-0t64 libx11-6 libxcb1 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxext6 libxkbcommon-x11-0 libxrender1 poppler-utils tesseract-ocr tesseract-ocr-por
       - name: Ambiente de build
         run: |
           python -m venv .venv
@@ -27,12 +71,6 @@ jobs:
           .venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install pytest
-      - name: Suíte completa isolada
-        env:
-          QT_QPA_PLATFORM: offscreen
-          FINANCE_ASSIST_ENV: test
-          FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
-        run: .venv/bin/python -m pytest -q
       - name: Compilar DEB Ubuntu 24.04
         env:
           FINANCE_ASSIST_DEB_BASE: ubuntu24.04

@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_workflow_gera_artefatos_linux_e_windows():
+def test_workflow_gera_artefatos_linux_windows_e_macos():
     workflow = (ROOT / ".github/workflows/build-multiplatform.yml").read_text(encoding="utf-8")
     assert "runs-on: ubuntu-22.04" in workflow
     assert 'ubuntu: ["24.04", "26.04"]' in workflow
@@ -22,14 +22,17 @@ def test_workflow_gera_artefatos_linux_e_windows():
     assert "packaging/linux/build_deb.sh" in workflow
     assert "packaging\\windows\\build_windows.ps1" in workflow
     assert "$PSNativeCommandUseErrorActionPreference = $true" in workflow
-    assert workflow.count("actions/checkout@v5") == 4
-    assert workflow.count("actions/setup-python@v6") == 3
-    assert workflow.count("actions/upload-artifact@v6") == 2
+    assert "macos-15-intel" in workflow and "runner: macos-14" in workflow
+    assert "packaging/macos/build_macos.sh" in workflow
+    assert "finance-assist-macos-${{ matrix.arch }}" in workflow
+    assert workflow.count("actions/checkout@v5") == 5
+    assert workflow.count("actions/setup-python@v6") == 4
+    assert workflow.count("actions/upload-artifact@v6") == 3
 
 
 def test_dependencia_qt_nativa_respeita_plataforma():
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-    assert 'PyQt5-Qt5==5.15.17; platform_system != "Windows"' in requirements
+    assert 'PyQt5-Qt5==5.15.17; platform_system == "Linux"' in requirements
 
 
 def test_pacote_windows_e_portavel_e_nao_embute_dados_locais():
@@ -47,3 +50,8 @@ def test_especificacao_gera_nome_comercial_sem_dados_do_usuario():
     assert "'pytest', '_pytest'" in spec
     assert "financeiro.db" not in spec
     assert "configuracoes.json" not in spec
+    mac_spec = (ROOT / "ControleFinanceiro-macos.spec").read_text(encoding="utf-8")
+    mac_script = (ROOT / "packaging/macos/build_macos.sh").read_text(encoding="utf-8")
+    assert "BUNDLE(" in mac_spec and "br.com.financeassist.test" in mac_spec
+    assert "--self-test-views" in mac_script and "shasum -a 256" in mac_script
+    assert "financeiro.db" not in mac_spec + mac_script

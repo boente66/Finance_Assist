@@ -10,14 +10,15 @@ permissions:
   contents: read
 
 jobs:
-  linux-compatibility:
-    name: Ubuntu ${{ matrix.ubuntu }} - código
+  linux-tests:
+    name: Ubuntu ${{ matrix.ubuntu }} - testes ${{ matrix.group }}
     runs-on: ubuntu-${{ matrix.ubuntu }}
-    timeout-minutes: 45
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         ubuntu: ["24.04", "26.04"]
+        group: ["a-m", "n-z"]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -35,12 +36,20 @@ jobs:
           .venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install pytest
-      - name: Suíte completa isolada
+      - name: Testes de integração A-M
+        if: matrix.group == 'a-m'
         env:
           QT_QPA_PLATFORM: offscreen
           FINANCE_ASSIST_ENV: test
           FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
-        run: .venv/bin/python -m pytest -q
+        run: .venv/bin/python -m pytest -q tests/integration/test_[a-m]*.py
+      - name: Testes de integração N-Z e interface
+        if: matrix.group == 'n-z'
+        env:
+          QT_QPA_PLATFORM: offscreen
+          FINANCE_ASSIST_ENV: test
+          FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
+        run: .venv/bin/python -m pytest -q tests/integration/test_[n-z]*.py tests/interface
 
   linux-deb:
     name: Ubuntu 22.04 - DEB amd64
@@ -164,4 +173,49 @@ jobs:
             dist/release/*.zip.sha256
             dist/views-windows.json
             dist/views-windows.json.*.log
+          if-no-files-found: error
+
+  macos-zip:
+    name: macOS ${{ matrix.arch }} - aplicativo
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+          - runner: macos-14
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Dependências nativas
+        run: brew install poppler tesseract tesseract-lang
+      - name: Ambiente Python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install torch==2.6.0
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install pytest
+      - name: Testes de empacotamento
+        env:
+          QT_QPA_PLATFORM: offscreen
+          FINANCE_ASSIST_ENV: test
+          FINANCE_ASSIST_DATA_DIR: ${{ runner.temp }}/finance-assist-tests
+        run: .venv/bin/python -m pytest -q tests/integration/test_multiplatform_package_metadata.py tests/integration/test_packaged_views.py
+      - name: Gerar aplicativo macOS
+        run: packaging/macos/build_macos.sh
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: finance-assist-macos-${{ matrix.arch }}
+          path: |
+            dist/release/*_macos-${{ matrix.arch }}.zip
+            dist/release/*_macos-${{ matrix.arch }}.zip.sha256
+            dist/views-macos-${{ matrix.arch }}.json
           if-no-files-found: error

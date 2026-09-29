@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.14
+**Versão:** 2.1.0-test.15
 **Atualização:** 24 de setembro de 2026
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15>
 
 ## 1. Apresentação
 
@@ -189,15 +189,23 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.14_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.15_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
+
+### macOS
+
+1. Baixe o ZIP `macos-arm64` para Apple Silicon ou `macos-x64` para Intel.
+2. Confira o checksum SHA-256 correspondente.
+3. Extraia e mova **Finance Assist Test.app** para Aplicativos.
+4. Como a versão de teste não é assinada pela Apple, autorize a primeira
+   abertura em **Privacidade e Segurança**, se solicitado.
 
 ### Ubuntu e derivados
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.14_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.15_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -224,8 +232,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.14: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.14>
+- Versão test.15: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15>
 - Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md>
 
-A versão 2.1.0-test.14 foi validada com 290 testes automatizados. Os instaladores
+A versão 2.1.0-test.15 foi validada com 290 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.
