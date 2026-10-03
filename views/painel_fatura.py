@@ -440,12 +440,15 @@ class PainelFatura(QWidget):
 
     def _render_resumo(self, fatura):
         status = fatura.get("status", "ABERTA")
+        saldo_pendente = float(fatura.get("saldo_a_pagar", 0) or 0)
         self.btn_pagar.setEnabled(
-            status == "FECHADA" and fatura.get("saldo_a_pagar", 0) > 0
+            status in {"ABERTA", "FECHADA"} and saldo_pendente > 0
+        )
+        self.btn_pagar.setText(
+            "Antecipar / pagar" if status == "ABERTA" else "Pagar"
         )
         self.btn_pagar.setToolTip(
-            "Disponível após o fechamento da fatura."
-            if status == "ABERTA" else ""
+            "Antecipe na fatura aberta ou pague parcial/totalmente."
         )
         self.resumo_label.setText(
             f"{status} | "
@@ -805,11 +808,28 @@ class PainelFatura(QWidget):
 
         conta = next(c for c in contas if c["Nome_Conta"] == nome)
 
+        valor, ok = QInputDialog.getDouble(
+            self,
+            TranslatorApp.get("Valor do pagamento"),
+            (
+                f"{TranslatorApp.get('Saldo a pagar')}: "
+                f"{CurrencyFormatter.format(total)}\n"
+                f"{TranslatorApp.get('Informe o valor')}:"
+            ),
+            total,
+            0.01,
+            total,
+            2,
+        )
+
+        if not ok:
+            return
+
         confirm = QMessageBox.question(
             self,
             TranslatorApp.get("Confirmar"),
             f"{TranslatorApp.get('Pagar')} "
-            f"{CurrencyFormatter.format(total)} "
+            f"{CurrencyFormatter.format(valor)} "
             f"{TranslatorApp.get('de')} {nome}?",
             QMessageBox.Yes | QMessageBox.No
         )
@@ -822,7 +842,8 @@ class PainelFatura(QWidget):
                 self.cartao["ID_Cartao"],
                 conta["ID_Conta"],
                 mes,
-                ano
+                ano,
+                valor,
             )
 
             if not resultado.get("sucesso"):

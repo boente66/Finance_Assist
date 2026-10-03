@@ -19,9 +19,9 @@ class FaturaControllerStub:
     def obter_fatura_mes(self, *_args):
         raise AssertionError("A View não deve somar os lançamentos da fatura.")
 
-    def pagar_fatura(self, id_cartao, id_conta, mes, ano):
-        self.pagamentos.append((id_cartao, id_conta, mes, ano))
-        return {"sucesso": True, "mensagem": "Fatura paga"}
+    def pagar_fatura(self, id_cartao, id_conta, mes, ano, valor=None):
+        self.pagamentos.append((id_cartao, id_conta, mes, ano, valor))
+        return {"sucesso": True, "mensagem": "Pagamento registrado"}
 
 
 class AccountControllerStub:
@@ -52,6 +52,11 @@ def test_view_exibe_saldo_restante_oficial_no_pagamento_parcial(
         painel_module.QMessageBox, "question", lambda *_args: QMessageBox.Yes
     )
     monkeypatch.setattr(
+        painel_module.QInputDialog,
+        "getDouble",
+        lambda *_args: (25.0, True),
+    )
+    monkeypatch.setattr(
         painel_module.QMessageBox, "information", lambda *_args: QMessageBox.Ok
     )
 
@@ -71,6 +76,6 @@ def test_view_exibe_saldo_restante_oficial_no_pagamento_parcial(
     texto = prompt["texto"].replace("\xa0", " ")
     assert "R$ 40,00" in texto
     assert "R$ 100,00" not in texto
-    assert panel.controller.pagamentos == [(3, 9, 8, 2026)]
+    assert panel.controller.pagamentos == [(3, 9, 8, 2026, 25.0)]
     assert recarregado == [True]
     panel.close()

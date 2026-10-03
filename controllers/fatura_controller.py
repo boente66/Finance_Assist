@@ -86,10 +86,12 @@ class FaturaController:
     # ==================================================
     # PAGAMENTO
     # ==================================================
-    def pagar_fatura(self, id_cartao, id_conta, mes, ano) -> dict:
+    def pagar_fatura(
+        self, id_cartao, id_conta, mes, ano, valor=None
+    ) -> dict:
         id_usuario = self.get_id_usuario()
         return self.service.pagar_fatura(
-            id_cartao, mes, ano, id_conta, id_usuario
+            id_cartao, mes, ano, id_conta, id_usuario, valor
         )
 
     # ==================================================

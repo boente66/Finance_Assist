@@ -147,15 +147,6 @@ class FaturaService:
         total_pago = self._money(
             self.pagamento_model.get_total_by_invoice(ciclo["ID_Fatura"])
         )
-        if (ciclo["Status"] != "PAGA" and total_pago > 0
-                and total_pago >= max(total_movimentos, Decimal("0.00"))):
-            self.lancamento_model.marcar_fatura_como_quitada(
-                id_cartao, mes, ano, id_usuario
-            )
-            return self.ciclo_model.definir_status(
-                id_cartao, mes, ano, id_usuario, "PAGA",
-                date.today().isoformat(),
-            )
         hoje = referencia or date.today()
         if isinstance(hoje, str):
             hoje = datetime.fromisoformat(hoje).date()
@@ -178,6 +169,15 @@ class FaturaService:
                 id_cartao, proxima.month, proxima.year, id_usuario,
                 proximo_fechamento.isoformat(),
                 proximo_vencimento.isoformat(),
+            )
+        if (ciclo["Status"] == "FECHADA" and total_pago > 0
+                and total_pago >= max(total_movimentos, Decimal("0.00"))):
+            self.lancamento_model.marcar_fatura_como_quitada(
+                id_cartao, mes, ano, id_usuario
+            )
+            return self.ciclo_model.definir_status(
+                id_cartao, mes, ano, id_usuario, "PAGA",
+                hoje.isoformat(),
             )
         return ciclo
 
@@ -605,7 +605,9 @@ class FaturaService:
     # ============================================================
     # PAGAMENTO
     # ============================================================
-    def pagar_fatura(self, id_cartao, mes, ano, id_conta, id_usuario):
+    def pagar_fatura(
+        self, id_cartao, mes, ano, id_conta, id_usuario, valor=None
+    ):
         try:
             if not id_usuario:
                 raise PermissionError("Usuário não autenticado.")
@@ -646,10 +648,6 @@ class FaturaService:
                 ciclo = self.sincronizar_ciclo(
                     id_cartao, mes, ano, id_usuario
                 )
-                if ciclo["Status"] == "ABERTA":
-                    raise ValueError(
-                        "A fatura precisa estar fechada antes do pagamento."
-                    )
                 movimentos = [
                     item for item in fatura
                     if item.get("Tipo_Movimento", "COMPRA") != "PAGAMENTO"
@@ -660,7 +658,7 @@ class FaturaService:
                     )
                 )
 
-                if ciclo["Status"] == "PAGA" or total_pago > 0:
+                if ciclo["Status"] == "PAGA":
                     pagamento = self.pagamento_model.get_last_by_invoice(
                         id_cartao,
                         mes,
@@ -680,10 +678,20 @@ class FaturaService:
                     (self._money(item["Valor"]) for item in movimentos),
                     Decimal("0.00"),
                 )
-                total = total_movimentos - total_pago
-                if total <= 0:
+                saldo_antes = max(
+                    total_movimentos - total_pago, Decimal("0.00")
+                )
+                if saldo_antes <= 0:
                     raise ValueError(
-                        "O valor da fatura deve ser maior que zero."
+                        "A fatura não possui saldo pendente."
+                    )
+
+                total = saldo_antes if valor is None else self._money(valor)
+                if total <= 0:
+                    raise ValueError("O pagamento deve ser maior que zero.")
+                if total > saldo_antes:
+                    raise ValueError(
+                        "O pagamento não pode ultrapassar o saldo da fatura."
                     )
 
                 if self._money(conta["Saldo_Atual"]) < total:
@@ -695,7 +703,8 @@ class FaturaService:
                     ano,
                     id_usuario,
                     movimentos,
-                    float(total)
+                    float(total),
+                    float(total_pago),
                 )
 
                 existente = self.pagamento_model.get_by_key(
@@ -714,9 +723,16 @@ class FaturaService:
                     id_usuario
                 )
 
+                antecipado = ciclo["Status"] == "ABERTA"
+                parcial = total < saldo_antes
+                modalidade = (
+                    "Antecipação" if antecipado
+                    else "Pagamento parcial" if parcial
+                    else "Pagamento"
+                )
                 transacao_id = self.transaction_model.add_transaction({
                     "Descricao": (
-                        f"Pagamento Fatura {int(mes):02d}/{ano} - "
+                        f"{modalidade} Fatura {int(mes):02d}/{ano} - "
                         f"{cartao.get('Nome', '')}"
                     ),
                     "Valor": -float(total),
@@ -733,13 +749,6 @@ class FaturaService:
                     id_usuario
                 )
 
-                for lancamento in movimentos:
-                    self.lancamento_model.marcar_como_pago(
-                        lancamento["ID_Lancamento"],
-                        transacao_id,
-                        id_usuario
-                    )
-
                 self.pagamento_model.add_payment(
                     chave,
                     id_cartao,
@@ -751,20 +760,45 @@ class FaturaService:
                     id_usuario,
                     float(total)
                 )
-                self.ciclo_model.definir_status(
-                    id_cartao, mes, ano, id_usuario, "PAGA",
-                    date.today().isoformat(),
+                saldo_restante = max(
+                    saldo_antes - total, Decimal("0.00")
                 )
+                if saldo_restante == 0 and not antecipado:
+                    for lancamento in movimentos:
+                        self.lancamento_model.marcar_como_pago(
+                            lancamento["ID_Lancamento"],
+                            transacao_id,
+                            id_usuario
+                        )
+                    self.ciclo_model.definir_status(
+                        id_cartao, mes, ano, id_usuario, "PAGA",
+                        date.today().isoformat(),
+                    )
 
             self._clear_cache()
             return operation_result(
                 True,
                 "OK",
-                "Fatura paga com sucesso.",
+                (
+                    "Pagamento antecipado registrado."
+                    if antecipado else
+                    "Pagamento parcial registrado."
+                    if parcial else
+                    "Fatura paga com sucesso."
+                ),
                 {
                     "ID_Transacao": transacao_id,
                     "Valor": float(total),
-                    "Lancamentos_Pagos": len(movimentos),
+                    "Lancamentos_Pagos": (
+                        len(movimentos)
+                        if saldo_restante == 0 and not antecipado else 0
+                    ),
+                    "Saldo_Restante": float(saldo_restante),
+                    "Modalidade": (
+                        "ANTECIPADO" if antecipado
+                        else "PARCIAL" if parcial
+                        else "TOTAL"
+                    ),
                 }
             )
 
@@ -803,7 +837,8 @@ class FaturaService:
         ano,
         id_usuario,
         lancamentos,
-        total
+        total,
+        total_pago=0,
     ):
         ids = ",".join(
             str(item["ID_Lancamento"])
@@ -814,7 +849,8 @@ class FaturaService:
         )
         base = (
             f"{id_usuario}:{id_cartao}:{int(mes)}:{int(ano)}:"
-            f"{ids}:{self._money(total):.2f}"
+            f"{ids}:{self._money(total):.2f}:"
+            f"{self._money(total_pago):.2f}"
         )
         return hashlib.sha256(base.encode("utf-8")).hexdigest()
 

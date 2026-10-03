@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.15
-**Atualização:** 24 de setembro de 2026
+**Versão:** 2.1.0-test.16
+**Atualização:** 3 de outubro de 2026
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.16>
 
 ## 1. Apresentação
 
@@ -97,9 +97,19 @@ Não compartilhe senhas de PDF em mensagens ou documentos.
 
 ### Pagamento e exportação
 
-Para pagar, escolha a fatura, clique em **Pagar**, selecione a conta de débito e
-confirme. A exportação gera uma fatura organizada com identificação da conta ou
-cartão, tabela de todos os lançamentos e total.
+Para pagar, escolha a fatura e clique em **Pagar**. Em uma fatura aberta, o botão
+aparece como **Antecipar / pagar**. Selecione a conta de débito e informe o valor:
+
+- **antecipado:** permitido durante o ciclo aberto; reduz o saldo e recompõe o
+  limite, mas a fatura continua aberta para receber novas compras;
+- **parcial:** registra somente o valor informado e mantém a fatura fechada com
+  o saldo restante;
+- **total:** quita todo o saldo; uma fatura fechada passa para **PAGA**.
+
+Cada pagamento gera uma saída na conta e um registro no histórico da fatura. O
+sistema não altera o sinal das compras nem permite pagar acima do saldo pendente.
+A exportação gera uma fatura organizada com identificação da conta ou cartão,
+tabela de todos os lançamentos e total.
 
 ## 6. Agendamentos e alertas
 
@@ -189,7 +199,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.15_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.16_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
 
@@ -205,7 +215,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.15_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.16_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -232,8 +242,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.15: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.15>
+- Versão test.16: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.16>
 - Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md>
 
-A versão 2.1.0-test.15 foi validada com 290 testes automatizados. Os instaladores
+A versão 2.1.0-test.16 foi validada com 293 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.
