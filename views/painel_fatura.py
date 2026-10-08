@@ -807,6 +807,7 @@ class PainelFatura(QWidget):
             return
 
         conta = next(c for c in contas if c["Nome_Conta"] == nome)
+        valor_minimo = min(5.0, total)
 
         valor, ok = QInputDialog.getDouble(
             self,
@@ -817,9 +818,11 @@ class PainelFatura(QWidget):
                 f"{TranslatorApp.get('Informe o valor')}:"
             ),
             total,
-            0.01,
+            valor_minimo,
             total,
             2,
+            Qt.WindowFlags(),
+            5.0,
         )
 
         if not ok:

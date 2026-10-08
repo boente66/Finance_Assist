@@ -54,7 +54,10 @@ def test_view_exibe_saldo_restante_oficial_no_pagamento_parcial(
     monkeypatch.setattr(
         painel_module.QInputDialog,
         "getDouble",
-        lambda *_args: (25.0, True),
+        lambda *_args: (
+            prompt.setdefault("pagamento_args", _args) and 25.0,
+            True,
+        ),
     )
     monkeypatch.setattr(
         painel_module.QMessageBox, "information", lambda *_args: QMessageBox.Ok
@@ -76,6 +79,8 @@ def test_view_exibe_saldo_restante_oficial_no_pagamento_parcial(
     texto = prompt["texto"].replace("\xa0", " ")
     assert "R$ 40,00" in texto
     assert "R$ 100,00" not in texto
+    assert prompt["pagamento_args"][4] == 5.0
+    assert prompt["pagamento_args"][8] == 5.0
     assert panel.controller.pagamentos == [(3, 9, 8, 2026, 25.0)]
     assert recarregado == [True]
     panel.close()

@@ -29,6 +29,7 @@ class FaturaSaldoInsuficiente(ValueError):
 class FaturaService:
 
     CENT = Decimal("0.01")
+    PAGAMENTO_MINIMO = Decimal("5.00")
 
     @classmethod
     def _money(cls, value):
@@ -692,6 +693,11 @@ class FaturaService:
                 if total > saldo_antes:
                     raise ValueError(
                         "O pagamento não pode ultrapassar o saldo da fatura."
+                    )
+                if (total < self.PAGAMENTO_MINIMO
+                        and total != saldo_antes):
+                    raise ValueError(
+                        "O pagamento mínimo é de R$ 5,00."
                     )
 
                 if self._money(conta["Saldo_Atual"]) < total:

@@ -2,10 +2,10 @@
 
 ## Finance Assist — Controle Financeiro Pessoal
 
-**Versão:** 2.1.0-test.16
-**Atualização:** 3 de outubro de 2026
+**Versão:** 2.1.0-test.17
+**Atualização:** 7 de outubro de 2026
 **Projeto:** <https://github.com/boente66/Finance_Assist>  
-**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.16>
+**Instaladores:** <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17>
 
 ## 1. Apresentação
 
@@ -108,6 +108,8 @@ aparece como **Antecipar / pagar**. Selecione a conta de débito e informe o val
 
 Cada pagamento gera uma saída na conta e um registro no histórico da fatura. O
 sistema não altera o sinal das compras nem permite pagar acima do saldo pendente.
+A caixa aceita pagamentos a partir de **R$ 5,00** e avança em passos de R$ 5,00.
+Quando o saldo total for menor que R$ 5,00, a quitação exata continua permitida.
 A exportação gera uma fatura organizada com identificação da conta ou cartão,
 tabela de todos os lançamentos e total.
 
@@ -199,7 +201,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 ### Windows
 
-1. Baixe finance-assist_2.1.0-test.16_windows-x64.zip.
+1. Baixe finance-assist_2.1.0-test.17_windows-x64.zip.
 2. Confira o arquivo .sha256 correspondente.
 3. Extraia o ZIP e execute o aplicativo.
 
@@ -215,7 +217,7 @@ Antes de restaurar, crie uma cópia manual do estado atual.
 
 Baixe o pacote adequado na release e instale sobre a versão existente com:
 
-    sudo apt install ./finance-assist_2.1.0-test.16_amd64.deb
+    sudo apt install ./finance-assist_2.1.0-test.17_amd64.deb
 
 Há também um pacote identificado para Ubuntu 24.04. Os instaladores foram
 validados em Ubuntu 22.04, 24.04 e 26.04.
@@ -242,8 +244,8 @@ validados em Ubuntu 22.04, 24.04 e 26.04.
 ## 12. Suporte, código e auditoria
 
 - Repositório: <https://github.com/boente66/Finance_Assist>
-- Versão test.16: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.16>
+- Versão test.17: <https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17>
 - Relatório: <https://github.com/boente66/Finance_Assist/blob/main/docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md>
 
-A versão 2.1.0-test.16 foi validada com 293 testes automatizados. Os instaladores
+A versão 2.1.0-test.17 foi validada com 293 testes automatizados. Os instaladores
 incluem arquivos SHA-256 para conferência da integridade.

@@ -17,11 +17,11 @@ class DataDepoisFechamento(date):
         return cls(2026, 7, 15)
 
 
-def preparar(db, db_path):
-    usuario = criar_usuario(db, "pagamento_flexivel")
+def preparar(db, db_path, login="pagamento_flexivel", valor=100):
+    usuario = criar_usuario(db, login)
     conta = criar_conta(db, usuario, "Conta principal", 1000)
     cartao = criar_cartao(db, usuario)
-    criar_lancamento(db, usuario, cartao, valor=100, mes=7, ano=2026)
+    criar_lancamento(db, usuario, cartao, valor=valor, mes=7, ano=2026)
     return FaturaService(db_path), usuario, conta, cartao
 
 
@@ -114,6 +114,12 @@ def test_pagamento_acima_do_saldo_e_rejeitado(db, db_path, monkeypatch):
     monkeypatch.setattr("services.fatura_service.date", DataDepoisFechamento)
     service, usuario, conta, cartao = preparar(db, db_path)
 
+    abaixo_minimo = service.pagar_fatura(
+        cartao, 7, 2026, conta, usuario, valor=4
+    )
+    assert abaixo_minimo["codigo"] == "DADOS_INVALIDOS"
+    assert "mínimo" in abaixo_minimo["mensagem"]
+
     resultado = service.pagar_fatura(
         cartao, 7, 2026, conta, usuario, valor=100.01
     )
@@ -123,3 +129,13 @@ def test_pagamento_acima_do_saldo_e_rejeitado(db, db_path, monkeypatch):
     assert db.fetch_one(
         "SELECT COUNT(*) AS n FROM pagamentos_fatura"
     )["n"] == 0
+
+    pequeno = preparar(
+        db, db_path, login="saldo_pequeno", valor=3
+    )
+    service_pequeno, usuario_pequeno, conta_pequena, cartao_pequeno = pequeno
+    quitacao = service_pequeno.pagar_fatura(
+        cartao_pequeno, 7, 2026, conta_pequena, usuario_pequeno, valor=3
+    )
+    assert quitacao["codigo"] == "OK"
+    assert quitacao["dados"]["Saldo_Restante"] == 0
