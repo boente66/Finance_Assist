@@ -3,6 +3,7 @@
 # ========================
 assistente/
 .venv/
+.venv-finance-assist/
 venv/
 env/
 ENV/
