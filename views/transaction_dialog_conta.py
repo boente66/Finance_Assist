@@ -362,7 +362,7 @@ class TransactionDialogConta(QDialog):
             if dialog.exec_() == QDialog.Accepted:
                 dados = dialog.get_dados()
 
-                novo_id = self.favorecido_controller.criar_favorecido(
+                novo_id = self.favorecido_controller.adicionar_favorecido(
                     dados
                 )
 
