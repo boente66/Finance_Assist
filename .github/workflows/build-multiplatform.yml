@@ -111,6 +111,7 @@ jobs:
         run: |
           cd deb-artifact
           sha256sum -c finance-assist_*.deb.sha256
+          sudo apt-get update
           sudo apt install -y ./finance-assist_*.deb
       - name: Validar inicialização e banco limpo
         run: |
