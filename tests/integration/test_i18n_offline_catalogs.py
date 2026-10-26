@@ -9,6 +9,12 @@ from core.translator_app import TranslatorApp
 from services.argos_service import ArgosService
 
 
+@pytest.fixture(autouse=True)
+def restore_translator_language(monkeypatch):
+    """Restaura o idioma global mesmo quando um teste o altera diretamente."""
+    monkeypatch.setattr(TranslatorApp, "_current_lang", TranslatorApp._current_lang)
+
+
 def _fixed_ui_keys():
     root = Path(__file__).resolve().parents[2]
     keys = set()
