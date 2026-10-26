@@ -40,4 +40,3 @@ class DocumentValidator:
             if digito != int(cnpj[indice]):
                 raise ValueError("CNPJ inválido.")
         return cnpj
-

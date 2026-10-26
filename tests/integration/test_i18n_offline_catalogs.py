@@ -73,4 +73,3 @@ def test_argos_ready_reapplies_dynamic_content(monkeypatch):
     TranslatorApp._current_lang = "en"
     TranslatorApp._on_argos_ready("pt", "en")
     assert calls == [True]
-

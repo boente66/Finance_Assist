@@ -208,4 +208,3 @@ def test_document_checksum_and_legacy_preservation(
     assert service.obter(legacy, user_id)[field] == invalid
     with pytest.raises(ValueError, match="inválido"):
         service.atualizar(legacy, {field: invalid[::-1]}, user_id)
-
