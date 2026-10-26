@@ -5,6 +5,8 @@ from core.operation_result import operation_result
 from database.database import DatabaseError
 from models.transaction_model import TransactionModel
 from models.account_model import AccountModel
+from models.category_model import CategoryModel
+from models.favorecido_model import FavorecidoModel
 from services.reconciliacao_importacao_service import (
     ReconciliacaoImportacaoService,
 )
@@ -29,6 +31,8 @@ class TransactionService:
     def __init__(self, db_name=None):
         self.transaction_model = TransactionModel(db_name)
         self.account_model = AccountModel(db_name)
+        self.category_model = CategoryModel(db_name)
+        self.favorecido_model = FavorecidoModel(db_name)
         self.reconciliacao_service = ReconciliacaoImportacaoService()
         self._legacy_account_state = None
 
@@ -92,6 +96,27 @@ class TransactionService:
             return tipo
 
         return "Despesa" if float(valor) < 0 else "Receita"
+
+    def _normalizar_valor_tipo(self, tipo, valor):
+        tipo = self._normalizar_tipo(tipo, valor)
+        if tipo not in {"Receita", "Despesa"}:
+            raise ValueError("Tipo de transação inválido.")
+        valor = abs(float(valor))
+        if valor == 0:
+            raise ValueError("O valor deve ser maior que zero.")
+        return tipo, (-valor if tipo == "Despesa" else valor)
+
+    def _validar_referencias(self, dados, id_usuario):
+        categoria = dados.get("ID_Categoria")
+        favorecido = dados.get("ID_Favorecido")
+        if categoria and not self.category_model.get_category_by_id(
+            categoria, id_usuario
+        ):
+            raise PermissionError("Categoria não pertence ao usuário.")
+        if favorecido and not self.favorecido_model.get_favorecido_by_id(
+            favorecido, id_usuario
+        ):
+            raise PermissionError("Favorecido não pertence ao usuário.")
 
     def _criar_transacao_base(self, dados: dict, validar_saldo: bool):
         id_usuario = dados.get("ID_Usuario")
@@ -292,70 +317,63 @@ class TransactionService:
     # ATUALIZAR TRANSAÇÃO
     # ============================================================
     def atualizar_transacao(self, dados: dict):
-        self._begin()
-
         try:
+            dados = dict(dados or {})
             id_transacao = dados.get("ID_Transacao")
             id_usuario = dados.get("ID_Usuario")
 
-            trans = self.transaction_model.get_transaction_by_id(
-                id_transacao,
-                id_usuario
-            )
-
-            if not trans:
-                raise ValueError("Transação não encontrada.")
-
-            if trans["ID_Usuario"] != id_usuario:
-                raise PermissionError("Transação não pertence ao usuário.")
-
-            conta_antiga = trans["ID_Conta"]
-            conta_nova = dados.get("ID_Conta", conta_antiga)
-
-            valor_antigo = float(trans["Valor"])
-            valor_novo = float(dados["Valor"])
-
-            if conta_nova != conta_antiga:
-                self._validar_conta_usuario(conta_nova, id_usuario)
-
-                self.account_model.update_saldo(
-                    conta_antiga,
-                    -valor_antigo,
-                    id_usuario
+            with self.transaction_model.unit_of_work(
+                self.account_model,
+                self.category_model,
+                self.favorecido_model,
+                immediate=True,
+            ):
+                trans = self.transaction_model.get_transaction_by_id(
+                    id_transacao, id_usuario
                 )
+                if not trans:
+                    raise ValueError("Transação não encontrada.")
 
-                self.account_model.update_saldo(
-                    conta_nova,
-                    valor_novo,
-                    id_usuario
+                conta_antiga = trans["ID_Conta"]
+                conta_nova = dados.get("ID_Conta") or conta_antiga
+                conta_destino = self._validar_conta_usuario(
+                    conta_nova, id_usuario
                 )
+                self._validar_referencias(dados, id_usuario)
 
-            else:
-                diferenca = valor_novo - valor_antigo
+                tipo_novo, valor_novo = self._normalizar_valor_tipo(
+                    dados.get("Tipo"), dados.get("Valor")
+                )
+                valor_antigo = float(trans["Valor"])
+                saldo_base = float(conta_destino.get("Saldo_Atual", 0))
+                if conta_nova == conta_antiga:
+                    saldo_base -= valor_antigo
+                if valor_novo < 0 and saldo_base < abs(valor_novo):
+                    raise InsufficientFundsError("Saldo insuficiente.")
 
-                if diferenca != 0:
+                if conta_nova == conta_antiga:
+                    diferenca = valor_novo - valor_antigo
+                    if diferenca:
+                        self.account_model.update_saldo(
+                            conta_antiga, diferenca, id_usuario
+                        )
+                else:
                     self.account_model.update_saldo(
-                        conta_antiga,
-                        diferenca,
-                        id_usuario
+                        conta_antiga, -valor_antigo, id_usuario
+                    )
+                    self.account_model.update_saldo(
+                        conta_nova, valor_novo, id_usuario
                     )
 
-            dados["Tipo"] = self._normalizar_tipo(
-                dados.get("Tipo"),
-                valor_novo
-            )
-
-            self.transaction_model.update_transaction(
-                id_transacao,
-                dados,
-                id_usuario
-            )
-
-            self._commit()
+                dados["ID_Conta"] = conta_nova
+                dados["Tipo"] = tipo_novo
+                dados["Valor"] = valor_novo
+                self.transaction_model.update_transaction(
+                    id_transacao, dados, id_usuario
+                )
             return True
 
         except Exception:
-            self._rollback()
             logger.exception("Erro ao atualizar transação")
             raise
 

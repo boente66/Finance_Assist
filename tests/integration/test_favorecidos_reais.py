@@ -14,20 +14,17 @@ from views.FavorecidoDialog import FavorecidoDialog
 
 
 @pytest.fixture
-def payees(tmp_path, monkeypatch):
-    path = str(tmp_path / 'payees.db')
-    monkeypatch.setattr('database.database.get_db_path', lambda: path)
-    db = Database(path)
+def payees(db, db_path, monkeypatch):
+    monkeypatch.setattr('database.database.get_db_path', lambda: db_path)
     for uid in (1, 2):
         db.execute_query("INSERT INTO usuarios (ID_Usuario,Nome,Senha) VALUES (?, 'Teste', 'hash')", (uid,))
     previous = Session.get_usuario()
     Session.set_usuario({'ID_Usuario': 1})
     yield db
     Session.set_usuario(previous)
-    db.close()
 
 
-@pytest.mark.parametrize('tipo,documento', [('PF', '123.456.789-10'), ('PJ', '12.345.678/0001-90')])
+@pytest.mark.parametrize('tipo,documento', [('PF', '529.982.247-25'), ('PJ', '11.222.333/0001-81')])
 def test_dialog_inserts_and_report_uses_real_payee(payees, tipo, documento):
     app = QApplication.instance() or QApplication([])
     dialog = FavorecidoDialog()
@@ -62,7 +59,7 @@ def test_partial_insert_rolls_back(payees):
     payees.execute_query("""CREATE TRIGGER fail_pf BEFORE INSERT ON pessoa_fisica
         BEGIN SELECT RAISE(ABORT, 'falha injetada'); END""")
     with pytest.raises(DatabaseError):
-        FavorecidoController().adicionar_favorecido({'Nome': 'Teste', 'CPF': '12345678910'})
+        FavorecidoController().adicionar_favorecido({'Nome': 'Teste', 'CPF': '52998224725'})
     assert payees.fetch_all('SELECT * FROM favorecido') == []
 
 
@@ -72,7 +69,7 @@ def test_duplicate_concurrent_insert_is_one_record(payees):
         model = FavorecidoModel()
         barrier.wait()
         try:
-            return model.add_favorecido({'Nome': 'Teste', 'CPF': '12345678910'}, 1)
+            return model.add_favorecido({'Nome': 'Teste', 'CPF': '52998224725'}, 1)
         finally:
             model.close()
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -83,26 +80,26 @@ def test_duplicate_concurrent_insert_is_one_record(payees):
 
 def test_documents_are_scoped_by_user_and_invalid_data_is_rejected(payees):
     controller = FavorecidoController()
-    first = controller.adicionar_favorecido({'Nome': 'Um', 'CPF': '12345678910'})
+    first = controller.adicionar_favorecido({'Nome': 'Um', 'CPF': '52998224725'})
     Session.set_usuario({'ID_Usuario': 2})
-    second = controller.adicionar_favorecido({'Nome': 'Dois', 'CPF': '12345678910'})
+    second = controller.adicionar_favorecido({'Nome': 'Dois', 'CPF': '52998224725'})
     assert first != second
     assert [row['ID_Favorecido'] for row in controller.listar_favorecidos()] == [second]
     with pytest.raises(ValueError):
-        controller.adicionar_favorecido({'Nome': '', 'CPF': '12345678910'})
+        controller.adicionar_favorecido({'Nome': '', 'CPF': '52998224725'})
     with pytest.raises(ValueError):
         controller.adicionar_favorecido({'Nome': 'Inválido', 'CPF': '123'})
     with pytest.raises(ValueError):
-        controller.adicionar_favorecido({'Nome': 'Ambíguo', 'CPF': '12345678910', 'CNPJ': '12345678000190'})
+        controller.adicionar_favorecido({'Nome': 'Ambíguo', 'CPF': '52998224725', 'CNPJ': '11222333000181'})
 
 
 @pytest.mark.parametrize('documento,alteracao', [
-    ({'CPF': '12345678910'}, {'CPF': '123'}),
-    ({'CPF': '12345678910'}, {'CPF': ''}),
-    ({'CNPJ': '12345678000190'}, {'CNPJ': '123'}),
-    ({'CNPJ': '12345678000190'}, {'CNPJ': ''}),
-    ({'CPF': '12345678910'}, {'CNPJ': '12345678000190'}),
-    ({'CPF': '12345678910'}, {'Nome': ' '}),
+    ({'CPF': '52998224725'}, {'CPF': '123'}),
+    ({'CPF': '52998224725'}, {'CPF': ''}),
+    ({'CNPJ': '11222333000181'}, {'CNPJ': '123'}),
+    ({'CNPJ': '11222333000181'}, {'CNPJ': ''}),
+    ({'CPF': '52998224725'}, {'CNPJ': '11222333000181'}),
+    ({'CPF': '52998224725'}, {'Nome': ' '}),
 ])
 def test_invalid_edit_preserves_existing_payee(payees, documento, alteracao):
     controller = FavorecidoController()
@@ -115,7 +112,7 @@ def test_invalid_edit_preserves_existing_payee(payees, documento, alteracao):
 
 @pytest.mark.parametrize('table,document', [('pessoa_fisica', 'CPF'), ('pessoa_juridica', 'CNPJ')])
 def test_legacy_document_index_migrates_without_deleting_records(payees, table, document):
-    number = '12345678910' if document == 'CPF' else '12345678000190'
+    number = '52998224725' if document == 'CPF' else '11222333000181'
     controller = FavorecidoController()
     fid = controller.adicionar_favorecido({'Nome': 'Preservar', document: number})
     before = controller.obter_favorecido(fid)
@@ -130,7 +127,7 @@ def test_legacy_document_index_migrates_without_deleting_records(payees, table, 
     other = controller.adicionar_favorecido({'Nome': 'Outro usuário', document: number})
     assert other != fid
     # Mesmo usuário continua protegido, inclusive em escrita direta no banco.
-    other_number = '98765432100' if document == 'CPF' else '98765432000100'
+    other_number = '11144477735' if document == 'CPF' else '19131243000197'
     third = controller.adicionar_favorecido({'Nome': 'Terceiro', document: other_number})
     with pytest.raises(DatabaseError):
         payees.execute_query(f'UPDATE {table} SET {document} = ? WHERE ID_Favorecido = ?', (number, third))

@@ -1,4 +1,5 @@
 from models.favorecido_model import FavorecidoModel
+from services.document_validator import DocumentValidator
 
 
 class FavorecidoService:
@@ -9,9 +10,14 @@ class FavorecidoService:
     # UTIL
     # ---------------------------------------------------------
     def _somente_numeros(self, valor):
-        if not valor:
-            return None
-        return "".join(filter(str.isdigit, str(valor)))
+        return DocumentValidator.somente_numeros(valor)
+
+    def _validar_documento(self, tipo, valor):
+        if tipo == "PF":
+            return DocumentValidator.validar_cpf(valor)
+        if tipo == "PJ":
+            return DocumentValidator.validar_cnpj(valor)
+        raise ValueError("Tipo inválido. Informe CPF ou CNPJ corretamente.")
 
     # ---------------------------------------------------------
     # LISTAR
@@ -58,6 +64,7 @@ class FavorecidoService:
         if tipo == "PF":
             if not cpf:
                 raise ValueError("CPF é obrigatório para Pessoa Física.")
+            cpf = self._validar_documento(tipo, cpf)
 
             existente = self.model.get_favorecido_by_cpf(cpf, id_usuario)
             if existente:
@@ -66,6 +73,7 @@ class FavorecidoService:
         else:
             if not cnpj:
                 raise ValueError("CNPJ é obrigatório para Pessoa Jurídica.")
+            cnpj = self._validar_documento(tipo, cnpj)
 
             existente = self.model.get_favorecido_by_cnpj(cnpj, id_usuario)
             if existente:
@@ -98,6 +106,19 @@ class FavorecidoService:
 
         cpf = self._somente_numeros(dados.get("CPF"))
         cnpj = self._somente_numeros(dados.get("CNPJ"))
+
+        documento_informado = "CPF" in dados if tipo == "PF" else "CNPJ" in dados
+        documento_atual = fav.get("CPF" if tipo == "PF" else "CNPJ")
+        documento_novo = cpf if tipo == "PF" else cnpj
+
+        # Documento legado inválido é preservado quando o usuário edita
+        # somente nome, telefone ou razão social.
+        if documento_informado and documento_novo != documento_atual:
+            documento_novo = self._validar_documento(tipo, documento_novo)
+            if tipo == "PF":
+                cpf = documento_novo
+            else:
+                cnpj = documento_novo
 
         if tipo == "PF" and cpf:
             existente = self.model.get_favorecido_by_cpf(cpf, id_usuario)
@@ -137,6 +158,13 @@ class FavorecidoService:
         cpf = self._somente_numeros(dados.get("CPF"))
         cnpj = self._somente_numeros(dados.get("CNPJ"))
 
+        if cpf and cnpj:
+            raise ValueError("Informe apenas CPF ou CNPJ, conforme o tipo.")
+        if cpf:
+            cpf = self._validar_documento("PF", cpf)
+        if cnpj:
+            cnpj = self._validar_documento("PJ", cnpj)
+
         if cpf:
             fav = self.model.get_favorecido_by_cpf(cpf, id_usuario)
             if fav:
@@ -156,7 +184,6 @@ class FavorecidoService:
             return None
 
         tipo = "PF" if cpf else "PJ"
-
         payload = {
             "Nome": nome,
             "Tipo": tipo,

@@ -155,6 +155,12 @@ class DividaService:
         if paid <= 0 or min(interest, fine, discount) < 0 or amortized <= 0:
             raise ValueError("Composição do pagamento inválida.")
         balance = self._money(debt["Saldo_Devedor"])
+        maximum_payable = balance + interest + fine - discount
+        if paid > maximum_payable:
+            raise ValueError(
+                "O pagamento excede o valor máximo quitável de "
+                f"R$ {maximum_payable:.2f}."
+            )
         amortized = min(amortized, balance)
         if self._money(account["Saldo_Atual"]) < paid:
             raise ValueError("Saldo insuficiente.")

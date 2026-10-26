@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -12,9 +13,22 @@ if str(PROJECT_ROOT) not in sys.path:
 from database.database import Database
 
 
+@pytest.fixture(scope="session")
+def db_template_path(tmp_path_factory):
+    """Cria o schema uma vez; cada teste ainda recebe seu próprio banco."""
+    path = str(tmp_path_factory.mktemp("db-template") / "financeiro.db")
+    database = Database(path)
+    database.close()
+    return path
+
+
 @pytest.fixture
-def db_path(tmp_path):
-    return str(tmp_path / "financeiro_test.db")
+def db_path(tmp_path, db_template_path):
+    path = str(tmp_path / "financeiro_test.db")
+    shutil.copy2(db_template_path, path)
+    # A cópia já contém o schema e todas as migrations do template.
+    Database._initialized_paths.add(os.path.abspath(path))
+    return path
 
 
 @pytest.fixture

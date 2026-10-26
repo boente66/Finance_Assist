@@ -18,7 +18,6 @@ from services.reconciliacao_importacao_service import (
     ReconciliacaoImportacaoService,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,9 +32,7 @@ class FaturaService:
 
     @classmethod
     def _money(cls, value):
-        return Decimal(str(value or 0)).quantize(
-            cls.CENT, rounding=ROUND_HALF_UP
-        )
+        return Decimal(str(value or 0)).quantize(cls.CENT, rounding=ROUND_HALF_UP)
 
     def __init__(self, db_name=None):
         self.lancamento_model = LancamentoModel(db_name)
@@ -121,28 +118,31 @@ class FaturaService:
         ultimo = calendar.monthrange(ano_venc, mes_venc)[1]
         return date(ano_venc, mes_venc, min(int(dia_vencimento), ultimo))
 
-    def sincronizar_ciclo(
-        self, id_cartao, mes, ano, id_usuario, referencia=None
-    ):
+    def sincronizar_ciclo(self, id_cartao, mes, ano, id_usuario, referencia=None):
         cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
         if not cartao:
             raise ValueError("Cartão inválido.")
-        fechamento = self._data_fechamento(
-            mes, ano, cartao["Dia_Fechamento"]
-        )
+        fechamento = self._data_fechamento(mes, ano, cartao["Dia_Fechamento"])
         vencimento = self._data_vencimento(
             mes, ano, cartao["Dia_Fechamento"], cartao["Dia_Vencimento"]
         )
         ciclo = self.ciclo_model.garantir(
-            id_cartao, mes, ano, id_usuario, fechamento.isoformat(),
+            id_cartao,
+            mes,
+            ano,
+            id_usuario,
+            fechamento.isoformat(),
             vencimento.isoformat(),
         )
         movimentos = self.lancamento_model.get_lancamentos_por_fatura(
             id_cartao, mes, ano, id_usuario
         )
         total_movimentos = sum(
-            (self._money(item["Valor"]) for item in movimentos
-             if item.get("Tipo_Movimento") != "PAGAMENTO"),
+            (
+                self._money(item["Valor"])
+                for item in movimentos
+                if item.get("Tipo_Movimento") != "PAGAMENTO"
+            ),
             Decimal("0.00"),
         )
         total_pago = self._money(
@@ -155,7 +155,11 @@ class FaturaService:
             hoje = hoje.date()
         if ciclo["Status"] == "ABERTA" and hoje > fechamento:
             ciclo = self.ciclo_model.definir_status(
-                id_cartao, mes, ano, id_usuario, "FECHADA",
+                id_cartao,
+                mes,
+                ano,
+                id_usuario,
+                "FECHADA",
                 fechamento.isoformat(),
             )
             proxima = fechamento + relativedelta(months=1)
@@ -163,21 +167,33 @@ class FaturaService:
                 proxima.month, proxima.year, cartao["Dia_Fechamento"]
             )
             proximo_vencimento = self._data_vencimento(
-                proxima.month, proxima.year, cartao["Dia_Fechamento"],
+                proxima.month,
+                proxima.year,
+                cartao["Dia_Fechamento"],
                 cartao["Dia_Vencimento"],
             )
             self.ciclo_model.garantir(
-                id_cartao, proxima.month, proxima.year, id_usuario,
+                id_cartao,
+                proxima.month,
+                proxima.year,
+                id_usuario,
                 proximo_fechamento.isoformat(),
                 proximo_vencimento.isoformat(),
             )
-        if (ciclo["Status"] == "FECHADA" and total_pago > 0
-                and total_pago >= max(total_movimentos, Decimal("0.00"))):
+        if (
+            ciclo["Status"] == "FECHADA"
+            and total_pago > 0
+            and total_pago >= max(total_movimentos, Decimal("0.00"))
+        ):
             self.lancamento_model.marcar_fatura_como_quitada(
                 id_cartao, mes, ano, id_usuario
             )
             return self.ciclo_model.definir_status(
-                id_cartao, mes, ano, id_usuario, "PAGA",
+                id_cartao,
+                mes,
+                ano,
+                id_usuario,
+                "PAGA",
                 hoje.isoformat(),
             )
         return ciclo
@@ -185,15 +201,11 @@ class FaturaService:
     def _garantir_competencia_aberta(
         self, id_cartao, mes, ano, id_usuario, referencia=None
     ):
-        ciclo = self.sincronizar_ciclo(
-            id_cartao, mes, ano, id_usuario, referencia
-        )
+        ciclo = self.sincronizar_ciclo(id_cartao, mes, ano, id_usuario, referencia)
         while ciclo["Status"] != "ABERTA":
             proxima = date(int(ano), int(mes), 1) + relativedelta(months=1)
             mes, ano = proxima.month, proxima.year
-            ciclo = self.sincronizar_ciclo(
-                id_cartao, mes, ano, id_usuario, referencia
-            )
+            ciclo = self.sincronizar_ciclo(id_cartao, mes, ano, id_usuario, referencia)
         return int(mes), int(ano)
 
     # ============================================================
@@ -238,10 +250,7 @@ class FaturaService:
 
                 data_parcela = data_base + relativedelta(months=i)
 
-                mes, ano = self.aplicar_fatura(
-                    data_parcela,
-                    dia_fechamento
-                )
+                mes, ano = self.aplicar_fatura(data_parcela, dia_fechamento)
                 mes, ano = self._garantir_competencia_aberta(
                     id_cartao, mes, ano, id_usuario, data_parcela
                 )
@@ -249,23 +258,25 @@ class FaturaService:
                     id_cartao, mes, ano, id_usuario, data_parcela
                 )
 
-                self.lancamento_model.add_lancamento({
-                    "ID_Usuario": id_usuario,
-                    "ID_Cartao": id_cartao,
-                    "ID_Fatura": ciclo["ID_Fatura"],
-                    "Descricao": dados["Descricao"],
-                    "Valor": float(valores_parcelas[i]),
-                    "Data": data_parcela.isoformat(),
-                    "Competencia_Mes": mes,
-                    "Competencia_Ano": ano,
-                    "ID_Categoria": dados.get("ID_Categoria"),
-                    "ID_Favorecido": dados.get("ID_Favorecido"),
-                    "Num_Parcelas": parcelas,
-                    "Parcela_Atual": i + 1,
-                    "Notas": dados.get("Notas"),
-                    "Previsto": int(dados.get("Previsto", 0)),
-                    "Tipo_Movimento": "COMPRA",
-                })
+                self.lancamento_model.add_lancamento(
+                    {
+                        "ID_Usuario": id_usuario,
+                        "ID_Cartao": id_cartao,
+                        "ID_Fatura": ciclo["ID_Fatura"],
+                        "Descricao": dados["Descricao"],
+                        "Valor": float(valores_parcelas[i]),
+                        "Data": data_parcela.isoformat(),
+                        "Competencia_Mes": mes,
+                        "Competencia_Ano": ano,
+                        "ID_Categoria": dados.get("ID_Categoria"),
+                        "ID_Favorecido": dados.get("ID_Favorecido"),
+                        "Num_Parcelas": parcelas,
+                        "Parcela_Atual": i + 1,
+                        "Notas": dados.get("Notas"),
+                        "Previsto": int(dados.get("Previsto", 0)),
+                        "Tipo_Movimento": "COMPRA",
+                    }
+                )
 
         self._clear_cache()
         return True
@@ -290,15 +301,11 @@ class FaturaService:
             data_obj = data_credito.date()
         else:
             data_obj = data_credito
-        mes, ano = self.aplicar_fatura(
-            data_obj, cartao["Dia_Fechamento"]
-        )
+        mes, ano = self.aplicar_fatura(data_obj, cartao["Dia_Fechamento"])
         mes, ano = self._garantir_competencia_aberta(
             id_cartao, mes, ano, id_usuario, data_obj
         )
-        ciclo = self.sincronizar_ciclo(
-            id_cartao, mes, ano, id_usuario, data_obj
-        )
+        ciclo = self.sincronizar_ciclo(id_cartao, mes, ano, id_usuario, data_obj)
         origem = dados.get("ID_Lancamento_Origem")
         if origem:
             compra = self.obter_lancamento(origem, id_usuario)
@@ -310,9 +317,9 @@ class FaturaService:
                 raise ValueError("A compra original não pertence a este cartão.")
         descricao = str(dados.get("Descricao") or tipo_credito).strip()
         tipo_movimento = (
-            "ESTORNO" if tipo_credito in {"Estorno", "Devolução"}
-            else "AJUSTE" if tipo_credito == "Ajuste"
-            else "CREDITO"
+            "ESTORNO"
+            if tipo_credito in {"Estorno", "Devolução"}
+            else "AJUSTE" if tipo_credito == "Ajuste" else "CREDITO"
         )
         natureza_ajuste = str(dados.get("Natureza_Ajuste") or "Reduzir")
         valor_movimento = (
@@ -320,24 +327,26 @@ class FaturaService:
             if tipo_movimento == "AJUSTE" and natureza_ajuste == "Aumentar"
             else -valor_informado
         )
-        self.lancamento_model.add_lancamento({
-            "ID_Usuario": id_usuario,
-            "ID_Cartao": id_cartao,
-            "ID_Fatura": ciclo["ID_Fatura"],
-            "Descricao": descricao,
-            "Valor": float(valor_movimento),
-            "Data": data_obj.isoformat(),
-            "Competencia_Mes": mes,
-            "Competencia_Ano": ano,
-            "ID_Categoria": dados.get("ID_Categoria"),
-            "Num_Parcelas": 1,
-            "Parcela_Atual": 1,
-            "Notas": dados.get("Notas"),
-            "Previsto": 0,
-            "Paga": 0,
-            "Tipo_Movimento": tipo_movimento,
-            "ID_Lancamento_Origem": origem,
-        })
+        self.lancamento_model.add_lancamento(
+            {
+                "ID_Usuario": id_usuario,
+                "ID_Cartao": id_cartao,
+                "ID_Fatura": ciclo["ID_Fatura"],
+                "Descricao": descricao,
+                "Valor": float(valor_movimento),
+                "Data": data_obj.isoformat(),
+                "Competencia_Mes": mes,
+                "Competencia_Ano": ano,
+                "ID_Categoria": dados.get("ID_Categoria"),
+                "Num_Parcelas": 1,
+                "Parcela_Atual": 1,
+                "Notas": dados.get("Notas"),
+                "Previsto": 0,
+                "Paga": 0,
+                "Tipo_Movimento": tipo_movimento,
+                "ID_Lancamento_Origem": origem,
+            }
+        )
         self._clear_cache()
         return True
 
@@ -372,11 +381,13 @@ class FaturaService:
                     item = dict(original)
                     item["ID_Usuario"] = id_usuario
                     normalizados.append(item)
-                reconciliados.extend(self.reconciliacao_service.reconciliar(
-                    normalizados,
-                    existentes,
-                    ReconciliacaoImportacaoService.DOMINIO_CARTAO,
-                ))
+                reconciliados.extend(
+                    self.reconciliacao_service.reconciliar(
+                        normalizados,
+                        existentes,
+                        ReconciliacaoImportacaoService.DOMINIO_CARTAO,
+                    )
+                )
 
             for item in reconciliados:
                 status = item.get("StatusImportacao")
@@ -401,27 +412,32 @@ class FaturaService:
                     item.get("Data"),
                 )
                 ciclo = self.sincronizar_ciclo(
-                    item.get("ID_Cartao"), mes, ano, id_usuario,
+                    item.get("ID_Cartao"),
+                    mes,
+                    ano,
+                    id_usuario,
                     item.get("Data"),
                 )
-                self.lancamento_model.add_lancamento({
-                    "ID_Usuario": id_usuario,
-                    "ID_Cartao": item.get("ID_Cartao"),
-                    "ID_Fatura": ciclo["ID_Fatura"],
-                    "Descricao": item.get("Descricao"),
-                    "Valor": float(item.get("Valor", 0)),
-                    "Data": item.get("Data"),
-                    "Competencia_Mes": mes,
-                    "Competencia_Ano": ano,
-                    "ID_Categoria": item.get("ID_Categoria"),
-                    "ID_Favorecido": item.get("ID_Favorecido"),
-                    "Num_Parcelas": item.get("Num_Parcelas", 1),
-                    "Parcela_Atual": item.get("Parcela_Atual", 1),
-                    "Notas": item.get("Notas"),
-                    "Previsto": item.get("Previsto", 0),
-                    "Tipo_Movimento": tipo,
-                    "ID_Lancamento_Origem": item.get("ID_Lancamento_Origem"),
-                })
+                self.lancamento_model.add_lancamento(
+                    {
+                        "ID_Usuario": id_usuario,
+                        "ID_Cartao": item.get("ID_Cartao"),
+                        "ID_Fatura": ciclo["ID_Fatura"],
+                        "Descricao": item.get("Descricao"),
+                        "Valor": float(item.get("Valor", 0)),
+                        "Data": item.get("Data"),
+                        "Competencia_Mes": mes,
+                        "Competencia_Ano": ano,
+                        "ID_Categoria": item.get("ID_Categoria"),
+                        "ID_Favorecido": item.get("ID_Favorecido"),
+                        "Num_Parcelas": item.get("Num_Parcelas", 1),
+                        "Parcela_Atual": item.get("Parcela_Atual", 1),
+                        "Notas": item.get("Notas"),
+                        "Previsto": item.get("Previsto", 0),
+                        "Tipo_Movimento": tipo,
+                        "ID_Lancamento_Origem": item.get("ID_Lancamento_Origem"),
+                    }
+                )
                 total += 1
 
         self._clear_cache()
@@ -434,7 +450,8 @@ class FaturaService:
         if not self.buscar_cartao_por_id(id_cartao, id_usuario):
             raise ValueError("Cartão inválido.")
         return [
-            item for item in self.lancamento_model.get_lancamentos_por_cartao(
+            item
+            for item in self.lancamento_model.get_lancamentos_por_cartao(
                 id_cartao, id_usuario
             )
             if item.get("Tipo_Movimento", "COMPRA") == "COMPRA"
@@ -533,14 +550,13 @@ class FaturaService:
         self._set_cache(key, lancamentos)
         return lancamentos
 
-    def obter_fatura_paginada(self, id_cartao, mes, ano, id_usuario, limit=50, offset=0):
+    def obter_fatura_paginada(
+        self, id_cartao, mes, ano, id_usuario, limit=50, offset=0
+    ):
 
         fatura = self.obter_fatura(id_cartao, mes, ano, id_usuario)
 
-        return {
-            "dados": fatura[offset: offset + limit],
-            "total": len(fatura)
-        }
+        return {"dados": fatura[offset : offset + limit], "total": len(fatura)}
 
     # ============================================================
     # TOTAIS
@@ -570,8 +586,11 @@ class FaturaService:
         )
 
         total_movimentos = sum(
-            (self._money(l["Valor"]) for l in lancamentos
-             if l.get("Tipo_Movimento") != "PAGAMENTO"),
+            (
+                self._money(l["Valor"])
+                for l in lancamentos
+                if l.get("Tipo_Movimento") != "PAGAMENTO"
+            ),
             Decimal("0.00"),
         )
         total_pago = self._money(
@@ -582,7 +601,7 @@ class FaturaService:
         return {
             "limite": limite,
             "saldo_devedor": float(saldo_devedor),
-            "disponivel": float(self._money(limite) - saldo_devedor)
+            "disponivel": float(self._money(limite) - saldo_devedor),
         }
 
     def calcular_limite_disponivel(self, id_cartao, id_usuario):
@@ -606,9 +625,7 @@ class FaturaService:
     # ============================================================
     # PAGAMENTO
     # ============================================================
-    def pagar_fatura(
-        self, id_cartao, mes, ano, id_conta, id_usuario, valor=None
-    ):
+    def pagar_fatura(self, id_cartao, mes, ano, id_conta, id_usuario, valor=None):
         try:
             if not id_usuario:
                 raise PermissionError("Usuário não autenticado.")
@@ -620,58 +637,39 @@ class FaturaService:
                 self.lancamento_model,
                 self.pagamento_model,
                 self.ciclo_model,
-                immediate=True
+                immediate=True,
             ):
-                cartao = self.credito_model.get_cartao_by_id(
-                    id_cartao,
-                    id_usuario
-                )
+                cartao = self.credito_model.get_cartao_by_id(id_cartao, id_usuario)
                 if not cartao:
-                    raise PermissionError(
-                        "Cartão não pertence ao usuário."
-                    )
+                    raise PermissionError("Cartão não pertence ao usuário.")
 
-                conta = self.account_model.get_account_by_id(
-                    id_conta,
-                    id_usuario
-                )
+                conta = self.account_model.get_account_by_id(id_conta, id_usuario)
                 if not conta:
-                    raise PermissionError(
-                        "Conta de pagamento não pertence ao usuário."
-                    )
+                    raise PermissionError("Conta de pagamento não pertence ao usuário.")
 
                 fatura = self.lancamento_model.get_lancamentos_por_fatura(
-                    id_cartao,
-                    mes,
-                    ano,
-                    id_usuario
-                )
-                ciclo = self.sincronizar_ciclo(
                     id_cartao, mes, ano, id_usuario
                 )
+                ciclo = self.sincronizar_ciclo(id_cartao, mes, ano, id_usuario)
                 movimentos = [
-                    item for item in fatura
+                    item
+                    for item in fatura
                     if item.get("Tipo_Movimento", "COMPRA") != "PAGAMENTO"
                 ]
                 total_pago = self._money(
-                    self.pagamento_model.get_total_by_invoice(
-                        ciclo["ID_Fatura"]
-                    )
+                    self.pagamento_model.get_total_by_invoice(ciclo["ID_Fatura"])
                 )
 
                 if ciclo["Status"] == "PAGA":
                     pagamento = self.pagamento_model.get_last_by_invoice(
-                        id_cartao,
-                        mes,
-                        ano,
-                        id_usuario
+                        id_cartao, mes, ano, id_usuario
                     )
                     if pagamento:
                         return operation_result(
                             False,
                             "JA_PROCESSADO",
                             "Esta fatura já foi paga.",
-                            {"ID_Transacao": pagamento["ID_Transacao"]}
+                            {"ID_Transacao": pagamento["ID_Transacao"]},
                         )
                     raise ValueError("Esta fatura já foi paga.")
 
@@ -679,13 +677,9 @@ class FaturaService:
                     (self._money(item["Valor"]) for item in movimentos),
                     Decimal("0.00"),
                 )
-                saldo_antes = max(
-                    total_movimentos - total_pago, Decimal("0.00")
-                )
+                saldo_antes = max(total_movimentos - total_pago, Decimal("0.00"))
                 if saldo_antes <= 0:
-                    raise ValueError(
-                        "A fatura não possui saldo pendente."
-                    )
+                    raise ValueError("A fatura não possui saldo pendente.")
 
                 total = saldo_antes if valor is None else self._money(valor)
                 if total <= 0:
@@ -694,11 +688,8 @@ class FaturaService:
                     raise ValueError(
                         "O pagamento não pode ultrapassar o saldo da fatura."
                     )
-                if (total < self.PAGAMENTO_MINIMO
-                        and total != saldo_antes):
-                    raise ValueError(
-                        "O pagamento mínimo é de R$ 5,00."
-                    )
+                if total < self.PAGAMENTO_MINIMO and total != saldo_antes:
+                    raise ValueError("O pagamento mínimo é de R$ 5,00.")
 
                 if self._money(conta["Saldo_Atual"]) < total:
                     raise FaturaSaldoInsuficiente("Saldo insuficiente.")
@@ -713,47 +704,40 @@ class FaturaService:
                     float(total_pago),
                 )
 
-                existente = self.pagamento_model.get_by_key(
-                    chave,
-                    id_usuario
-                )
+                existente = self.pagamento_model.get_by_key(chave, id_usuario)
                 if existente:
                     return operation_result(
                         False,
                         "JA_PROCESSADO",
                         "Este pagamento já foi processado.",
-                        {"ID_Transacao": existente["ID_Transacao"]}
+                        {"ID_Transacao": existente["ID_Transacao"]},
                     )
 
-                categoria_id = self._get_categoria_pagamento_fatura(
-                    id_usuario
-                )
+                categoria_id = self._get_categoria_pagamento_fatura(id_usuario)
 
                 antecipado = ciclo["Status"] == "ABERTA"
                 parcial = total < saldo_antes
                 modalidade = (
-                    "Antecipação" if antecipado
-                    else "Pagamento parcial" if parcial
-                    else "Pagamento"
+                    "Antecipação"
+                    if antecipado
+                    else "Pagamento parcial" if parcial else "Pagamento"
                 )
-                transacao_id = self.transaction_model.add_transaction({
-                    "Descricao": (
-                        f"{modalidade} Fatura {int(mes):02d}/{ano} - "
-                        f"{cartao.get('Nome', '')}"
-                    ),
-                    "Valor": -float(total),
-                    "Data": date.today().isoformat(),
-                    "Tipo": "Despesa",
-                    "ID_Conta": id_conta,
-                    "ID_Usuario": id_usuario,
-                    "ID_Categoria": categoria_id
-                })
+                transacao_id = self.transaction_model.add_transaction(
+                    {
+                        "Descricao": (
+                            f"{modalidade} Fatura {int(mes):02d}/{ano} - "
+                            f"{cartao.get('Nome', '')}"
+                        ),
+                        "Valor": -float(total),
+                        "Data": date.today().isoformat(),
+                        "Tipo": "Despesa",
+                        "ID_Conta": id_conta,
+                        "ID_Usuario": id_usuario,
+                        "ID_Categoria": categoria_id,
+                    }
+                )
 
-                self.account_model.update_saldo(
-                    id_conta,
-                    -float(total),
-                    id_usuario
-                )
+                self.account_model.update_saldo(id_conta, -float(total), id_usuario)
 
                 self.pagamento_model.add_payment(
                     chave,
@@ -764,20 +748,20 @@ class FaturaService:
                     id_conta,
                     transacao_id,
                     id_usuario,
-                    float(total)
+                    float(total),
                 )
-                saldo_restante = max(
-                    saldo_antes - total, Decimal("0.00")
-                )
+                saldo_restante = max(saldo_antes - total, Decimal("0.00"))
                 if saldo_restante == 0 and not antecipado:
                     for lancamento in movimentos:
                         self.lancamento_model.marcar_como_pago(
-                            lancamento["ID_Lancamento"],
-                            transacao_id,
-                            id_usuario
+                            lancamento["ID_Lancamento"], transacao_id, id_usuario
                         )
                     self.ciclo_model.definir_status(
-                        id_cartao, mes, ano, id_usuario, "PAGA",
+                        id_cartao,
+                        mes,
+                        ano,
+                        id_usuario,
+                        "PAGA",
                         date.today().isoformat(),
                     )
 
@@ -787,25 +771,26 @@ class FaturaService:
                 "OK",
                 (
                     "Pagamento antecipado registrado."
-                    if antecipado else
-                    "Pagamento parcial registrado."
-                    if parcial else
-                    "Fatura paga com sucesso."
+                    if antecipado
+                    else (
+                        "Pagamento parcial registrado."
+                        if parcial
+                        else "Fatura paga com sucesso."
+                    )
                 ),
                 {
                     "ID_Transacao": transacao_id,
                     "Valor": float(total),
                     "Lancamentos_Pagos": (
-                        len(movimentos)
-                        if saldo_restante == 0 and not antecipado else 0
+                        len(movimentos) if saldo_restante == 0 and not antecipado else 0
                     ),
                     "Saldo_Restante": float(saldo_restante),
                     "Modalidade": (
-                        "ANTECIPADO" if antecipado
-                        else "PARCIAL" if parcial
-                        else "TOTAL"
+                        "ANTECIPADO"
+                        if antecipado
+                        else "PARCIAL" if parcial else "TOTAL"
                     ),
-                }
+                },
             )
 
         except FaturaSaldoInsuficiente as exc:
@@ -823,9 +808,7 @@ class FaturaService:
         except DatabaseError:
             logger.exception("Erro de banco no pagamento da fatura")
             return operation_result(
-                False,
-                "ERRO_BANCO",
-                "Não foi possível concluir o pagamento da fatura."
+                False, "ERRO_BANCO", "Não foi possível concluir o pagamento da fatura."
             )
 
         except Exception:
@@ -833,7 +816,7 @@ class FaturaService:
             return operation_result(
                 False,
                 "ERRO_INTERNO",
-                "Não foi possível concluir o pagamento da fatura."
+                "Não foi possível concluir o pagamento da fatura.",
             )
 
     def _chave_idempotencia_fatura(
@@ -848,10 +831,7 @@ class FaturaService:
     ):
         ids = ",".join(
             str(item["ID_Lancamento"])
-            for item in sorted(
-                lancamentos,
-                key=lambda item: item["ID_Lancamento"]
-            )
+            for item in sorted(lancamentos, key=lambda item: item["ID_Lancamento"])
         )
         base = (
             f"{id_usuario}:{id_cartao}:{int(mes)}:{int(ano)}:"
@@ -872,15 +852,19 @@ class FaturaService:
         ciclos = []
         for offset in range(quantidade):
             mes_ref = hoje + relativedelta(months=offset)
-            ciclos.append({
-                "Mes": mes_ref.month,
-                "Ano": mes_ref.year,
-                "Texto": f"{mes_ref.month:02d}/{mes_ref.year}"
-            })
+            ciclos.append(
+                {
+                    "Mes": mes_ref.month,
+                    "Ano": mes_ref.year,
+                    "Texto": f"{mes_ref.month:02d}/{mes_ref.year}",
+                }
+            )
 
         return ciclos
 
-    def get_painel_cartao(self, id_cartao, mes, ano, id_usuario, page=0, limit=50, status="Todos"):
+    def get_painel_cartao(
+        self, id_cartao, mes, ano, id_usuario, page=0, limit=50, status="Todos"
+    ):
 
         cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
         if not cartao:
@@ -901,8 +885,7 @@ class FaturaService:
             if comp_mes == int(mes) and comp_ano == int(ano):
                 if l.get("ID_Categoria"):
                     l["Categoria"] = self.category_model.get_nome_categoria_by_id(
-                        l["ID_Categoria"],
-                        id_usuario
+                        l["ID_Categoria"], id_usuario
                     )
                 else:
                     l["Categoria"] = "Sem categoria"
@@ -932,31 +915,42 @@ class FaturaService:
         fatura_paginada = fatura_atual[inicio:fim]
 
         movimentos_validos = [
-            l for l in fatura_completa
-            if l.get("Tipo_Movimento") != "PAGAMENTO"
+            l for l in fatura_completa if l.get("Tipo_Movimento") != "PAGAMENTO"
         ]
         total_movimentos = sum(
             (self._money(l["Valor"]) for l in movimentos_validos),
             Decimal("0.00"),
         )
         compras = sum(
-            (self._money(l["Valor"]) for l in movimentos_validos
-             if l.get("Tipo_Movimento", "COMPRA") in {"COMPRA", "ENCARGO"}),
+            (
+                self._money(l["Valor"])
+                for l in movimentos_validos
+                if l.get("Tipo_Movimento", "COMPRA") in {"COMPRA", "ENCARGO"}
+            ),
             Decimal("0.00"),
         )
         creditos = sum(
-            (self._money(l["Valor"]) for l in movimentos_validos
-             if l.get("Tipo_Movimento") == "CREDITO"),
+            (
+                self._money(l["Valor"])
+                for l in movimentos_validos
+                if l.get("Tipo_Movimento") == "CREDITO"
+            ),
             Decimal("0.00"),
         )
         estornos = sum(
-            (self._money(l["Valor"]) for l in movimentos_validos
-             if l.get("Tipo_Movimento") == "ESTORNO"),
+            (
+                self._money(l["Valor"])
+                for l in movimentos_validos
+                if l.get("Tipo_Movimento") == "ESTORNO"
+            ),
             Decimal("0.00"),
         )
         ajustes = sum(
-            (self._money(l["Valor"]) for l in movimentos_validos
-             if l.get("Tipo_Movimento") == "AJUSTE"),
+            (
+                self._money(l["Valor"])
+                for l in movimentos_validos
+                if l.get("Tipo_Movimento") == "AJUSTE"
+            ),
             Decimal("0.00"),
         )
         pagamentos = self._money(
@@ -980,12 +974,14 @@ class FaturaService:
                 "data_fechamento": ciclo["Data_Fechamento"],
                 "data_vencimento": ciclo["Data_Vencimento"],
             },
-            "futuras": dict(sorted(
-                futuras.items(),
-                key=lambda item: (int(item[0][3:]), int(item[0][:2])),
-            )),
+            "futuras": dict(
+                sorted(
+                    futuras.items(),
+                    key=lambda item: (int(item[0][3:]), int(item[0][:2])),
+                )
+            ),
             "lancamentos": fatura_paginada,
-            "total_registros": total_registros
+            "total_registros": total_registros,
         }
 
     def exportar_fatura_pdf(self, cartao, lancamentos, caminho, mes, ano):
@@ -993,6 +989,7 @@ class FaturaService:
             raise ValueError("Caminho do PDF não informado.")
 
         from utilitarios.financial_pdf import FinancialPDF
+
         resumo = None
         if cartao and cartao.get("ID_Cartao") and cartao.get("ID_Usuario"):
             resumo = self.get_painel_cartao(
@@ -1008,8 +1005,7 @@ class FaturaService:
     def _get_categoria_pagamento_fatura(self, id_usuario):
 
         categoria = self.category_model.get_category_by_name(
-            "Pagamento de Fatura",
-            id_usuario
+            "Pagamento de Fatura", id_usuario
         )
 
         if categoria:
@@ -1019,36 +1015,35 @@ class FaturaService:
             nome="Pagamento de Fatura",
             tipo="Despesa",
             id_usuario=id_usuario,
-            id_categoria_pai=None
+            id_categoria_pai=None,
         )
-
 
     # ============================================
     # FATURAS VIRTUAIS PARA PROJEÇÃO
     # ============================================
+
     def listar_faturas_projetadas(
         self,
         id_usuario: int,
         quantidade_meses: int = 6,
         data_referencia=None,
     ):
-        """Consulta faturas abertas sem criar registros em agendamentos.
+        """Consulta faturas pendentes para a projeção financeira.
 
-        O valor continua vindo de ``calcular_fatura_mes``, a mesma fonte usada
-        pelo painel da fatura. ``Decimal`` é mantido durante a normalização para
-        não introduzir arredondamento binário nos novos totais de projeção.
+        Respeita o status real da fatura, considera todos os pagamentos
+        e antecipações e preserva competências futuras.
         """
         referencia = data_referencia or date.today()
         quantidade_meses = max(1, min(int(quantidade_meses), 60))
         projecoes = []
-        # Uma atualização explícita da projeção deve reler o banco, inclusive
-        # quando a operação ocorreu em outra instância do painel de faturas.
+
         self._clear_cache()
 
         for cartao in self.listar_cartoes(id_usuario) or []:
             id_cartao = cartao["ID_Cartao"]
             nome_cartao = cartao.get("Nome") or "Cartão"
             dia_vencimento = int(cartao.get("Dia_Vencimento") or 1)
+
             competencias = {
                 (
                     (referencia + relativedelta(months=offset)).year,
@@ -1056,8 +1051,10 @@ class FaturaService:
                 )
                 for offset in range(quantidade_meses)
             }
+
             limite_passado = referencia + relativedelta(months=-120)
             limite_futuro = referencia + relativedelta(months=quantidade_meses - 1)
+
             for lancamento in self.lancamento_model.get_lancamentos_nao_pagos(
                 id_cartao, id_usuario
             ):
@@ -1066,54 +1063,88 @@ class FaturaService:
                     ano_lancamento = int(lancamento["Competencia_Ano"])
                     competencia = date(ano_lancamento, mes_lancamento, 1)
                 except (KeyError, TypeError, ValueError):
-                    logger.warning("Competência inválida no lançamento %s", lancamento)
+                    logger.warning(
+                        "Competência inválida no lançamento %s",
+                        lancamento,
+                    )
                     continue
-                if limite_passado.replace(day=1) <= competencia <= limite_futuro.replace(day=1):
+
+                if (
+                    limite_passado.replace(day=1)
+                    <= competencia
+                    <= limite_futuro.replace(day=1)
+                ):
                     competencias.add((ano_lancamento, mes_lancamento))
 
             for ano, mes in sorted(competencias):
+
+                # Consulta o ciclo real, sem criar ou alterar faturas.
+                fatura = self.ciclo_model.obter(id_cartao, mes, ano, id_usuario)
+
+                # Fatura quitada não constitui compromisso pendente.
+                if fatura and (fatura.get("Status") or "").upper() == "PAGA":
+                    continue
+
                 movimentos = self.lancamento_model.get_lancamentos_por_fatura(
                     id_cartao, mes, ano, id_usuario
                 )
+
                 total_movimentos = sum(
-                    (self._money(item["Valor"]) for item in movimentos
-                     if item.get("Tipo_Movimento") != "PAGAMENTO"),
+                    (
+                        self._money(item["Valor"])
+                        for item in movimentos
+                        if item.get("Tipo_Movimento") != "PAGAMENTO"
+                    ),
                     Decimal("0.00"),
                 )
-                pagamento = self.pagamento_model.get_last_by_invoice(
-                    id_cartao, mes, ano, id_usuario
-                )
-                total_pago = self._money(
-                    pagamento["Valor"] if pagamento else 0
-                )
+
+                # Soma todos os pagamentos da fatura, inclusive
+                # antecipações, em vez de utilizar somente o último.
+                if fatura:
+                    total_pago = self._money(
+                        self.pagamento_model.get_total_by_invoice(fatura["ID_Fatura"])
+                    )
+                else:
+                    total_pago = Decimal("0.00")
+
                 valor = max(
-                    total_movimentos - total_pago, Decimal("0.00")
+                    total_movimentos - total_pago,
+                    Decimal("0.00"),
                 )
+
                 if valor <= Decimal("0.00"):
                     continue
 
                 vencimento = self._data_vencimento(
-                    mes, ano, cartao.get("Dia_Fechamento") or 1,
+                    mes,
+                    ano,
+                    cartao.get("Dia_Fechamento") or 1,
                     dia_vencimento,
                 ).isoformat()
-                projecoes.append({
-                    "tipo_origem": "FATURA_CARTAO",
-                    "id_origem": id_cartao,
-                    "id_cartao": id_cartao,
-                    "ID_Cartao": id_cartao,
-                    "competencia_mes": mes,
-                    "competencia_ano": ano,
-                    "descricao": f"Fatura – {mes:02d}/{ano}",
-                    "detalhe": "Fatura cartão de crédito",
-                    "nome_cartao": nome_cartao,
-                    "data_vencimento": vencimento,
-                    "valor": valor,
-                    "status": "A_PAGAR",
-                })
+
+                projecoes.append(
+                    {
+                        "tipo_origem": "FATURA_CARTAO",
+                        "id_origem": id_cartao,
+                        "id_cartao": id_cartao,
+                        "ID_Cartao": id_cartao,
+                        "competencia_mes": mes,
+                        "competencia_ano": ano,
+                        "descricao": f"Fatura – {mes:02d}/{ano}",
+                        "detalhe": "Fatura cartão de crédito",
+                        "nome_cartao": nome_cartao,
+                        "data_vencimento": vencimento,
+                        "valor": valor,
+                        "status": "A_PAGAR",
+                    }
+                )
 
         return sorted(
             projecoes,
-            key=lambda item: (item["data_vencimento"], item["id_cartao"]),
+            key=lambda item: (
+                item["data_vencimento"],
+                item["id_cartao"],
+            ),
         )
 
     # Compatibilidade com uma chamada introduzida em versões intermediárias.

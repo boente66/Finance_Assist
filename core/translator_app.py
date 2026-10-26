@@ -324,6 +324,10 @@ class TranslatorApp:
         finally:
             cls._is_translating = False
 
+    @classmethod
+    def _on_argos_ready(cls, origem, destino):
+        if origem == "pt" and cls._lang_code(cls._current_lang) == destino:
+            cls.translate_all()
     # ======================================================
     # LIMPEZA GERAL
     # ======================================================
@@ -331,3 +335,6 @@ class TranslatorApp:
     def clear(cls):
         cls._bindings.clear()
         cls._original_texts.clear()
+
+
+ArgosService.on_model_ready(TranslatorApp._on_argos_ready)

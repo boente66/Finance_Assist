@@ -1,6 +1,7 @@
 # core/i18n.py
 
 from core.session import Session
+from core.i18n_catalogs import CATALOGS
 
 TRADUCOES = {
     "pt": {
@@ -64,6 +65,13 @@ TRADUCOES["es"].update({
     "Dados inválidos": "Datos no válidos",
 })
 
+# Catálogos versionados cobrem os textos fixos da interface e funcionam
+# sem Argos ou conexão de rede. As entradas manuais acima têm precedência.
+for _idioma, _catalogo in CATALOGS.items():
+    _catalogo = dict(_catalogo)
+    _catalogo.update(TRADUCOES.get(_idioma, {}))
+    TRADUCOES[_idioma] = _catalogo
+
 DEFAULT_LANG = "pt"
 
 
@@ -107,3 +115,12 @@ def get_language_dict(idioma: str) -> dict:
 
 def idiomas_disponiveis():
     return list(TRADUCOES.keys())
+
+
+def missing_keys(chaves, idiomas=("en", "es")):
+    """Retorna chaves fixas ausentes para validação em desenvolvimento/CI."""
+    return {
+        idioma: sorted(set(chaves) - set(TRADUCOES.get(idioma, {})))
+        for idioma in idiomas
+        if set(chaves) - set(TRADUCOES.get(idioma, {}))
+    }

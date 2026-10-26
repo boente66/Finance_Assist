@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from models.account_model import AccountModel
 from database.database import DatabaseError
 from models.transaction_model import TransactionModel
@@ -13,9 +14,30 @@ class AccountService:
 
     TIPOS_VALIDOS = ["Corrente", "Poupança", "Investimento"]
 
-    def __init__(self):
-        self.model = AccountModel()
-        self.transaction_model = TransactionModel()
+    def __init__(self, db_name=None):
+        self.model = AccountModel(db_name)
+        self.transaction_model = TransactionModel(db_name)
+
+    def _registrar_ajuste(self, conta, novo_saldo, id_usuario):
+        saldo_atual = self._parse_saldo(conta["Saldo_Atual"])
+        diferenca = round(novo_saldo - saldo_atual, 2)
+        if diferenca == 0:
+            return False
+        self.transaction_model.add_transaction({
+            "ID_Conta": conta["ID_Conta"],
+            "Tipo": "Receita" if diferenca > 0 else "Despesa",
+            "Descricao": "Ajuste de saldo",
+            "Valor": diferenca,
+            "Data": date.today().isoformat(),
+            "ID_Categoria": None,
+            "ID_Favorecido": None,
+            "Notas": (
+                f"Saldo ajustado de {saldo_atual:.2f} para {novo_saldo:.2f}."
+            ),
+            "ID_Usuario": id_usuario,
+            "ID_Agendamento": None,
+        })
+        return diferenca
 
     # --------------------------------------------------
     # UTIL
@@ -130,14 +152,18 @@ class AccountService:
             raise ValueError("Já existe uma conta com esse nome")
 
         try:
-            self.model.update_account(
-                id_conta=id_conta,
-                nome=nome,
-                instituicao=instituicao,
-                tipo=tipo,
-                saldo=saldo,
-                id_usuario=id_usuario
-            )
+            with self.model.unit_of_work(
+                self.transaction_model, immediate=True
+            ):
+                self._registrar_ajuste(conta, saldo, id_usuario)
+                self.model.update_account(
+                    id_conta=id_conta,
+                    nome=nome,
+                    instituicao=instituicao,
+                    tipo=tipo,
+                    saldo=saldo,
+                    id_usuario=id_usuario
+                )
             return True
 
         except DatabaseError as e:
@@ -162,7 +188,16 @@ class AccountService:
             raise PermissionError("Conta não pertence ao usuário")
 
         try:
-            self.model.update_account_balance(id_conta, saldo)
+            with self.model.unit_of_work(
+                self.transaction_model, immediate=True
+            ):
+                diferenca = self._registrar_ajuste(
+                    conta, saldo, id_usuario
+                )
+                if diferenca:
+                    self.model.update_saldo(
+                        id_conta, diferenca, id_usuario
+                    )
             return True
 
         except DatabaseError as e:

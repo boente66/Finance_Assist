@@ -11,6 +11,7 @@ class ArgosService:
     _cache = {}
     _installed_pairs = set()
     _lock = threading.Lock()
+    _ready_callbacks = []
 
     MAX_CACHE = 5000
 
@@ -111,6 +112,7 @@ class ArgosService:
                 package.install_from_path(path)
 
                 cls._installed_pairs.add((origem, destino))
+                cls._notify_ready(origem, destino)
 
                 logger.info(f"[Argos] Modelo instalado {origem}->{destino}")
                 return True
@@ -118,6 +120,19 @@ class ArgosService:
             except Exception:
                 logger.exception("[Argos] Erro ao instalar modelo")
                 return False
+
+    @classmethod
+    def on_model_ready(cls, callback):
+        if callback not in cls._ready_callbacks:
+            cls._ready_callbacks.append(callback)
+
+    @classmethod
+    def _notify_ready(cls, origem, destino):
+        for callback in tuple(cls._ready_callbacks):
+            try:
+                QTimer.singleShot(0, lambda cb=callback: cb(origem, destino))
+            except Exception:
+                logger.exception("[Argos] Erro ao notificar modelo instalado")
 
     # ==================================================
     # TRADUÇÃO PRINCIPAL

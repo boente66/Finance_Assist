@@ -162,6 +162,8 @@ class TransactionModel(Database):
         sql = """
             UPDATE transacoes
             SET
+                ID_Conta = ?,
+                Tipo = ?,
                 Descricao = ?,
                 Valor = ?,
                 Data = ?,
@@ -173,6 +175,8 @@ class TransactionModel(Database):
         """
 
         self.execute_query(sql, (
+            dados.get("ID_Conta"),
+            dados.get("Tipo"),
             dados.get("Descricao"),
             dados.get("Valor"),
             dados.get("Data"),
