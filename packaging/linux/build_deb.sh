@@ -3,14 +3,22 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 PROJECT_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
-PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python"
-PYINSTALLER_BIN="$PROJECT_ROOT/.venv/bin/pyinstaller"
+BUILD_VENV="$PROJECT_ROOT/.venv-finance-assist"
+if [[ ! -d "$BUILD_VENV" ]]; then
+    BUILD_VENV="$PROJECT_ROOT/.venv"
+fi
+PYTHON_BIN="$BUILD_VENV/bin/python"
+PYINSTALLER_BIN="$BUILD_VENV/bin/pyinstaller"
 EXECUTABLE="$PROJECT_ROOT/dist/FinanceAssist-test"
 ARCH="$(dpkg --print-architecture)"
+TARGET_BASE="${FINANCE_ASSIST_DEB_BASE:-ubuntu22.04}"
+case "$TARGET_BASE" in
+    ubuntu22.04|ubuntu24.04) ;;
+    *) printf 'Base de pacote desconhecida: %s\n' "$TARGET_BASE" >&2; exit 1 ;;
+esac
 DEBIAN_VERSION="$(cd "$PROJECT_ROOT" && "$PYTHON_BIN" -c 'from core.version import DEBIAN_VERSION; print(DEBIAN_VERSION)')"
 ASSET_VERSION="$(cd "$PROJECT_ROOT" && "$PYTHON_BIN" -c 'from core.version import APP_VERSION; print(APP_VERSION)')"
 OUTPUT="$PROJECT_ROOT/dist/finance-assist_${ASSET_VERSION}_${ARCH}.deb"
-TARGET_BASE="${FINANCE_ASSIST_DEB_BASE:-ubuntu22.04}"
 LIBC_DEPENDENCY="libc6"
 GLIB_DEPENDENCY="libglib2.0-0 | libglib2.0-0t64"
 TARGET_DESCRIPTION="Compatível com Ubuntu 22.04, 24.04 e 26.04 LTS em arquitetura amd64."
@@ -48,7 +56,7 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ ! -x "$PYTHON_BIN" || ! -x "$PYINSTALLER_BIN" ]]; then
-    printf 'Ambiente de build ausente em %s\n' "$PROJECT_ROOT/.venv" >&2
+    printf 'Ambiente de build ausente em %s\n' "$BUILD_VENV" >&2
     exit 1
 fi
 
