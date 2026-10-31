@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import weakref
 import logging
+import re
 
 from PyQt5 import sip
 from PyQt5.QtWidgets import QTableWidget
@@ -27,7 +28,6 @@ class TranslatorApp:
     _bindings = []
     _translations = {}
     _current_lang = "pt"
-    _original_texts = {}
     _is_translating = False
 
     _storage = TranslationStorage()
@@ -123,7 +123,7 @@ class TranslatorApp:
                 destino=destino
             )
 
-            if not traduzido:
+            if not traduzido or traduzido == texto:
                 return texto
 
             # Salva em memória
@@ -139,6 +139,19 @@ class TranslatorApp:
             logger.exception("Erro ao traduzir texto: %s", texto)
             return texto
 
+    @classmethod
+    def error(cls, error):
+        """Traduz mensagens de domínio sem alterar o erro nem os valores financeiros."""
+        text = str(error)
+        match = re.fullmatch(
+            r"O pagamento excede o valor máximo quitável de R\$ ([0-9]+\.[0-9]{2})\.", text
+        )
+        if match:
+            return cls.get("O pagamento excede o valor máximo quitável de R$ {valor}.").format(
+                valor=match.group(1)
+            )
+        return cls.get(text)
+
     # ======================================================
     # TABELAS
     # ======================================================
@@ -153,8 +166,7 @@ class TranslatorApp:
 
             table.setHorizontalHeaderLabels(translated)
 
-            key = (id(table), "headers")
-            cls._original_texts[key] = original_headers
+            table.setProperty("_financeassist_i18n_headers", original_headers)
 
         except Exception:
             logger.exception("Erro ao traduzir cabeçalhos da tabela")
@@ -184,13 +196,11 @@ class TranslatorApp:
         # TEXT
         if hasattr(widget, "setText") and hasattr(widget, "text"):
             try:
-                key = (id(widget), "text")
-
-                original = cls._original_texts.get(key)
+                original = widget.property("_financeassist_i18n_text")
 
                 if original is None:
                     original = widget.text()
-                    cls._original_texts[key] = original
+                    widget.setProperty("_financeassist_i18n_text", original)
 
                 widget.setText(cls.get(original))
 
@@ -203,13 +213,11 @@ class TranslatorApp:
         # PLACEHOLDER
         if hasattr(widget, "setPlaceholderText") and hasattr(widget, "placeholderText"):
             try:
-                key = (id(widget), "placeholder")
-
-                original = cls._original_texts.get(key)
+                original = widget.property("_financeassist_i18n_placeholder")
 
                 if original is None:
                     original = widget.placeholderText()
-                    cls._original_texts[key] = original
+                    widget.setProperty("_financeassist_i18n_placeholder", original)
 
                 widget.setPlaceholderText(cls.get(original))
 
@@ -222,9 +230,7 @@ class TranslatorApp:
         # TABELAS
         if isinstance(widget, QTableWidget):
             try:
-                key = (id(widget), "headers")
-
-                original = cls._original_texts.get(key)
+                original = widget.property("_financeassist_i18n_headers")
 
                 if original is None:
                     original = []
@@ -233,7 +239,7 @@ class TranslatorApp:
                         item = widget.horizontalHeaderItem(column)
                         original.append(item.text() if item else "")
 
-                    cls._original_texts[key] = original
+                    widget.setProperty("_financeassist_i18n_headers", original)
 
                 if original:
                     widget.setHorizontalHeaderLabels(
@@ -269,22 +275,11 @@ class TranslatorApp:
         if widget is None:
             return
 
-        widget_id = id(widget)
-
         cls._bindings = [
             (cb, ref)
             for cb, ref in cls._bindings
             if ref() is not widget
         ]
-
-        cls._original_texts = {
-            key: value
-            for key, value in cls._original_texts.items()
-            if not (
-                isinstance(key, tuple)
-                and key[0] == widget_id
-            )
-        }
 
     # ======================================================
     # EXECUÇÃO GLOBAL
@@ -334,7 +329,6 @@ class TranslatorApp:
     @classmethod
     def clear(cls):
         cls._bindings.clear()
-        cls._original_texts.clear()
 
 
 ArgosService.on_model_ready(TranslatorApp._on_argos_ready)

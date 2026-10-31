@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
+from pathlib import Path
 
 from database.json_database import JsonDatabase, JsonDatabaseError
+from core.config import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +15,9 @@ class TranslationStorage:
     Usa JsonDatabase para salvar/cachear traduções geradas pelo Argos.
     """
 
-    def __init__(self, file_path="translations.json"):
+    def __init__(self, file_path=None):
         self.db = JsonDatabase(
-            file_path=file_path,
+            file_path=str(file_path) if file_path is not None else str(Path(DATA_DIR) / "translations.json"),
             default_data={}
         )
 

@@ -208,7 +208,7 @@ class FavorecidoDialog(QDialog):
             QMessageBox.warning(
                 self,
                 TranslatorApp.get("Erro"),
-                str(e)
+                TranslatorApp.error(e)
             )
 
     # ==================================================

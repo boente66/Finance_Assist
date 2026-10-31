@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from core.translator_app import TranslatorApp
 from controllers.fatura_controller import FaturaController
 
 
@@ -28,12 +29,13 @@ class CreditoFaturaDialog(QDialog):
         layout = QVBoxLayout(self)
         form = QFormLayout()
         self.tipo_combo = QComboBox()
-        self.tipo_combo.addItems(self.TIPOS)
+        for tipo in self.TIPOS:
+            self.tipo_combo.addItem(tipo, tipo)
         self.natureza_combo = QComboBox()
         self.natureza_combo.addItems(("Reduzir fatura", "Aumentar fatura"))
         self.natureza_combo.setVisible(False)
-        self.tipo_combo.currentTextChanged.connect(
-            lambda tipo: self.natureza_combo.setVisible(tipo == "Ajuste")
+        self.tipo_combo.currentIndexChanged.connect(
+            lambda _: self.natureza_combo.setVisible(self.tipo_combo.currentData() == "Ajuste")
         )
         self.descricao_edit = QLineEdit()
         self.descricao_edit.setPlaceholderText("Ex.: Cashback da compra")
@@ -67,18 +69,38 @@ class CreditoFaturaDialog(QDialog):
         form.addRow("Data do crédito:", self.data_edit)
         form.addRow("Compra original:", self.origem_combo)
         form.addRow("Notas:", self.notas_edit)
+        self.form = form
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(
+        self.buttons = buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel
         )
         buttons.accepted.connect(self.salvar)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        TranslatorApp.bind(self._atualizar_textos, self)
+        self._atualizar_textos()
+
+    def _atualizar_textos(self):
+        self.setWindowTitle(TranslatorApp.get("Adicionar crédito à fatura"))
+        for row in range(self.form.rowCount()):
+            TranslatorApp._translate_widget(self.form.itemAt(row, QFormLayout.LabelRole).widget())
+        for index in range(self.tipo_combo.count()):
+            self.tipo_combo.setItemText(index, TranslatorApp.get(self.tipo_combo.itemData(index)))
+        for index, label in enumerate(("Reduzir fatura", "Aumentar fatura")):
+            self.natureza_combo.setItemText(index, TranslatorApp.get(label))
+        self.origem_combo.setItemText(0, TranslatorApp.get("Sem vínculo com compra"))
+        self.descricao_edit.setPlaceholderText(TranslatorApp.get("Ex.: Cashback da compra"))
+        self.buttons.button(QDialogButtonBox.Save).setText(TranslatorApp.get("Salvar"))
+        self.buttons.button(QDialogButtonBox.Cancel).setText(TranslatorApp.get("Cancelar"))
+
+    def done(self, result):
+        TranslatorApp.unbind(self)
+        super().done(result)
 
     def salvar(self):
         try:
-            tipo = self.tipo_combo.currentText()
+            tipo = self.tipo_combo.currentData()
             descricao = self.descricao_edit.text().strip() or tipo
             self.controller.adicionar_credito_fatura({
                 "ID_Cartao": self.id_cartao,
@@ -95,4 +117,4 @@ class CreditoFaturaDialog(QDialog):
             })
             self.accept()
         except Exception as exc:
-            QMessageBox.warning(self, "Crédito não registrado", str(exc))
+            QMessageBox.warning(self, TranslatorApp.get("Crédito não registrado"), TranslatorApp.error(exc))

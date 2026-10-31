@@ -128,7 +128,8 @@ class DateFormatter:
 
     @staticmethod
     def map_nome_mes(mes: int) -> str:
-        idioma = Session.set_config("idioma","pt")
+        idioma = Session.get_config("idioma", "pt")
+        idioma = str(idioma).replace("-", "_").split("_", 1)[0]
         meses = {
             "pt": [
                 "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",

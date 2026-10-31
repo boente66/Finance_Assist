@@ -2,7 +2,8 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QCalendarWidget,
     QPushButton, QLabel, QMessageBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QLocale
+from core.translator_app import TranslatorApp
 from core.window_manager import WindowManager
 
 
@@ -19,7 +20,7 @@ class DateRangeDialog(QDialog):
         # --------------------------
         layout = QVBoxLayout(self)
 
-        title = QLabel("Selecione a Data Inicial e Final")
+        self.title = title = QLabel("Selecione a Data Inicial e Final")
         title.setObjectName("dialogTitle")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
@@ -60,6 +61,20 @@ class DateRangeDialog(QDialog):
         # Resultado
         self.data_inicial = None
         self.data_final = None
+        TranslatorApp.bind(self._atualizar_textos, self)
+        self._atualizar_textos()
+
+    def _atualizar_textos(self):
+        self.setWindowTitle(TranslatorApp.get("Selecionar intervalo de datas"))
+        self.title.setText(TranslatorApp.get("Selecione a Data Inicial e Final"))
+        self.btn_ok.setText(TranslatorApp.get("Confirmar"))
+        self.btn_cancel.setText(TranslatorApp.get("Cancelar"))
+        self.calendar_start.setLocale(QLocale(TranslatorApp.current_language()))
+        self.calendar_end.setLocale(QLocale(TranslatorApp.current_language()))
+
+    def done(self, result):
+        TranslatorApp.unbind(self)
+        super().done(result)
 
     def _aplicar_layout_responsivo(self):
         compacto = self.width() < 650
@@ -90,8 +105,8 @@ class DateRangeDialog(QDialog):
         if data_ini > data_fim:
             QMessageBox.warning(
                 self,
-                "Intervalo inválido",
-                "A data inicial não pode ser maior que a data final."
+                TranslatorApp.get("Intervalo inválido"),
+                TranslatorApp.get("A data inicial não pode ser maior que a data final.")
             )
             return
 

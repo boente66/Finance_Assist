@@ -15,6 +15,7 @@ from views.divida_dialog import DividaDialog
 from views.agendamento_divida_dialog import AgendamentoDividaDialog
 from views.pagamento_divida_dialog import PagamentoDividaDialog
 from views.parcelas_divida_view import ParcelasDividaView
+from core.translator_app import TranslatorApp
 
 
 class DividaView(QWidget):
@@ -28,12 +29,37 @@ class DividaView(QWidget):
         super().__init__(parent)
         self.controller = DividaController(); self.items = []
         self._build_ui()
+        TranslatorApp.bind(self._atualizar_textos, self)
+        self._atualizar_textos()
+
+    def _atualizar_textos(self):
+        for label in (self.title, self.subtitle):
+            TranslatorApp._translate_widget(label)
+        for card in (self.total_card, self.active_card, self.overdue_card, self.next_card):
+            TranslatorApp._translate_widget(card[0].layout().itemAt(0).widget())
+        self.setWindowTitle(TranslatorApp.get("Dívidas e empréstimos"))
+        self.new_btn.setText(TranslatorApp.get("＋ Nova dívida"))
+        self.pay_btn.setText(TranslatorApp.get("Registrar pagamento"))
+        self.schedule_btn.setText(TranslatorApp.get("Agendar pagamento"))
+        self.finish_btn.setText(TranslatorApp.get("Encerrar"))
+        self.details_btn.setText(TranslatorApp.get("Ver parcelas"))
+        self.search.setPlaceholderText(TranslatorApp.get("Buscar credor, contrato ou descrição..."))
+        self.status.setItemText(0, TranslatorApp.get("Todos os status"))
+        for i, value in enumerate(("ATIVA", "ATRASADA", "QUITADA", "RENEGOCIADA", "CANCELADA")):
+            self.status.setItemText(i + 1, TranslatorApp.get(value.title()))
+        self.order.setItemText(0, TranslatorApp.get("Ordenar: vencimento"))
+        self.order.setItemText(1, TranslatorApp.get("Credor: A–Z"))
+        self.order.setItemText(2, TranslatorApp.get("Maior saldo"))
+        for i, label in enumerate(self.COLUMNS):
+            self.table.horizontalHeaderItem(i).setText(TranslatorApp.get(label))
+        self._summary()
+        self.render()
 
     def _build_ui(self):
         root = QVBoxLayout(self); root.setContentsMargins(14, 12, 14, 14); root.setSpacing(12)
         head = QHBoxLayout(); titles = QVBoxLayout()
-        title = QLabel("Dívidas e empréstimos"); title.setObjectName("pageTitle")
-        subtitle = QLabel("Acompanhe contratos, parcelas, vencimentos e pagamentos reais."); subtitle.setObjectName("pageSubtitle")
+        self.title = title = QLabel("Dívidas e empréstimos"); title.setObjectName("pageTitle")
+        self.subtitle = subtitle = QLabel("Acompanhe contratos, parcelas, vencimentos e pagamentos reais."); subtitle.setObjectName("pageSubtitle")
         titles.addWidget(title); titles.addWidget(subtitle); head.addLayout(titles); head.addStretch()
         self.new_btn = QPushButton("＋ Nova dívida"); self.new_btn.setObjectName("primaryButton")
         self.pay_btn = QPushButton("Registrar pagamento"); self.schedule_btn = QPushButton("Agendar pagamento"); self.finish_btn = QPushButton("Encerrar"); self.details_btn = QPushButton("Ver parcelas")
@@ -70,7 +96,7 @@ class DividaView(QWidget):
             self.items = self.controller.listar()
             self._summary(); self.render()
         except Exception as exc:
-            QMessageBox.warning(self, "Dívidas", str(exc))
+            QMessageBox.warning(self, TranslatorApp.get("Dívidas"), TranslatorApp.error(exc))
 
     def _summary(self):
         total = sum(float(x["Saldo_Devedor"]) for x in self.items if x["Status"] not in ("QUITADA", "CANCELADA"))
@@ -79,11 +105,11 @@ class DividaView(QWidget):
         pending = [x for x in self.items if x["Status"] in ("ATIVA", "ATRASADA") and (x.get("Proximo_Vencimento") or x.get("Primeiro_Vencimento"))]
         next_item = min(pending, key=lambda x: x.get("Proximo_Vencimento") or x["Primeiro_Vencimento"], default=None)
         self.total_card[1].setText(CurrencyFormatter.format(total)); self.active_card[1].setText(str(active)); self.overdue_card[1].setText(str(overdue))
-        self.next_card[1].setText((next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"]) if next_item else "Sem vencimento")
+        self.next_card[1].setText((next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"]) if next_item else TranslatorApp.get("Sem vencimento"))
         if next_item:
-            self.alert.setText(f"Próximo compromisso: {next_item['Descricao']} · saldo {CurrencyFormatter.format(next_item['Saldo_Devedor'])} · vencimento {(next_item.get('Proximo_Vencimento') or next_item['Primeiro_Vencimento'])}.")
+            self.alert.setText(TranslatorApp.get("Próximo compromisso: {descricao} · saldo {saldo} · vencimento {vencimento}.").format(descricao=next_item["Descricao"], saldo=CurrencyFormatter.format(next_item["Saldo_Devedor"]), vencimento=next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"]))
         else:
-            self.alert.setText("Nenhuma dívida pendente. Pagamentos e previsões permanecem disponíveis no histórico.")
+            self.alert.setText(TranslatorApp.get("Nenhuma dívida pendente. Pagamentos e previsões permanecem disponíveis no histórico."))
 
     def _filtered(self):
         text = self.search.text().strip().casefold(); status = self.status.currentData()
@@ -96,8 +122,8 @@ class DividaView(QWidget):
     def render(self, *_):
         rows = self._filtered(); self.table.setRowCount(len(rows))
         for r, item in enumerate(rows):
-            progress = f"{int(item.get('Parcelas_Pagas') or 0)}/{int(item.get('Total_Parcelas') or 0)}" if item["Tipo_Parcelamento"] == "FIXO" else "Livre"
-            values = (item.get("Favorecido") or "—", item.get("Numero_Contrato") or "—", item["Descricao"], item["Tipo_Divida"], CurrencyFormatter.format(item["Valor_Total_Contrato"]), CurrencyFormatter.format(item["Saldo_Devedor"]), progress, CurrencyFormatter.format(item.get("Valor_Parcela") or 0), f"{float(item.get('Taxa_Juros') or 0):.2f}%", item.get("Proximo_Vencimento") or item.get("Primeiro_Vencimento") or "Livre", item["Status"])
+            progress = f"{int(item.get('Parcelas_Pagas') or 0)}/{int(item.get('Total_Parcelas') or 0)}" if item["Tipo_Parcelamento"] == "FIXO" else TranslatorApp.get("Livre")
+            values = (item.get("Favorecido") or "—", item.get("Numero_Contrato") or "—", item["Descricao"], TranslatorApp.get(item["Tipo_Divida"]), CurrencyFormatter.format(item["Valor_Total_Contrato"]), CurrencyFormatter.format(item["Saldo_Devedor"]), progress, CurrencyFormatter.format(item.get("Valor_Parcela") or 0), f"{float(item.get('Taxa_Juros') or 0):.2f}%", item.get("Proximo_Vencimento") or item.get("Primeiro_Vencimento") or TranslatorApp.get("Livre"), TranslatorApp.get(item["Status"]))
             for c, value in enumerate(values): self.table.setItem(r, c, QTableWidgetItem(str(value)))
             self.table.item(r, 0).setData(Qt.UserRole, item["ID_Divida"])
         self.table.resizeColumnsToContents()
@@ -112,34 +138,47 @@ class DividaView(QWidget):
 
     def detalhes(self, *_):
         try: ParcelasDividaView(self.controller.obter(self._selected_id()), self).exec_()
-        except Exception as exc: QMessageBox.information(self, "Dívidas", str(exc))
+        except Exception as exc: QMessageBox.information(self, TranslatorApp.get("Dívidas"), TranslatorApp.error(exc))
 
     def pagar(self):
         try:
             debt = self.controller.obter(self._selected_id())
             if PagamentoDividaDialog(debt, self).exec_() == PagamentoDividaDialog.Accepted: self.load_data()
-        except Exception as exc: QMessageBox.warning(self, "Pagamento", str(exc))
+        except Exception as exc: QMessageBox.warning(self, TranslatorApp.get("Pagamento"), TranslatorApp.error(exc))
 
     def agendar(self):
         try:
             debt = self.controller.obter(self._selected_id())
             if AgendamentoDividaDialog(debt, self).exec_() == AgendamentoDividaDialog.Accepted:
-                QMessageBox.information(self, "Agendamento criado", "A previsão aparecerá em Agendamentos. O saldo da dívida só muda após a execução.")
+                QMessageBox.information(self, TranslatorApp.get("Agendamento criado"), TranslatorApp.get("A previsão aparecerá em Agendamentos. O saldo da dívida só muda após a execução."))
                 self.load_data()
-        except Exception as exc: QMessageBox.warning(self, "Agendamento", str(exc))
+        except Exception as exc: QMessageBox.warning(self, TranslatorApp.get("Agendamento"), TranslatorApp.error(exc))
 
     def encerrar(self):
         try:
             debt_id = self._selected_id()
+            reasons = [(TranslatorApp.get("Renegociada"), "RENEGOCIADA"),
+                       (TranslatorApp.get("Cancelada"), "CANCELADA")]
             label, ok = QInputDialog.getItem(
-                self, "Encerrar dívida", "Motivo do encerramento",
-                ["Renegociada", "Cancelada"], 0, False,
+                self, TranslatorApp.get("Encerrar dívida"), TranslatorApp.get("Motivo do encerramento"),
+                [text for text, _ in reasons], 0, False,
             )
             if not ok: return
-            status = "RENEGOCIADA" if label == "Renegociada" else "CANCELADA"
+            status = dict(reasons)[label]
             if QMessageBox.question(
-                self, "Confirmar encerramento",
-                "As parcelas e previsões pendentes serão canceladas. Continuar?",
+                self, TranslatorApp.get("Confirmar encerramento"),
+                TranslatorApp.get("As parcelas e previsões pendentes serão canceladas. Continuar?"),
             ) == QMessageBox.Yes:
                 self.controller.encerrar(debt_id, status); self.load_data()
-        except Exception as exc: QMessageBox.warning(self, "Encerramento", str(exc))
+        except Exception as exc: QMessageBox.warning(self, TranslatorApp.get("Encerramento"), TranslatorApp.error(exc))
+
+    # =====================================================
+    # CICLO DE VIDA
+    # =====================================================
+    def closeEvent(self, event):
+        try:
+            TranslatorApp.unbind(self)
+        except Exception:
+            pass
+
+        super().closeEvent(event)

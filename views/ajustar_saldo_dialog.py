@@ -37,13 +37,14 @@ class AjustarSaldoDialog(QDialog):
 
         # 🔥 tradução automática global
         TranslatorApp.bind(self._atualizar_textos,self)
+        self._atualizar_textos()
 
     def _atualizar_textos(self):
-            self.lbl_conta.setText(TranslatorApp.get("Ajustar Saldo da Conta"))
-            self.lbl_saldo.setText(TranslatorApp.get("Novo saldo") + ":")
-            self.btn_salvar.setText(TranslatorApp.get("Salvar Ajuste"))
-            self.btn_cancelar.setText(TranslatorApp.get("Cancelar"))
-
+        self.setWindowTitle(TranslatorApp.get("Ajustar Saldo da Conta"))
+        self.lbl_conta.setText(self._get_conta_text())
+        self.lbl_saldo.setText(TranslatorApp.get("Novo saldo") + ":")
+        self.btn_salvar.setText(TranslatorApp.get("Salvar Ajuste"))
+        self.btn_cancelar.setText(TranslatorApp.get("Cancelar"))
 
     # --------------------------------------------------
     # UI

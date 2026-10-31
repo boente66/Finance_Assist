@@ -96,7 +96,7 @@ class ConfiguracoesView(QWidget):
             self.db_btn.hide()
 
         self.automacao_box = QGroupBox("Backup e alertas em segundo plano")
-        automacao = QFormLayout(self.automacao_box)
+        self.automacao_form = automacao = QFormLayout(self.automacao_box)
         self.backup_auto_check = QCheckBox("Criar backup automático")
         self.backup_horas_spin = QSpinBox(); self.backup_horas_spin.setRange(1, 168); self.backup_horas_spin.setSuffix(" h")
         self.backup_retencao_spin = QSpinBox(); self.backup_retencao_spin.setRange(1, 90)
@@ -156,6 +156,13 @@ class ConfiguracoesView(QWidget):
         self.db_btn.setText(
             TranslatorApp.get("Selecionar")
         )
+        self.automacao_box.setTitle(TranslatorApp.get("Backup e alertas em segundo plano"))
+        for widget in (self.backup_auto_check, self.notificacoes_check, self.boas_vindas_check):
+            TranslatorApp._translate_widget(widget)
+        for row in range(self.automacao_form.rowCount()):
+            item = self.automacao_form.itemAt(row, QFormLayout.LabelRole)
+            if item is not None:
+                TranslatorApp._translate_widget(item.widget())
         selected_theme = self.tema_combo.currentData()
         self.tema_combo.blockSignals(True)
         self.tema_combo.clear()

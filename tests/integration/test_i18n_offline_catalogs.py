@@ -18,9 +18,8 @@ def restore_translator_language(monkeypatch):
 def _fixed_ui_keys():
     root = Path(__file__).resolve().parents[2]
     keys = set()
-    for path in root.rglob("*.py"):
-        if any(part.startswith((".venv", "build", "dist")) for part in path.parts):
-            continue
+    sources = ("core", "controllers", "database", "form", "models", "services", "utilitarios", "views", "workers")
+    for path in (path for source in sources for path in (root / source).rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or not node.args:

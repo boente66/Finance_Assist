@@ -3,6 +3,7 @@
 from PyQt5.QtCore import QDate
 from PyQt5.QtWidgets import QMessageBox
 
+from core.translator_app import TranslatorApp
 from views.fatura_dialog import FaturaDialog
 
 
@@ -12,10 +13,11 @@ class EditarFaturaDialog(FaturaDialog):
             raise ValueError("Lançamento inválido.")
         self.lancamento = dict(lancamento)
         super().__init__(parent=parent, id_cartao=self.lancamento["ID_Cartao"])
-        self.setWindowTitle("Editar lançamento da fatura")
+        self._title_key = "Editar lançamento da fatura"
+        self._atualizar_textos()
         self.parcelas_spin.setRange(1, max(36, int(self.lancamento.get("Num_Parcelas") or 1)))
         self.parcelas_spin.setToolTip(
-            "A edição altera somente este lançamento; não recria as outras parcelas."
+            TranslatorApp.get("A edição altera somente este lançamento; não recria as outras parcelas.")
         )
         self._preencher()
 
@@ -47,4 +49,4 @@ class EditarFaturaDialog(FaturaDialog):
             )
             self.accept()
         except Exception as exc:
-            QMessageBox.warning(self, "Erro", str(exc))
+            QMessageBox.warning(self, TranslatorApp.get("Erro"), TranslatorApp.error(exc))

@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QIcon
 
+from core.translator_app import TranslatorApp
 from controllers.fatura_controller import FaturaController
 from controllers.favorecido_controller import FavorecidoController
 from controllers.category_controller import CategoryController
@@ -37,6 +38,20 @@ class FaturaDialog(QDialog):
         self.setup_ui()
         self._carregar_dados()
         self._conectar_eventos()
+        self._title_key = "Nova despesa no cartão"
+        TranslatorApp.bind(self._atualizar_textos, self)
+        self._atualizar_textos()
+
+    def _atualizar_textos(self):
+        self.setWindowTitle(TranslatorApp.get(self._title_key))
+        for label in self.findChildren(QLabel):
+            TranslatorApp._translate_widget(label)
+        self.btn_cancelar.setText(TranslatorApp.get("Cancelar"))
+        self.btn_salvar.setText(TranslatorApp.get("Salvar"))
+
+    def done(self, result):
+        TranslatorApp.unbind(self)
+        super().done(result)
 
     # ======================================================
     # UI
@@ -325,6 +340,6 @@ class FaturaDialog(QDialog):
         except Exception as e:
             QMessageBox.warning(
                 self,
-                "Erro",
-                str(e)
+                TranslatorApp.get("Erro"),
+                TranslatorApp.error(e)
             )

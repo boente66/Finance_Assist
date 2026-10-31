@@ -6,9 +6,11 @@ from PyQt5.QtWidgets import (
     QFormLayout, QLabel, QMessageBox, QVBoxLayout,
 )
 
+from core.translator_app import TranslatorApp
 from controllers.account_controller import AccountController
 from controllers.divida_controller import DividaController
 from utilitarios.currency_formatter import CurrencyFormatter
+
 
 
 class PagamentoDividaDialog(QDialog):
@@ -18,7 +20,7 @@ class PagamentoDividaDialog(QDialog):
         self.controller = DividaController(); self.accounts = AccountController()
         self.setWindowTitle("Registrar pagamento da dívida"); self.setMinimumWidth(480)
         layout = QVBoxLayout(self)
-        info = QLabel(f"{divida['Descricao']}\nSaldo devedor: {CurrencyFormatter.format(divida['Saldo_Devedor'])}")
+        self.info = info = QLabel(f"{divida['Descricao']}\nSaldo devedor: {CurrencyFormatter.format(divida['Saldo_Devedor'])}")
         info.setObjectName("infoBanner"); layout.addWidget(info)
         form = QFormLayout()
         self.conta = QComboBox()
@@ -36,10 +38,32 @@ class PagamentoDividaDialog(QDialog):
                               ("Multa incluída", self.multa), ("Desconto obtido", self.desconto),
                               ("Data do pagamento", self.data)):
             form.addRow(label, widget)
+        self.form = form
         layout.addLayout(form)
-        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        self.buttons = buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Save).setText("Confirmar pagamento")
         buttons.accepted.connect(self.salvar); buttons.rejected.connect(self.reject); layout.addWidget(buttons)
+        TranslatorApp.bind(self._atualizar_textos, self)
+        self._atualizar_textos()
+
+    def _atualizar_textos(self):
+        self.setWindowTitle(TranslatorApp.get("Registrar pagamento da dívida"))
+        self.info.setText(TranslatorApp.get("{descricao}\nSaldo devedor: {saldo}").format(
+            descricao=self.divida["Descricao"], saldo=CurrencyFormatter.format(self.divida["Saldo_Devedor"])))
+        for row in range(self.form.rowCount()):
+            TranslatorApp._translate_widget(self.form.itemAt(row, QFormLayout.LabelRole).widget())
+        self.parcela.setItemText(0, TranslatorApp.get("Pagamento livre / amortização"))
+        installments = {p["ID_Parcela"]: p for p in self.divida.get("Parcelas", [])}
+        for index in range(1, self.parcela.count()):
+            item = installments[self.parcela.itemData(index)]
+            self.parcela.setItemText(index, TranslatorApp.get("Parcela {numero} · {valor} · {data}").format(
+                numero=item["Numero_Parcela"], valor=CurrencyFormatter.format(float(item["Valor_Previsto"]) - float(item["Valor_Pago"])), data=item["Data_Vencimento"]))
+        self.buttons.button(QDialogButtonBox.Save).setText(TranslatorApp.get("Confirmar pagamento"))
+        self.buttons.button(QDialogButtonBox.Cancel).setText(TranslatorApp.get("Cancelar"))
+
+    def done(self, result):
+        TranslatorApp.unbind(self)
+        super().done(result)
 
     @staticmethod
     def _money():
@@ -58,4 +82,4 @@ class PagamentoDividaDialog(QDialog):
             })
             self.accept()
         except Exception as exc:
-            QMessageBox.warning(self, "Pagamento não realizado", str(exc))
+            QMessageBox.warning(self, TranslatorApp.get("Pagamento não realizado"), TranslatorApp.error(exc))

@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 
 from controllers.divida_controller import DividaController
 from controllers.favorecido_controller import FavorecidoController
+from core.translator_app import TranslatorApp
 
 
 class DividaDialog(QDialog):
@@ -24,7 +25,9 @@ class DividaDialog(QDialog):
         for item in self.payees.listar_favorecidos():
             self.credor.addItem(item["Nome"], item["ID_Favorecido"])
         self.contrato = QLineEdit(); self.contrato.setPlaceholderText("Opcional")
-        self.tipo = QComboBox(); self.tipo.addItems(self.controller.tipos_disponiveis())
+        self.tipo = QComboBox();
+        for tipo in self.controller.tipos_disponiveis():
+            self.tipo.addItem(tipo, tipo)
         self.modelo = QComboBox(); self.modelo.addItem("Parcelas definidas (FIXO)", "FIXO"); self.modelo.addItem("Pagamentos livres (LIVRE)", "LIVRE")
         self.emprestado = self._money(); self.total = self._money(); self.juros = self._money(); self.juros.setSuffix(" %")
         self.parcelas = QSpinBox(); self.parcelas.setRange(1, 600); self.parcelas.setValue(12)
@@ -37,6 +40,7 @@ class DividaDialog(QDialog):
                               ("Quantidade de parcelas", self.parcelas), ("Data da contratação", self.contratacao),
                               ("Primeiro vencimento", self.vencimento)):
             form.addRow(label, widget)
+        self.form = form
         layout.addLayout(form)
         self.buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         self.buttons.button(QDialogButtonBox.Save).setText("Cadastrar dívida")
@@ -44,6 +48,27 @@ class DividaDialog(QDialog):
         layout.addWidget(self.buttons)
         self.modelo.currentIndexChanged.connect(self._toggle_modelo)
         self._toggle_modelo()
+        TranslatorApp.bind(self._atualizar_textos, self)
+        self._atualizar_textos()
+
+    def _atualizar_textos(self):
+        for row in range(self.form.rowCount()):
+            TranslatorApp._translate_widget(self.form.itemAt(row, QFormLayout.LabelRole).widget())
+        self.descricao.setPlaceholderText(TranslatorApp.get("Ex.: Financiamento do veículo"))
+        self.contrato.setPlaceholderText(TranslatorApp.get("Opcional"))
+        self.credor.setItemText(0, TranslatorApp.get("Sem credor vinculado"))
+        for i in range(self.tipo.count()):
+            self.tipo.setItemText(i, TranslatorApp.get(self.tipo.itemData(i)))
+        self.modelo.setItemText(0, TranslatorApp.get("Parcelas definidas (FIXO)"))
+        self.modelo.setItemText(1, TranslatorApp.get("Pagamentos livres (LIVRE)"))
+        self.setWindowTitle(TranslatorApp.get("Cadastrar dívida"))
+        self.buttons.button(QDialogButtonBox.Save).setText(TranslatorApp.get("Cadastrar dívida"))
+        self.buttons.button(QDialogButtonBox.Cancel).setText(TranslatorApp.get("Cancelar"))
+
+
+    def done(self, result):
+        TranslatorApp.unbind(self)
+        super().done(result)
 
     @staticmethod
     def _money():
@@ -59,7 +84,7 @@ class DividaDialog(QDialog):
         try:
             self.controller.criar({
                 "Descricao": self.descricao.text(), "ID_Favorecido": self.credor.currentData(),
-                "Numero_Contrato": self.contrato.text(), "Tipo_Divida": self.tipo.currentText(),
+                "Numero_Contrato": self.contrato.text(), "Tipo_Divida": self.tipo.currentData(),
                 "Tipo_Parcelamento": self.modelo.currentData(), "Valor_Emprestado": self.emprestado.value(),
                 "Valor_Total_Contrato": self.total.value(), "Taxa_Juros": self.juros.value(),
                 "Quantidade_Parcelas": self.parcelas.value(),
@@ -68,4 +93,15 @@ class DividaDialog(QDialog):
             })
             self.accept()
         except Exception as exc:
-            QMessageBox.warning(self, "Não foi possível cadastrar", str(exc))
+            QMessageBox.warning(self, TranslatorApp.get("Não foi possível cadastrar"), TranslatorApp.error(exc))
+
+    # =====================================================
+    # CICLO DE VIDA
+    # =====================================================
+    def closeEvent(self, event):
+        try:
+            TranslatorApp.unbind(self)
+        except Exception:
+            pass
+
+        super().closeEvent(event)
