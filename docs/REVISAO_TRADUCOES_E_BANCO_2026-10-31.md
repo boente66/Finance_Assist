@@ -1,5 +1,9 @@
 # Revisão de traduções e inserção no banco — 31/10/2026
 
+**Atualização posterior à revisão:** Fase 1 encerrada por homologação humana.
+Recompilação e links diretos autorizados; Fase 2 aguarda início.
+Veja o [aceite e os limites da autorização](HOMOLOGACAO_FASE1.md).
+
 A homologação manual das faturas foi informada pelo usuário. Esta revisão
 preserva as regras financeiras e verifica as correções manuais de tradução
 e a persistência usando bancos temporários, sem escrever no banco real.

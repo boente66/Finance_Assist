@@ -1,4 +1,11 @@
-# Correções da Fase 1 — publicação para teste
+# Fase 1 — validação e histórico de publicação
+
+**Estado atual (31/10/2026): Fase 1 encerrada por homologação humana.**
+A recompilação da versão de teste atual e os links diretos foram autorizados.
+A Fase 2 aguarda início e não há autorização para divulgar uma próxima versão.
+Veja o [registro de homologação](HOMOLOGACAO_FASE1.md).
+
+## Histórico anterior ao aceite humano
 
 As correções locais FA-001 a FA-005 foram enviadas ao GitHub por solicitação
 do responsável pelo projeto. Esta publicação não homologa a Fase 1.

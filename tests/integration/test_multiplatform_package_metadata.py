@@ -22,7 +22,8 @@ def test_workflow_gera_artefatos_linux_windows_e_macos():
     assert "packaging/linux/build_deb.sh" in workflow
     assert "packaging\\windows\\build_windows.ps1" in workflow
     assert "$PSNativeCommandUseErrorActionPreference = $true" in workflow
-    assert "macos-15-intel" in workflow and "runner: macos-15" in workflow
+    assert "macos-15-intel" in workflow and "runner: macos-15\n" in workflow
+    assert "runner: macos-14\n" not in workflow
     assert "torch-version: 2.2.2" in workflow
     assert "torch-version: 2.6.0" in workflow
     assert "torch==${{ matrix.torch-version }}" in workflow
