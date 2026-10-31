@@ -5,16 +5,20 @@
   <p>Versão atual: <code>2.1.0-test.17</code> · Estágio: teste multiplataforma</p>
 </div>
 
-[![Versão](https://img.shields.io/badge/versão-2.1.0--test.17-1597c5)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17)
-[![Windows](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17)
-[![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-000000?logo=apple&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17)
-[![Testes](https://img.shields.io/badge/testes-293%20aprovados-2ea44f)](docs/releases/v2.1.0-test.17.md)
+[![Versão](https://img.shields.io/badge/versão-2.1.0--test.17-1597c5)](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261026)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261026)
+[![Windows](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261026)
+[![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-000000?logo=apple&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261026)
+[![Homologação](https://img.shields.io/badge/homologação-pendente-orange)](docs/VALIDACAO_FASE1_PUBLICACAO_TESTE.md)
 
-**[Baixar a versão test.17](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17)**
+**[Baixar a test.17 recompilada — correções da Fase 1](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261026)**
 · **[Manual do usuário](docs/MANUAL_DO_USUARIO.md)**
 · **[Manual em DOCX](DOCUMENTA%C3%87%C3%83O%20DO%20SISTEMA%20CONTROLE%20FINANCEIRO.docx)**
 · **[Auditoria técnica](docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md)**
+
+**Recompilação de 26/10/2026:** inclui as correções locais da Fase 1, no commit `f9f8ba6`.
+Os cinco pacotes foram gerados pelo GitHub Actions. A homologação funcional
+continua pendente; consulte as [notas desta recompilação](docs/releases/rebuild-v2.1.0-test.17-20261026.md).
 
 ### Novidades da test.17
 
@@ -349,10 +353,10 @@ backups, logs, caches, configuração local nem ambiente virtual.
 
 Downloads diretos da versão de teste:
 
-- [Instalador Linux DEB](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.17/finance-assist_2.1.0-test.17_amd64.deb)
-- [Checksum Linux](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.17/finance-assist_2.1.0-test.17_amd64.deb.sha256)
-- [Pacote Windows ZIP](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.17/finance-assist_2.1.0-test.17_windows-x64.zip)
-- [Checksum Windows](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.17/finance-assist_2.1.0-test.17_windows-x64.zip.sha256)
+- [Instalador Linux DEB](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_amd64.deb)
+- [Checksum Linux](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_amd64.deb.sha256)
+- [Pacote Windows ZIP](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_windows-x64.zip)
+- [Checksum Windows](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_windows-x64.zip.sha256)
 
 A revisão de relatórios e encerramento de acesso está em
 [`docs/RELATORIOS_CONTAS_FAVORECIDOS_TEST6.md`](docs/RELATORIOS_CONTAS_FAVORECIDOS_TEST6.md).
@@ -364,7 +368,7 @@ registros financeiros. No perfil, **Encerrar minha conta** solicita a senha,
 bloqueia novos acessos e mantém o histórico; o último administrador é protegido.
 
 Baixe o `.deb` e o checksum correspondente no
-[Release v2.1.0-test.17](https://github.com/boente66/Finance_Assist/releases/tag/v2.1.0-test.17).
+[Pré-release test.17 recompilada](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261026).
 
 Confira a integridade do arquivo:
 
@@ -397,8 +401,8 @@ Para Ubuntu 24.04 e Mint 22.x, existe também um pacote **recompilado no Ubuntu
 24.04**, identificado no nome do arquivo. O Mint 22.2 utiliza essa base, conforme
 as [notas oficiais do Mint](https://www.linuxmint.com/rel_zara.php).
 
-- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.17/finance-assist_2.1.0-test.17_ubuntu24.04_amd64.deb)
-- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/v2.1.0-test.17/finance-assist_2.1.0-test.17_ubuntu24.04_amd64.deb.sha256)
+- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_ubuntu24.04_amd64.deb)
+- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_ubuntu24.04_amd64.deb.sha256)
 
 ```bash
 sha256sum -c finance-assist_2.1.0-test.17_ubuntu24.04_amd64.deb.sha256
@@ -450,8 +454,11 @@ antigas e novas no executável.
 
 Escolha o arquivo conforme o processador:
 
-- `finance-assist_2.1.0-test.17_macos-arm64.zip`: Apple Silicon (M1 ou posterior);
-- `finance-assist_2.1.0-test.17_macos-x64.zip`: Macs Intel.
+- [finance-assist_2.1.0-test.17_macos-arm64.zip](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_macos-arm64.zip): Apple Silicon (M1 ou posterior);
+- [finance-assist_2.1.0-test.17_macos-x64.zip](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_macos-x64.zip): Macs Intel.
+
+- [SHA256 macOS Apple Silicon](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_macos-arm64.zip.sha256)
+- [SHA256 macOS Intel](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261026/finance-assist_2.1.0-test.17_macos-x64.zip.sha256)
 
 Confira o `.sha256`, extraia o ZIP e mova **Finance Assist Test.app** para
 Aplicativos. Esta versão de teste não possui assinatura/notarização Apple. Na
