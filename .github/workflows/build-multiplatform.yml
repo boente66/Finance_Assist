@@ -187,7 +187,7 @@ jobs:
           - runner: macos-15-intel
             arch: x64
             torch-version: 2.2.2
-          - runner: macos-14
+          - runner: macos-15
             arch: arm64
             torch-version: 2.6.0
     steps:
