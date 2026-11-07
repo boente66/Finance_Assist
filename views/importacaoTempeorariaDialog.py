@@ -307,7 +307,7 @@ class ImportacaoTemporariaDialog(QDialog):
             return ""
 
         try:
-            return DateFormatter.iso_to_br(data_iso)
+            return DateFormatter.iso_to_display(data_iso)
         except Exception:
             return str(data_iso)
 

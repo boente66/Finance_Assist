@@ -1,3 +1,4 @@
+from utilitarios.date_formatter import DateFormatter
 """Detalhes das parcelas e pagamentos de uma dívida."""
 
 from PyQt5.QtWidgets import QDialog, QLabel, QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
@@ -33,6 +34,8 @@ class ParcelasDividaView(QDialog):
             self.tabs.setTabText(index, TranslatorApp.get(label))
             table = self.tabs.widget(index)
             TranslatorApp._translate_widget(table)
+            for (row, column), (money, value) in table._regional_cells.items():
+                table.item(row, column).setText(CurrencyFormatter.format(value or 0) if money else DateFormatter.iso_to_display(value))
             for (row, column), status in table._status_cells.items():
                 table.item(row, column).setText(TranslatorApp.get(status))
 
@@ -44,12 +47,15 @@ class ParcelasDividaView(QDialog):
     def _table(rows, columns, money):
         table = QTableWidget(len(rows), len(columns)); table.setHorizontalHeaderLabels([x[0] for x in columns])
         table._status_cells = {}
+        table._regional_cells = {}
         table.setEditTriggers(QTableWidget.NoEditTriggers); table.setSelectionBehavior(QTableWidget.SelectRows)
         for row_index, row in enumerate(rows):
             for col_index, (_, key) in enumerate(columns):
                 value = row.get(key, "")
                 if key == "Status":
                     table._status_cells[(row_index, col_index)] = value
-                if key in money: value = CurrencyFormatter.format(value or 0)
+                if key in money or key.startswith("Data_"):
+                    table._regional_cells[(row_index, col_index)] = (key in money, value)
+                    value = CurrencyFormatter.format(value or 0) if key in money else DateFormatter.iso_to_display(value)
                 table.setItem(row_index, col_index, QTableWidgetItem(str(value or "")))
         table.resizeColumnsToContents(); return table

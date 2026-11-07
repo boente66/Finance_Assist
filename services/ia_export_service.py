@@ -34,6 +34,8 @@ class IAExportService:
                 "Data": t["Data"],
                 "Descrição": t["Descricao"],
                 "Valor": t["Valor"],
+                "Tipo": t.get("Tipo", ""),
+                "Saldo": t.get("Saldo", ""),
                 "Categoria": t.get("Categoria", ""),
                 "Favorecido": t.get("Favorecido", ""),
             })

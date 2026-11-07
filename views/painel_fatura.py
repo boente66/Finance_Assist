@@ -507,7 +507,7 @@ class PainelFatura(QWidget):
                 descricao += f" ({item['Parcela_Atual']}/{item['Num_Parcelas']})"
 
             data_item = QTableWidgetItem(
-                DateFormatter.iso_to_br(item.get("Data", ""))
+                DateFormatter.iso_to_display(item.get("Data", ""))
             )
             data_item.setData(Qt.UserRole, int(item["ID_Lancamento"]))
             self.table.setItem(

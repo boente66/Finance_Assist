@@ -25,7 +25,8 @@ class CurrencyFormatter:
             str: Valor formatado como moeda.
         """
         if locale_code is None:
-            locale_code = CurrencyFormatter.DEFAULT_LOCALE
+            from core.regional_format import RegionalFormat
+            locale_code = RegionalFormat.locale().name()
 
         try:
             locale = QLocale(locale_code)
@@ -59,6 +60,7 @@ class CurrencyFormatter:
             # Remove símbolos monetários comuns
             value = (
                 str(value)
+                .replace("US$", "")
                 .replace("R$", "")
                 .replace("$", "")
                 .replace("€", "")
@@ -66,13 +68,22 @@ class CurrencyFormatter:
                 .strip()
             )
 
-            # Detecta padrão brasileiro
+            value = value.replace("\u00a0", "").replace("\u202f", "").replace(" ", "")
+            if value.startswith("(") and value.endswith(")"):
+                value = "-" + value[1:-1]
             if "," in value and "." in value:
-                # Assume formato 1.234,56
-                value = value.replace(".", "").replace(",", ".")
+                decimal = "," if value.rfind(",") > value.rfind(".") else "."
+                value = value.replace("." if decimal == "," else ",", "").replace(decimal, ".")
             elif "," in value:
-                # Assume formato 1234,56
-                value = value.replace(",", ".")
+                from core.regional_format import RegionalFormat
+                if RegionalFormat.language() == "en" and all(len(x) == 3 for x in value.split(",")[1:]):
+                    value = value.replace(",", "")
+                else:
+                    value = value.replace(",", ".")
+            elif "." in value:
+                from core.regional_format import RegionalFormat
+                if RegionalFormat.language() != "en" and all(len(x) == 3 for x in value.split(".")[1:]):
+                    value = value.replace(".", "")
 
             return float(value)
 

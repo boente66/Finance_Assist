@@ -32,6 +32,7 @@ class BackupModel:
         "lancamentos",
         "pagamentos_fatura",
         "faturas_cartao",
+        "dividas", "divida_parcelas", "pagamentos_divida", "informes_fiscais",
     )
 
     RESTORE_ORDER = (
@@ -45,10 +46,14 @@ class BackupModel:
         "pessoa_fisica",
         "pessoa_juridica",
         "metas",
+        "dividas",
+        "divida_parcelas",
         "agendamentos",
         "transacoes",
         "lancamentos",
         "pagamentos_fatura",
+        "pagamentos_divida",
+        "informes_fiscais",
     )
 
     DELETE_ORDER = tuple(reversed(RESTORE_ORDER))
@@ -64,8 +69,9 @@ class BackupModel:
 
         dados = {}
 
-        for tabela in self.BACKUP_TABLES:
-            dados[tabela] = self.db.fetch_all(f"SELECT * FROM {tabela}")
+        with self.db.unit_of_work(immediate=False):
+            for tabela in self.BACKUP_TABLES:
+                dados[tabela] = self.db.fetch_all(f"SELECT * FROM {tabela}")
 
         return dados
 
@@ -110,8 +116,17 @@ class BackupModel:
         nome = f"{prefixo}_{instante}_{sufixo}.kp"
         caminho = os.path.join(destino, nome)
 
-        with open(caminho, "x", encoding="utf-8") as f:
-            json.dump(estrutura, f)
+        parcial = caminho + ".partial"
+        try:
+            descriptor = os.open(parcial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as f:
+                json.dump(estrutura, f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(parcial, caminho)
+        finally:
+            if os.path.exists(parcial):
+                os.unlink(parcial)
 
         return caminho
 

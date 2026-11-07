@@ -1,3 +1,4 @@
+from utilitarios.currency_formatter import CurrencyFormatter
 import logging
 from PyQt5.QtWidgets import (
     QDialog,
@@ -85,10 +86,10 @@ class AjustarSaldoDialog(QDialog):
     # AÇÃO
     # --------------------------------------------------
     def salvar(self):
-        texto = self.saldo_edit.text().strip().replace(".", "").replace(",", ".")
+        texto = self.saldo_edit.text().strip()
 
         try:
-            novo_saldo = float(texto)
+            novo_saldo = CurrencyFormatter.to_float(texto)
         except ValueError:
             QMessageBox.warning(
                 self,

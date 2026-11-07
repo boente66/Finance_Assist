@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 """Formulário de cadastro de dívida."""
 
 from PyQt5.QtCore import QDate
@@ -29,10 +30,10 @@ class DividaDialog(QDialog):
         for tipo in self.controller.tipos_disponiveis():
             self.tipo.addItem(tipo, tipo)
         self.modelo = QComboBox(); self.modelo.addItem("Parcelas definidas (FIXO)", "FIXO"); self.modelo.addItem("Pagamentos livres (LIVRE)", "LIVRE")
-        self.emprestado = self._money(); self.total = self._money(); self.juros = self._money(); self.juros.setSuffix(" %")
+        self.emprestado = self._money(); self.total = self._money(); self.juros = self._money(); self.juros.setPrefix(""); self.juros.setSuffix(" %"); self.juros.setProperty("_regional_money", False)
         self.parcelas = QSpinBox(); self.parcelas.setRange(1, 600); self.parcelas.setValue(12)
-        self.contratacao = QDateEdit(QDate.currentDate()); self.contratacao.setCalendarPopup(True); self.contratacao.setDisplayFormat("dd/MM/yyyy")
-        self.vencimento = QDateEdit(QDate.currentDate().addMonths(1)); self.vencimento.setCalendarPopup(True); self.vencimento.setDisplayFormat("dd/MM/yyyy")
+        self.contratacao = QDateEdit(QDate.currentDate()); self.contratacao.setCalendarPopup(True); self.contratacao.setDisplayFormat("dd/MM/yyyy"); RegionalFormat.configure_widget(self.contratacao)
+        self.vencimento = QDateEdit(QDate.currentDate().addMonths(1)); self.vencimento.setCalendarPopup(True); self.vencimento.setDisplayFormat("dd/MM/yyyy"); RegionalFormat.configure_widget(self.vencimento)
         for label, widget in (("Descrição", self.descricao), ("Credor", self.credor),
                               ("Número do contrato", self.contrato), ("Tipo", self.tipo),
                               ("Forma de pagamento", self.modelo), ("Valor recebido", self.emprestado),
@@ -52,6 +53,8 @@ class DividaDialog(QDialog):
         self._atualizar_textos()
 
     def _atualizar_textos(self):
+        from core.regional_format import RegionalFormat
+        RegionalFormat.configure_tree(self)
         for row in range(self.form.rowCount()):
             TranslatorApp._translate_widget(self.form.itemAt(row, QFormLayout.LabelRole).widget())
         self.descricao.setPlaceholderText(TranslatorApp.get("Ex.: Financiamento do veículo"))
@@ -73,7 +76,7 @@ class DividaDialog(QDialog):
     @staticmethod
     def _money():
         field = QDoubleSpinBox(); field.setRange(0, 999999999.99); field.setDecimals(2)
-        field.setPrefix("R$ "); field.setSingleStep(10)
+        field.setPrefix("R$ "); RegionalFormat.configure_widget(field); field.setSingleStep(10)
         return field
 
     def _toggle_modelo(self):

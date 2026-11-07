@@ -65,6 +65,14 @@ class TransactionModel(Database):
                 t.Data,
                 t.Tipo,
                 t.Notas,
+                (SELECT a.Saldo_Atual FROM contas a
+                 WHERE a.ID_Conta=t.ID_Conta AND a.ID_Usuario=t.ID_Usuario)
+                - COALESCE((SELECT SUM(later.Valor) FROM transacoes later
+                    WHERE later.ID_Conta=t.ID_Conta AND later.ID_Usuario=t.ID_Usuario
+                      AND (date(later.Data)>date(t.Data) OR
+                           (date(later.Data)=date(t.Data)
+                            AND later.ID_Transacao>t.ID_Transacao))), 0) AS Saldo,
+
 
                 t.ID_Categoria,
                 t.ID_Favorecido,
@@ -101,6 +109,14 @@ class TransactionModel(Database):
                 t.Data,
                 t.Tipo,
                 t.Notas,
+                (SELECT a.Saldo_Atual FROM contas a
+                 WHERE a.ID_Conta=t.ID_Conta AND a.ID_Usuario=t.ID_Usuario)
+                - COALESCE((SELECT SUM(later.Valor) FROM transacoes later
+                    WHERE later.ID_Conta=t.ID_Conta AND later.ID_Usuario=t.ID_Usuario
+                      AND (date(later.Data)>date(t.Data) OR
+                           (date(later.Data)=date(t.Data)
+                            AND later.ID_Transacao>t.ID_Transacao))), 0) AS Saldo,
+
 
                 t.ID_Categoria,
                 t.ID_Favorecido,
@@ -276,12 +292,13 @@ class TransactionModel(Database):
         id_usuario
     ):
         resultado = self.fetch_one("""
-            SELECT COALESCE(SUM(Valor), 0) AS Saldo
-            FROM transacoes
-            WHERE ID_Conta = ?
-              AND ID_Usuario = ?
-              AND date(Data) < date(?)
-        """, (id_conta, id_usuario, data_inicio))
+            SELECT a.Saldo_Atual - COALESCE((
+                SELECT SUM(t.Valor) FROM transacoes t
+                WHERE t.ID_Conta=a.ID_Conta AND t.ID_Usuario=a.ID_Usuario
+                  AND date(t.Data) >= date(?)
+            ), 0) AS Saldo
+            FROM contas a WHERE a.ID_Conta=? AND a.ID_Usuario=?
+        """, (data_inicio, id_conta, id_usuario))
 
         return float(resultado["Saldo"] or 0)
 

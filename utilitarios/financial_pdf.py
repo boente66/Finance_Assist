@@ -81,13 +81,14 @@ class FinancialPDF:
         st = cls._styles()
         nome = conta.get("Nome_Conta") or conta.get("Nome") or "Conta"
         story = [Paragraph(f"Extrato da {nome}", st["title"]),
-                 Paragraph(f"Período: {DateFormatter.iso_to_br(inicio)} a {DateFormatter.iso_to_br(fim)}", st["small"]),
+                 Paragraph(f"Período: {DateFormatter.iso_to_display(inicio)} a {DateFormatter.iso_to_display(fim)}", st["small"]),
                  Spacer(1, 7*mm)]
         rows = [["Data", "Descrição", "Favorecido", "Categoria", "Valor"]]
         total = 0.0
         for item in transacoes:
-            valor = float(item.get("Valor") or 0); total += valor
-            rows.append([DateFormatter.iso_to_br(item.get("Data", "")),
+            valor = float(item.get("Valor") or 0)
+            total += valor
+            rows.append([DateFormatter.iso_to_display(item.get("Data", "")),
                          Paragraph(str(item.get("Descricao") or ""), st["cell"]),
                          Paragraph(str(item.get("Favorecido") or "—"), st["cell"]),
                          Paragraph(str(item.get("Categoria") or "Sem categoria"), st["cell"]),
@@ -145,7 +146,7 @@ class FinancialPDF:
                 "ENCARGO": "Encargo",
                 "PAGAMENTO": "Pagamento",
             }.get(i.get("Tipo_Movimento", "COMPRA"), "Compra")
-            rows.append([DateFormatter.iso_to_br(i.get("Data", "")),
+            rows.append([DateFormatter.iso_to_display(i.get("Data", "")),
                          Paragraph(str(i.get("Descricao") or ""), st["cell"]),
                          tipo,
                          Paragraph(str(i.get("Categoria") or "Sem categoria"), st["cell"]),

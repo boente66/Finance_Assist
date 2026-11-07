@@ -337,7 +337,7 @@ class ResumoFinanceiroView(QWidget):
         scheduled = self.schedule_controller.get_upcoming_schedules() or []
         for item in scheduled[:5]:
             value = float(item.get("Valor", 0) or 0)
-            date = DateFormatter.iso_to_br(item.get("Data"))
+            date = DateFormatter.iso_to_display(item.get("Data"))
             self.schedules_layout.addWidget(self._list_row(
                 item.get("Descricao") or TranslatorApp.get("Lançamento"), date, value, value >= 0
             ))

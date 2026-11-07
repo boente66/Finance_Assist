@@ -465,6 +465,8 @@ class TransacaoView(QWidget):
 
             if dialog.exec_():
                 self.carregar_contas()
+                if isinstance(self.painel_ativo, PainelAccount):
+                    self.painel_ativo.carregar_historico()
 
     def _editar_conta(self):
         item = self.lista_contas.currentItem()
@@ -481,6 +483,8 @@ class TransacaoView(QWidget):
 
             if dlg.exec_():
                 self.carregar_contas()
+                if isinstance(self.painel_ativo, PainelAccount):
+                    self.painel_ativo.carregar_historico()
 
     def _editar_cartao(self):
         item = self.lista_cartoes.currentItem()

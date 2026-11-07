@@ -1,3 +1,4 @@
+from utilitarios.currency_formatter import CurrencyFormatter
 # -*- coding: utf-8 -*-
 import logging
 import os
@@ -430,11 +431,7 @@ class TransactionDialogConta(QDialog):
                     TranslatorApp.get("Valor obrigatório")
                 )
 
-            valor = float(
-                valor_texto
-                .replace(".", "")
-                .replace(",", ".")
-            )
+            valor = CurrencyFormatter.to_float(valor_texto)
 
             if valor <= 0:
                 raise ValueError(

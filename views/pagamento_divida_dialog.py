@@ -1,3 +1,5 @@
+from core.regional_format import RegionalFormat
+from utilitarios.date_formatter import DateFormatter
 """Registro transparente de pagamento de dívida."""
 
 from PyQt5.QtCore import QDate
@@ -32,7 +34,7 @@ class PagamentoDividaDialog(QDialog):
                 pending = float(item["Valor_Previsto"]) - float(item["Valor_Pago"])
                 self.parcela.addItem(f"Parcela {item['Numero_Parcela']} · {CurrencyFormatter.format(pending)} · {item['Data_Vencimento']}", item["ID_Parcela"])
         self.valor = self._money(); self.juros = self._money(); self.multa = self._money(); self.desconto = self._money()
-        self.data = QDateEdit(QDate.currentDate()); self.data.setCalendarPopup(True); self.data.setDisplayFormat("dd/MM/yyyy")
+        self.data = QDateEdit(QDate.currentDate()); self.data.setCalendarPopup(True); self.data.setDisplayFormat("dd/MM/yyyy"); RegionalFormat.configure_widget(self.data)
         for label, widget in (("Conta de pagamento", self.conta), ("Parcela", self.parcela),
                               ("Valor pago", self.valor), ("Juros incluídos", self.juros),
                               ("Multa incluída", self.multa), ("Desconto obtido", self.desconto),
@@ -47,6 +49,8 @@ class PagamentoDividaDialog(QDialog):
         self._atualizar_textos()
 
     def _atualizar_textos(self):
+        from core.regional_format import RegionalFormat
+        RegionalFormat.configure_tree(self)
         self.setWindowTitle(TranslatorApp.get("Registrar pagamento da dívida"))
         self.info.setText(TranslatorApp.get("{descricao}\nSaldo devedor: {saldo}").format(
             descricao=self.divida["Descricao"], saldo=CurrencyFormatter.format(self.divida["Saldo_Devedor"])))
@@ -57,7 +61,11 @@ class PagamentoDividaDialog(QDialog):
         for index in range(1, self.parcela.count()):
             item = installments[self.parcela.itemData(index)]
             self.parcela.setItemText(index, TranslatorApp.get("Parcela {numero} · {valor} · {data}").format(
-                numero=item["Numero_Parcela"], valor=CurrencyFormatter.format(float(item["Valor_Previsto"]) - float(item["Valor_Pago"])), data=item["Data_Vencimento"]))
+                numero=item["Numero_Parcela"], valor=CurrencyFormatter.format(float(item["Valor_Previsto"]) - float(item["Valor_Pago"])), data=DateFormatter.iso_to_display(item["Data_Vencimento"])))
+        for index in range(self.conta.count()):
+            account = self.accounts.get_account_by_id(self.conta.itemData(index))
+            if account:
+                self.conta.setItemText(index, f"{account['Nome_Conta']} · {CurrencyFormatter.format(account['Saldo_Atual'])}")
         self.buttons.button(QDialogButtonBox.Save).setText(TranslatorApp.get("Confirmar pagamento"))
         self.buttons.button(QDialogButtonBox.Cancel).setText(TranslatorApp.get("Cancelar"))
 
@@ -67,7 +75,7 @@ class PagamentoDividaDialog(QDialog):
 
     @staticmethod
     def _money():
-        field = QDoubleSpinBox(); field.setRange(0, 999999999.99); field.setDecimals(2); field.setPrefix("R$ ")
+        field = QDoubleSpinBox(); field.setRange(0, 999999999.99); field.setDecimals(2); field.setPrefix("R$ "); RegionalFormat.configure_widget(field)
         return field
 
     def salvar(self):

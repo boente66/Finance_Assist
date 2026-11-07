@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtGui import QColor, QFont, QIcon
 
+from controllers.account_controller import AccountController
 from controllers.transaction_controller import TransactionController
 from controllers.category_controller import CategoryController
 from controllers.favorecido_controller import FavorecidoController
@@ -59,6 +60,7 @@ class PainelAccount(QWidget):
 
         self.conta = None
 
+        self.account_controller = AccountController()
         self.transaction_controller = TransactionController()
         self.category_controller = CategoryController()
         self.favorecido_controller = FavorecidoController()
@@ -116,6 +118,11 @@ class PainelAccount(QWidget):
             ],
         )
 
+        if self.conta:
+            self.lbl_saldo_atual.setText(
+                f"{TranslatorApp.get('Saldo')}: "
+                f"{CurrencyFormatter.format(self.conta.get('Saldo_Atual', 0))}"
+            )
         self._aplicar()
 
     def _update_progress_text(self):
@@ -250,6 +257,10 @@ class PainelAccount(QWidget):
 
         layout.addWidget(self.pagination_widget)
 
+        # Saldo efetivo também fica visível quando não há movimentos no período.
+        self.lbl_saldo_atual = QLabel()
+        layout.addWidget(self.lbl_saldo_atual)
+
         # RESUMO
         self.resumo = QLabel()
         layout.addWidget(self.resumo)
@@ -277,6 +288,14 @@ class PainelAccount(QWidget):
     def carregar_historico(self):
         if not self.conta:
             return
+
+        conta_atual = self.account_controller.get_account_by_id(self.conta["ID_Conta"])
+        if conta_atual:
+            self.conta = conta_atual
+            self.lbl_saldo_atual.setText(
+                f"{TranslatorApp.get('Saldo')}: "
+                f"{CurrencyFormatter.format(conta_atual['Saldo_Atual'])}"
+            )
 
         inicio, fim = self._obter_periodo()
 
@@ -345,7 +364,7 @@ class PainelAccount(QWidget):
         self.btn_next.setEnabled(self.pagina_atual + 1 < total_paginas)
         self.pagination_widget.setVisible(total_paginas > 1)
 
-        self._preencher(pagina)
+        self._preencher(pagina, dados)
 
     def _next(self):
         if (self.pagina_atual + 1) * self.itens_por_pagina < len(self.dados_completos):
@@ -360,12 +379,14 @@ class PainelAccount(QWidget):
     # ==================================================
     # TABELA
     # ==================================================
-    def _preencher(self, dados):
+    def _preencher(self, dados, dados_periodo=None):
         self.table.setRowCount(0)
 
         saldo = 0.0
-        receitas = 0.0
-        despesas = 0.0
+        self.resumo.clear()
+        movimentos = dados if dados_periodo is None else dados_periodo
+        receitas = sum(max(float(t.get("Valor", 0)), 0) for t in movimentos)
+        despesas = sum(max(-float(t.get("Valor", 0)), 0) for t in movimentos)
 
         cor_receita = ThemeManager.get_color("success")
         cor_despesa = ThemeManager.get_color("danger")
@@ -375,7 +396,7 @@ class PainelAccount(QWidget):
             self.table.insertRow(r)
 
             self.table.setItem(
-                r, 0, QTableWidgetItem(DateFormatter.iso_to_br(t.get("Data", "")))
+                r, 0, QTableWidgetItem(DateFormatter.iso_to_display(t.get("Data", "")))
             )
 
             self.table.setItem(r, 1, QTableWidgetItem(str(t.get("ID_Transacao", ""))))
@@ -389,8 +410,6 @@ class PainelAccount(QWidget):
             valor = float(t.get("Valor", 0))
 
             if valor > 0:
-                receitas += valor
-
                 item = QTableWidgetItem(CurrencyFormatter.format(valor))
                 item.setForeground(QColor(cor_receita))
 
@@ -398,8 +417,6 @@ class PainelAccount(QWidget):
                 self.table.setItem(r, 6, QTableWidgetItem(""))
 
             else:
-                despesas += abs(valor)
-
                 self.table.setItem(r, 5, QTableWidgetItem(""))
 
                 item = QTableWidgetItem(CurrencyFormatter.format(abs(valor)))
@@ -407,21 +424,22 @@ class PainelAccount(QWidget):
 
                 self.table.setItem(r, 6, item)
 
-            saldo += valor
+            saldo = float(t.get("Saldo", 0))
 
             saldo_item = QTableWidgetItem(CurrencyFormatter.format(saldo))
             saldo_item.setFont(QFont("", weight=QFont.Bold))
 
             self.table.setItem(r, 7, saldo_item)
 
-            self.resumo.setText(
-                f"{TranslatorApp.get('Créditos do período')}: "
-                f"{CurrencyFormatter.format(receitas)} | "
-                f"{TranslatorApp.get('Débitos do período')}: "
-                f"{CurrencyFormatter.format(despesas)} | "
-                f"{TranslatorApp.get('Resultado do período')}: "
-                f"{CurrencyFormatter.format(saldo)}"
-            )
+
+        self.resumo.setText(
+            f"{TranslatorApp.get('Créditos do período')}: "
+            f"{CurrencyFormatter.format(receitas)} | "
+            f"{TranslatorApp.get('Débitos do período')}: "
+            f"{CurrencyFormatter.format(despesas)} | "
+            f"{TranslatorApp.get('Resultado do período')}: "
+            f"{CurrencyFormatter.format(receitas - despesas)}"
+        )
 
     # ==================================================
     # AÇÕES

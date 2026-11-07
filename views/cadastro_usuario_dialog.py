@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 import re
 
 from PyQt5.QtCore import QDate, Qt, QTimer
@@ -126,7 +127,7 @@ class CadastroUsuarioDialog(QDialog):
 
         self.nascimento_input = QDateEdit(QDate.currentDate())
         self.nascimento_input.setCalendarPopup(True)
-        self.nascimento_input.setDisplayFormat("dd/MM/yyyy")
+        self.nascimento_input.setDisplayFormat("dd/MM/yyyy"); RegionalFormat.configure_widget(self.nascimento_input)
 
         self.sexo_input = QComboBox()
         self.sexo_input.addItem("Masculino", "Masculino")

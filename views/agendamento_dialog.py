@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 import logging
 
 from PyQt5.QtWidgets import (
@@ -93,7 +94,7 @@ class AgendamentoDialog(QDialog):
         self.valor_spin = QDoubleSpinBox()
         self.valor_spin.setDecimals(2)
         self.valor_spin.setRange(0.01, 10_000_000)
-        self.valor_spin.setPrefix("R$ ")
+        self.valor_spin.setPrefix("R$ "); RegionalFormat.configure_widget(self.valor_spin)
         self.form.addRow(self.valor_label, self.valor_spin)
 
         self.data_label = QLabel()

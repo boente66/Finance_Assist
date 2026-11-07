@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 # -*- coding: utf-8 -*-
 """Diálogos autocontidos da tela de perfil."""
 
@@ -43,7 +44,7 @@ class EditarPerfilDialog(QDialog):
         self.nome_input = QLineEdit()
         self.nascimento_input = QDateEdit()
         self.nascimento_input.setCalendarPopup(True)
-        self.nascimento_input.setDisplayFormat("dd/MM/yyyy")
+        self.nascimento_input.setDisplayFormat("dd/MM/yyyy"); RegionalFormat.configure_widget(self.nascimento_input)
         self.sexo_input = QComboBox()
         for label, value in (("Masculino", "Masculino"), ("Feminino", "Feminino"), ("Outro", "Outro"), ("Não informar", "")):
             self.sexo_input.addItem(TranslatorApp.get(label), value)

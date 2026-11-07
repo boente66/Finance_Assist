@@ -6,6 +6,16 @@ from core.session import Session
 
 class DateFormatter:
 
+    @staticmethod
+    def iso_to_display(value):
+        from core.regional_format import RegionalFormat
+        if not value:
+            return ""
+        if isinstance(value, (date, datetime)):
+            value = value.strftime("%Y-%m-%d")
+        parsed = QDate.fromString(str(value), "yyyy-MM-dd")
+        return parsed.toString(RegionalFormat.date_pattern()) if parsed.isValid() else str(value)
+
     # ======================================================
     # ISO → BR (YYYY-MM-DD → DD/MM/YYYY)
     # ======================================================
@@ -46,7 +56,7 @@ class DateFormatter:
     # FORMATO LONGO (ex: 05 de março de 2026)
     # ======================================================
     @staticmethod
-    def format_long(date_str: str, locale_code="pt_BR") -> str:
+    def format_long(date_str: str, locale_code=None) -> str:
 
         if not date_str:
             return ""
@@ -57,7 +67,8 @@ class DateFormatter:
             if not dt.isValid():
                 return str(date_str)
 
-            locale = QLocale(locale_code)
+            from core.regional_format import RegionalFormat
+            locale = QLocale(locale_code) if locale_code else RegionalFormat.locale()
             return locale.toString(dt, QLocale.LongFormat)
 
         except Exception:

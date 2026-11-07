@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 from PyQt5.QtCore import QDate
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -42,7 +43,7 @@ class CreditoFaturaDialog(QDialog):
         self.valor_spin = QDoubleSpinBox()
         self.valor_spin.setRange(0.01, 999999999.99)
         self.valor_spin.setDecimals(2)
-        self.valor_spin.setPrefix("R$ ")
+        self.valor_spin.setPrefix("R$ "); RegionalFormat.configure_widget(self.valor_spin)
         self.data_edit = QDateEdit(QDate.currentDate())
         self.data_edit.setCalendarPopup(True)
         self.origem_combo = QComboBox()

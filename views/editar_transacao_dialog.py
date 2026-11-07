@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 # -*- coding: utf-8 -*-
 
 from PyQt5.QtWidgets import (
@@ -93,7 +94,7 @@ class EditTransactionDialog(QDialog):
 
         # Valor
         self.valor_spin = QDoubleSpinBox()
-        self.valor_spin.setPrefix("R$ ")
+        self.valor_spin.setPrefix("R$ "); RegionalFormat.configure_widget(self.valor_spin)
         self.valor_spin.setRange(0.01, 1_000_000.00)
         self.valor_spin.setDecimals(2)
         self.form.addRow(self.lbl_valor, self.valor_spin)

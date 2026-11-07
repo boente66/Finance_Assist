@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 # -*- coding: utf-8 -*-
 import logging
 
@@ -95,7 +96,7 @@ class ExecuteScheduleDialog(QDialog):
 
         self.lbl_valor_previsto = QLabel()
         self.valor_previsto_edit = QDoubleSpinBox()
-        self.valor_previsto_edit.setPrefix("R$ ")
+        self.valor_previsto_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.valor_previsto_edit)
         self.valor_previsto_edit.setDecimals(2)
         self.valor_previsto_edit.setRange(0, 1_000_000)
         self.valor_previsto_edit.setReadOnly(True)
@@ -139,25 +140,25 @@ class ExecuteScheduleDialog(QDialog):
 
         self.lbl_desconto = QLabel()
         self.desconto_edit = QDoubleSpinBox()
-        self.desconto_edit.setPrefix("R$ ")
+        self.desconto_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.desconto_edit)
         self.desconto_edit.setDecimals(2)
         self.desconto_edit.setRange(0, 1_000_000)
 
         self.lgbl_multa = QLabel()
         self.multa_edit = QDoubleSpinBox()
-        self.multa_edit.setPrefix("R$ ")
+        self.multa_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.multa_edit)
         self.multa_edit.setDecimals(2)
         self.multa_edit.setRange(0, 1_000_000)
 
         self.lbl_juros = QLabel()
         self.jurus_edit = QDoubleSpinBox()
-        self.jurus_edit.setPrefix("R$ ")
+        self.jurus_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.jurus_edit)
         self.jurus_edit.setDecimals(2)
         self.jurus_edit.setRange(0, 1_000_000)
 
         self.lbl_valor_pago = QLabel()
         self.valor_pago_edit = QDoubleSpinBox()
-        self.valor_pago_edit.setPrefix("R$ ")
+        self.valor_pago_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.valor_pago_edit)
         self.valor_pago_edit.setDecimals(2)
         self.valor_pago_edit.setRange(0.01, 1_000_000)
 

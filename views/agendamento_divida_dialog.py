@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 """Agendamento manual para dívida de pagamento livre."""
 
 from PyQt5.QtCore import QDate
@@ -11,8 +12,8 @@ class AgendamentoDividaDialog(QDialog):
         super().__init__(parent); self.divida = divida; self.controller = DividaController()
         self.setWindowTitle("Agendar pagamento livre"); self.setMinimumWidth(390)
         layout = QVBoxLayout(self); form = QFormLayout()
-        self.valor = QDoubleSpinBox(); self.valor.setRange(0.01, 999999999.99); self.valor.setDecimals(2); self.valor.setPrefix("R$ ")
-        self.data = QDateEdit(QDate.currentDate().addMonths(1)); self.data.setCalendarPopup(True); self.data.setDisplayFormat("dd/MM/yyyy")
+        self.valor = QDoubleSpinBox(); self.valor.setRange(0.01, 999999999.99); self.valor.setDecimals(2); self.valor.setPrefix("R$ "); RegionalFormat.configure_widget(self.valor)
+        self.data = QDateEdit(QDate.currentDate().addMonths(1)); self.data.setCalendarPopup(True); self.data.setDisplayFormat("dd/MM/yyyy"); RegionalFormat.configure_widget(self.data)
         self.form = form
         form.addRow("Valor previsto", self.valor); form.addRow("Vencimento", self.data); layout.addLayout(form)
         self.buttons = buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel); buttons.button(QDialogButtonBox.Save).setText("Criar agendamento")
@@ -21,6 +22,8 @@ class AgendamentoDividaDialog(QDialog):
         self._atualizar_textos()
 
     def _atualizar_textos(self):
+        from core.regional_format import RegionalFormat
+        RegionalFormat.configure_tree(self)
         self.setWindowTitle(TranslatorApp.get("Agendar pagamento livre"))
         for row in range(self.form.rowCount()):
             TranslatorApp._translate_widget(self.form.itemAt(row, QFormLayout.LabelRole).widget())

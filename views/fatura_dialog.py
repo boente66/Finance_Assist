@@ -1,3 +1,4 @@
+from utilitarios.currency_formatter import CurrencyFormatter
 # -*- coding: utf-8 -*-
 import re
 
@@ -307,10 +308,10 @@ class FaturaDialog(QDialog):
         descricao = self.descricao_edit.text().strip()
         if not descricao:
             raise ValueError("Descrição obrigatória")
-        valor_texto = self.valor_edit.text().replace(".", "").replace(",", ".").strip()
+        valor_texto = self.valor_edit.text().strip()
         if not valor_texto:
             raise ValueError("Valor obrigatório")
-        valor = abs(float(valor_texto))
+        valor = abs(CurrencyFormatter.to_float(valor_texto))
         if valor <= 0:
             raise ValueError("Valor deve ser maior que zero")
         ciclo = self.fatura_combo.currentData()

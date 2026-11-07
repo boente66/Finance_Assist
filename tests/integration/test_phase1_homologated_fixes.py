@@ -110,7 +110,7 @@ def test_transaction_edit_failure_rolls_back_balances(db, db_path, monkeypatch):
 @pytest.mark.parametrize("new_balance,expected_delta", [
     (250, 150), (25, -75), (0, -100), (100, None),
 ])
-def test_balance_adjustment_creates_auditable_transaction(
+def test_balance_adjustment_updates_balance_without_transaction(
     db, db_path, new_balance, expected_delta
 ):
     user_id = criar_usuario(db, f"adjust_{new_balance}")
@@ -119,31 +119,20 @@ def test_balance_adjustment_creates_auditable_transaction(
     rows = db.fetch_all(
         "SELECT * FROM transacoes WHERE ID_Conta=?", (account,)
     )
-    if expected_delta is None:
-        assert rows == []
-    else:
-        assert len(rows) == 1
-        assert rows[0]["Descricao"] == "Ajuste de saldo"
-        assert rows[0]["Valor"] == expected_delta
+    assert rows == []
     assert db.fetch_one(
         "SELECT Saldo_Atual FROM contas WHERE ID_Conta=?", (account,)
     )["Saldo_Atual"] == new_balance
 
 
-@pytest.mark.parametrize("failure_point", ["transaction", "balance"])
 def test_balance_adjustment_failure_rolls_back(
-    db, db_path, monkeypatch, failure_point
+    db, db_path, monkeypatch
 ):
-    user_id = criar_usuario(db, f"adjust_rollback_{failure_point}")
+    user_id = criar_usuario(db, "adjust_rollback")
     account = criar_conta(db, user_id, "Conta", 100)
     service = AccountService(db_path)
-    target = (
-        service.transaction_model if failure_point == "transaction"
-        else service.model
-    )
-    method = "add_transaction" if failure_point == "transaction" else "update_saldo"
     monkeypatch.setattr(
-        target, method,
+        service.model, "definir_saldo",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("falha")),
     )
     with pytest.raises(RuntimeError, match="falha"):

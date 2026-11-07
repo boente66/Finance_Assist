@@ -1,3 +1,4 @@
+from utilitarios.date_formatter import DateFormatter
 """Gerenciador visual de dívidas e empréstimos."""
 
 from datetime import date
@@ -105,9 +106,9 @@ class DividaView(QWidget):
         pending = [x for x in self.items if x["Status"] in ("ATIVA", "ATRASADA") and (x.get("Proximo_Vencimento") or x.get("Primeiro_Vencimento"))]
         next_item = min(pending, key=lambda x: x.get("Proximo_Vencimento") or x["Primeiro_Vencimento"], default=None)
         self.total_card[1].setText(CurrencyFormatter.format(total)); self.active_card[1].setText(str(active)); self.overdue_card[1].setText(str(overdue))
-        self.next_card[1].setText((next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"]) if next_item else TranslatorApp.get("Sem vencimento"))
+        self.next_card[1].setText(DateFormatter.iso_to_display(next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"]) if next_item else TranslatorApp.get("Sem vencimento"))
         if next_item:
-            self.alert.setText(TranslatorApp.get("Próximo compromisso: {descricao} · saldo {saldo} · vencimento {vencimento}.").format(descricao=next_item["Descricao"], saldo=CurrencyFormatter.format(next_item["Saldo_Devedor"]), vencimento=next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"]))
+            self.alert.setText(TranslatorApp.get("Próximo compromisso: {descricao} · saldo {saldo} · vencimento {vencimento}.").format(descricao=next_item["Descricao"], saldo=CurrencyFormatter.format(next_item["Saldo_Devedor"]), vencimento=DateFormatter.iso_to_display(next_item.get("Proximo_Vencimento") or next_item["Primeiro_Vencimento"])))
         else:
             self.alert.setText(TranslatorApp.get("Nenhuma dívida pendente. Pagamentos e previsões permanecem disponíveis no histórico."))
 
@@ -123,7 +124,7 @@ class DividaView(QWidget):
         rows = self._filtered(); self.table.setRowCount(len(rows))
         for r, item in enumerate(rows):
             progress = f"{int(item.get('Parcelas_Pagas') or 0)}/{int(item.get('Total_Parcelas') or 0)}" if item["Tipo_Parcelamento"] == "FIXO" else TranslatorApp.get("Livre")
-            values = (item.get("Favorecido") or "—", item.get("Numero_Contrato") or "—", item["Descricao"], TranslatorApp.get(item["Tipo_Divida"]), CurrencyFormatter.format(item["Valor_Total_Contrato"]), CurrencyFormatter.format(item["Saldo_Devedor"]), progress, CurrencyFormatter.format(item.get("Valor_Parcela") or 0), f"{float(item.get('Taxa_Juros') or 0):.2f}%", item.get("Proximo_Vencimento") or item.get("Primeiro_Vencimento") or TranslatorApp.get("Livre"), TranslatorApp.get(item["Status"]))
+            values = (item.get("Favorecido") or "—", item.get("Numero_Contrato") or "—", item["Descricao"], TranslatorApp.get(item["Tipo_Divida"]), CurrencyFormatter.format(item["Valor_Total_Contrato"]), CurrencyFormatter.format(item["Saldo_Devedor"]), progress, CurrencyFormatter.format(item.get("Valor_Parcela") or 0), f"{float(item.get('Taxa_Juros') or 0):.2f}%", DateFormatter.iso_to_display(item.get("Proximo_Vencimento") or item.get("Primeiro_Vencimento")) or TranslatorApp.get("Livre"), TranslatorApp.get(item["Status"]))
             for c, value in enumerate(values): self.table.setItem(r, c, QTableWidgetItem(str(value)))
             self.table.item(r, 0).setData(Qt.UserRole, item["ID_Divida"])
         self.table.resizeColumnsToContents()

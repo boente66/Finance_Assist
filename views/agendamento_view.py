@@ -438,7 +438,7 @@ class AgendamentoView(QWidget):
             row = self.table.rowCount()
             self.table.insertRow(row)
             values = (
-                DateFormatter.iso_to_br(item.get("data") or ""),
+                DateFormatter.iso_to_display(item.get("data") or ""),
                 self._period_label(item.get("data")), self._display_description(item),
                 TranslatorApp.get(item.get("origem") or ""), item.get("categoria"),
                 item.get("favorecido"), item.get("conta"),

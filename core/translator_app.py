@@ -87,6 +87,9 @@ class TranslatorApp:
         logger.info("Definindo idioma: %s", lang)
 
         cls._current_lang = lang
+        from core.regional_format import RegionalFormat
+        from PyQt5.QtCore import QLocale
+        QLocale.setDefault(RegionalFormat.locale())
         cls.translate_all()
 
     # ======================================================
@@ -192,6 +195,9 @@ class TranslatorApp:
     def _translate_widget(cls, widget):
         if widget is None or sip.isdeleted(widget):
             return
+
+        from core.regional_format import RegionalFormat
+        RegionalFormat.configure_widget(widget)
 
         # TEXT
         if hasattr(widget, "setText") and hasattr(widget, "text"):
@@ -304,6 +310,8 @@ class TranslatorApp:
                     if sip.isdeleted(widget):
                         continue
 
+                    from core.regional_format import RegionalFormat
+                    RegionalFormat.configure_tree(widget)
                     callback()
                     novos.append((callback, widget_ref))
 

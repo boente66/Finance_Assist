@@ -1,3 +1,4 @@
+from utilitarios.currency_formatter import CurrencyFormatter
 # -*- coding: utf-8 -*-
 import logging
 
@@ -221,7 +222,7 @@ class MetaDialog(QDialog):
     def _salvar(self):
         nome = self.input_nome.text().strip()
         tipo = self.combo_tipo.currentData()
-        valor_txt = self.input_valor.text().replace(",", ".").strip()
+        valor_txt = self.input_valor.text().strip()
 
         if not nome:
             QMessageBox.warning(
@@ -232,7 +233,7 @@ class MetaDialog(QDialog):
             return
 
         try:
-            valor = float(valor_txt)
+            valor = CurrencyFormatter.to_float(valor_txt)
 
             if valor <= 0:
                 raise ValueError

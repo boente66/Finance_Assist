@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 from datetime import date
 
 from PyQt5.QtWidgets import (
@@ -79,7 +80,7 @@ class InformeFiscalDialog(QDialog):
             campo = QDoubleSpinBox()
             campo.setRange(0, 999_999_999.99)
             campo.setDecimals(2)
-            campo.setPrefix('R$ ')
+            campo.setPrefix("R$ "); RegionalFormat.configure_widget(campo)
             campo.setGroupSeparatorShown(True)
             self.valores[chave] = campo
             form.addRow(TranslatorApp.get(rotulo + ':'), campo)

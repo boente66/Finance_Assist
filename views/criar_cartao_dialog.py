@@ -1,3 +1,4 @@
+from core.regional_format import RegionalFormat
 # -*- coding: utf-8 -*-
 import logging
 
@@ -53,7 +54,7 @@ class CriarCartaoDialog(QDialog):
         layout.addWidget(self.lbl_limite)
 
         self.limite_edit = QDoubleSpinBox()
-        self.limite_edit.setPrefix("R$ ")
+        self.limite_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.limite_edit)
         self.limite_edit.setRange(0.01, 1_000_000.00)
         self.limite_edit.setDecimals(2)
         layout.addWidget(self.limite_edit)
@@ -237,7 +238,7 @@ class EditCartaoDialog(QDialog):
         layout.addWidget(self.lbl_limite)
 
         self.limite_edit = QDoubleSpinBox()
-        self.limite_edit.setPrefix("R$ ")
+        self.limite_edit.setPrefix("R$ "); RegionalFormat.configure_widget(self.limite_edit)
         self.limite_edit.setRange(0.01, 1_000_000.00)
         self.limite_edit.setDecimals(2)
         layout.addWidget(self.limite_edit)
