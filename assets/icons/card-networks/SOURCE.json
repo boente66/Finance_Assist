@@ -1,0 +1,65 @@
+{
+  "repository": "https://github.com/aaronfagan/svg-credit-card-payment-icons",
+  "commit": "6dd023ae32415ed7b01bf809f15a25613a52098c",
+  "license": "Apache-2.0",
+  "files": {
+    "generic.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/generic.svg",
+      "sha256": "0385e276dc6bd97b3bb2f154d99fb8713d8935da750459045fdf805638074840",
+      "upstream_sha256": "ffbe50f3893a9941b98eded0445a0f14ba3e5abff0babd76ca7b48618d08db5a",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "visa.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/visa.svg",
+      "sha256": "00fad36cdeb044ebfa472f60c9e7d24ca5c972c8ec9da8eee86c2e2af476697f"
+    },
+    "mastercard.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/mastercard.svg",
+      "sha256": "954e7dd1f82ad0076f57a0550402a563fee4df9fc4daadf2775997772257f0cb"
+    },
+    "elo.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/elo.svg",
+      "sha256": "c2125560a261273670f47df7e360bff36e7bbe422acc34dce03f462d812dd492",
+      "upstream_sha256": "1b9544d0e1fff26250a4a5030cb22f048a3126cc9988297aa45e206c4bd70716",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "amex.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/amex.svg",
+      "sha256": "c8a783d6122d80aa409cc048535113cb4d7e7d7533d4b093f8d932e5d1cc7b76",
+      "upstream_sha256": "64653c36117c78474229ad6cb1b19a22f7e9c18d22fccc7cb4cf035e590e1ec5",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "hipercard.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/hipercard.svg",
+      "sha256": "b2658323acbb578eadfd1a0b7af05c137e9d81771b717e738c008f2c1f1dc592",
+      "upstream_sha256": "8056be35d7d36db7695819d6652d062c88afdc4070dd3692cb885fcd601ddb55",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "diners.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/diners.svg",
+      "sha256": "d4615f2ef74b6c4218c09d33676de18db8b36d7d328588d15a83a470d58b3398",
+      "upstream_sha256": "2612a35a993cefc75430842111a8f4601dd23512d25edb61c612e4993819264e",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "discover.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/discover.svg",
+      "sha256": "7c51c2b93b35766af6d426d2045cd059880f5655821845a7a839be43a0eb7ce6"
+    },
+    "jcb.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/jcb.svg",
+      "sha256": "23ae6597f6c75deea89e60640c626412aba7b2c1cca7a385a7aab1523cecdb51",
+      "upstream_sha256": "72dc11ba827d6bb6ebba372b41aa8f3e15a23ed6ae0d2e62b8bdfaada68e4411",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "unionpay.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/unionpay.svg",
+      "sha256": "0e3ec0e1abe66ec80aba5cb1d2dc86ce5d174b9f2228c58651c92d3dd18310a0",
+      "upstream_sha256": "4e0a0d2f5c476b0739f890c6bdc7e169e0111feba5163a6b9aa6a3efed809079",
+      "transformation": "Line endings CRLF to LF only; artwork unchanged"
+    },
+    "maestro.svg": {
+      "source": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/flat-rounded/maestro.svg",
+      "sha256": "53a1130acf716e951216b50add39c24791211aa00ec21be36cca803d7e63e071"
+    }
+  }
+}

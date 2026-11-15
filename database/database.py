@@ -242,6 +242,7 @@ CREATE TABLE IF NOT EXISTS contas (
 CREATE TABLE IF NOT EXISTS credito (
     ID_Cartao INTEGER PRIMARY KEY AUTOINCREMENT,
     Nome TEXT NOT NULL,
+    Bandeira TEXT DEFAULT NULL,
     Limite REAL NOT NULL DEFAULT 0,
     Dia_Fechamento INTEGER NOT NULL,
     Dia_Vencimento INTEGER NOT NULL,
@@ -1624,6 +1625,19 @@ ON recuperacao_senha(ID_Usuario);
                  "validar_agendamento_divida_update"} <= triggers
         )
 
+    def _migration_009_card_network(self):
+        # Metadado opcional: não inferir bandeira nem alterar nomes/IDs.
+        self._add_column_if_missing("credito", "Bandeira", "TEXT DEFAULT NULL")
+
+    def _card_network_valid(self):
+        columns = self.connection.execute("PRAGMA table_info(credito)").fetchall()
+        return any(
+            row["name"] == "Bandeira"
+            and row["type"].upper() == "TEXT"
+            and not row["notnull"]
+            for row in columns
+        )
+
     def _run_migrations(self):
         self._ensure_migration_table()
         migrations = (
@@ -1658,6 +1672,8 @@ ON recuperacao_senha(ID_Usuario);
              self._invoice_cycle_correction_valid, False),
             (8, 'debt_module', self._migration_008_debt_module,
              self._debt_module_valid, False),
+            (9, 'optional_card_network', self._migration_009_card_network,
+             self._card_network_valid, False),
         )
         for migration in migrations:
             self._run_migration(*migration)

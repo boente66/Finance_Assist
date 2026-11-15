@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 
 from models.lancamento_model import LancamentoModel
 from models.credito_model import CreditoModel
+from services.card_networks import CARD_NETWORKS, normalize_card_network
 from models.transaction_model import TransactionModel
 from models.category_model import CategoryModel
 from models.account_model import AccountModel
@@ -67,14 +68,26 @@ class FaturaService:
     # CARTÕES
     # ============================================================
     def criar_cartao(self, dados: dict, id_usuario: int):
-        dados["ID_Usuario"] = id_usuario
-        return self.credito_model.add_cartao(dados)
+        payload = dict(dados)
+        payload["ID_Usuario"] = id_usuario
+        payload["Bandeira"] = normalize_card_network(payload.get("Bandeira"))
+        payload["Ativo"] = self._validar_estado_cartao(payload.get("Ativo", 1))
+        return self.credito_model.add_cartao(payload)
+
+    @staticmethod
+    def listar_bandeiras():
+        return CARD_NETWORKS
 
     def editar_cartao(self, id_cartao: int, dados: dict, id_usuario: int):
         cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
         if not cartao:
             raise ValueError("Cartão não encontrado.")
-        return self.credito_model.update_cartao(id_cartao, dados, id_usuario)
+        payload = dict(dados)
+        if "Bandeira" in payload:
+            payload["Bandeira"] = normalize_card_network(payload["Bandeira"])
+        if "Ativo" in payload:
+            payload["Ativo"] = self._validar_estado_cartao(payload["Ativo"])
+        return self.credito_model.update_cartao(id_cartao, payload, id_usuario)
 
     def excluir_cartao(self, id_cartao: int, id_usuario: int):
         cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
@@ -82,8 +95,32 @@ class FaturaService:
             raise ValueError("Cartão não encontrado.")
         return self.credito_model.delete_cartao(id_cartao, id_usuario)
 
-    def listar_cartoes(self, id_usuario: int):
-        return self.credito_model.get_all_cartoes(id_usuario)
+    @staticmethod
+    def _validar_estado_cartao(value):
+        if not isinstance(value, (int, bool)) or value not in (0, 1):
+            raise ValueError("Estado do cartão inválido.")
+        return int(value)
+
+    def reativar_cartao(self, id_cartao, id_usuario):
+        return self.editar_cartao(id_cartao, {"Ativo": 1}, id_usuario)
+
+    def dependencias_cartao(self, id_cartao, id_usuario):
+        return self.credito_model.get_card_dependencies(id_cartao, id_usuario)
+
+    def excluir_cartao_definitivamente(self, id_cartao, id_usuario):
+        # O Model protege a decisão e a exclusão física na mesma transação.
+        return self.credito_model.delete_card_without_dependencies(id_cartao, id_usuario)
+
+    def listar_cartoes(self, id_usuario: int, incluir_inativos=False):
+        return self.credito_model.get_all_cartoes(id_usuario, incluir_inativos)
+
+    def validar_cartao_ativo(self, id_cartao, id_usuario):
+        cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
+        if not cartao:
+            raise ValueError("Cartão não encontrado.")
+        if cartao.get("Ativo") != 1:
+            raise ValueError("Cartão inativo. Reative-o antes de registrar novas operações.")
+        return cartao
 
     def buscar_cartao_por_id(self, id_cartao: int, id_usuario: int):
         return self.credito_model.get_cartao_by_id(id_cartao, id_usuario)
@@ -246,6 +283,7 @@ class FaturaService:
             self.ciclo_model,
             immediate=True,
         ):
+            self.validar_cartao_ativo(id_cartao, id_usuario)
             for i in range(parcelas):
 
                 data_parcela = data_base + relativedelta(months=i)
@@ -282,9 +320,16 @@ class FaturaService:
         return True
 
     def adicionar_credito_fatura(self, dados: dict):
+        with self.lancamento_model.unit_of_work(
+            self.credito_model, self.lancamento_model.credito, self.ciclo_model,
+            immediate=True,
+        ):
+            return self._adicionar_credito_fatura(dados)
+
+    def _adicionar_credito_fatura(self, dados: dict):
         id_usuario = dados["ID_Usuario"]
         id_cartao = dados["ID_Cartao"]
-        cartao = self.buscar_cartao_por_id(id_cartao, id_usuario)
+        cartao = self.validar_cartao_ativo(id_cartao, id_usuario)
         if not cartao:
             raise ValueError("Cartão inválido.")
         valor_informado = self._money(dados["Valor"])
@@ -372,6 +417,7 @@ class FaturaService:
             for id_cartao, itens in por_cartao.items():
                 if not self.credito_model.get_cartao_by_id(id_cartao, id_usuario):
                     raise PermissionError("Cartão não pertence ao usuário.")
+                self.validar_cartao_ativo(id_cartao, id_usuario)
                 inicio, fim = self.reconciliacao_service.limites_periodo(itens)
                 existentes = self.lancamento_model.get_import_candidates(
                     id_cartao, id_usuario, inicio, fim
@@ -1039,7 +1085,8 @@ class FaturaService:
 
         self._clear_cache()
 
-        for cartao in self.listar_cartoes(id_usuario) or []:
+        # Inativar impede uso novo, não faz desaparecer dívida já contratada.
+        for cartao in self.listar_cartoes(id_usuario, incluir_inativos=True) or []:
             id_cartao = cartao["ID_Cartao"]
             nome_cartao = cartao.get("Nome") or "Cartão"
             dia_vencimento = int(cartao.get("Dia_Vencimento") or 1)

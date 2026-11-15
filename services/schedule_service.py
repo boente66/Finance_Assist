@@ -58,6 +58,11 @@ class ScheduleService:
             if "ID_Usuario" not in schedule_data:
                 raise ValueError("ID_Usuario é obrigatório.")
 
+            if schedule_data.get("Tipo") in self.TIPOS_CARTAO:
+                self.fatura_service.validar_cartao_ativo(
+                    schedule_data.get("ID_Cartao"), schedule_data["ID_Usuario"]
+                )
+
             schedule_data.setdefault("Recorrente", 0)
             schedule_data.setdefault("Periodicidade", None)
             schedule_data.setdefault("Ativo", 1)
@@ -104,6 +109,9 @@ class ScheduleService:
                 raise ValueError(
                     "Somente agendamentos AGENDADOS ou ATRASADOS podem ser executados."
                 )
+
+            if ag.get("Tipo") in self.TIPOS_CARTAO:
+                self.fatura_service.validar_cartao_ativo(ag.get("ID_Cartao"), id_usuario)
 
             self.schedule_model.update_status(
                 schedule_id,
@@ -303,6 +311,11 @@ class ScheduleService:
 
             if not atual:
                 raise ValueError("Agendamento não encontrado.")
+
+            if schedule_data.get("Tipo", atual.get("Tipo")) in self.TIPOS_CARTAO:
+                self.fatura_service.validar_cartao_ativo(
+                    schedule_data.get("ID_Cartao", atual.get("ID_Cartao")), id_usuario
+                )
 
             self.schedule_model.update_schedule(
                 schedule_id,

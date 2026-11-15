@@ -106,10 +106,13 @@ class FaturaController:
     # ==================================================
     # CARTÕES
     # ==================================================
-    def listar_cartoes(self):
+    def listar_cartoes(self, incluir_inativos=False):
         return self.service.listar_cartoes(
-            self.get_id_usuario()
+            self.get_id_usuario(), incluir_inativos
         )
+
+    def listar_bandeiras(self):
+        return self.service.listar_bandeiras()
 
     def criar_cartao(self, dados: dict):
         """
@@ -117,6 +120,7 @@ class FaturaController:
         """
         dados_formatados = { 
             "Nome": dados.get("nome"),
+            "Bandeira": dados.get("bandeira"),
             "Limite": dados.get("limite"),
             "Dia_Fechamento": dados.get("dia_fechamento"),
             "Dia_Vencimento": dados.get("dia_vencimento"),
@@ -132,13 +136,14 @@ class FaturaController:
         """
         Edita um cartão de crédito existente.
         """
-        dados_formatados = {
-            "Nome": dados.get("nome"),
-            "Limite": dados.get("limite"),
-            "Dia_Fechamento": dados.get("dia_fechamento"),
-            "Dia_Vencimento": dados.get("dia_vencimento"),
-            "Ativo": dados.get("ativo", 1)
+        # Omissão preserva o valor atual; None explícito remove a bandeira.
+        campos = {
+            "nome": "Nome", "bandeira": "Bandeira", "limite": "Limite",
+            "dia_fechamento": "Dia_Fechamento", "dia_vencimento": "Dia_Vencimento",
+            "ativo": "Ativo",
         }
+        dados_formatados = {destino: dados[origem] for origem, destino in campos.items()
+                            if origem in dados}
 
         return self.service.editar_cartao(
             id_cartao,
@@ -157,6 +162,15 @@ class FaturaController:
             id_cartao,
             self.get_id_usuario()
         )
+
+    def reativar_cartao(self, id_cartao):
+        return self.service.reativar_cartao(id_cartao, self.get_id_usuario())
+
+    def dependencias_cartao(self, id_cartao):
+        return self.service.dependencias_cartao(id_cartao, self.get_id_usuario())
+
+    def excluir_cartao_definitivamente(self, id_cartao):
+        return self.service.excluir_cartao_definitivamente(id_cartao, self.get_id_usuario())
 
     def get_all_cartoes(self):
         return self.listar_cartoes()

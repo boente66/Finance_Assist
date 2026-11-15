@@ -24,19 +24,23 @@ class CreditoModel(Database):
                 """
                 INSERT INTO credito (
                     Nome,
+                    Bandeira,
                     Limite,
                     Dia_Fechamento,
                     Dia_Vencimento,
-                    ID_Usuario
+                    ID_Usuario,
+                    Ativo
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     dados["Nome"],
+                    dados.get("Bandeira"),
                     round(float(dados["Limite"]), 2),
                     dados["Dia_Fechamento"],
                     dados["Dia_Vencimento"],
                     dados["ID_Usuario"],
+                    dados.get("Ativo", 1),
                 ),
             )
 
@@ -59,15 +63,15 @@ class CreditoModel(Database):
     # ============================================================
     # READ
     # ============================================================
-    def get_all_cartoes(self, id_usuario: int):
+    def get_all_cartoes(self, id_usuario: int, incluir_inativos=False):
         try:
             sql = """
                 SELECT *
                 FROM credito
-                WHERE Ativo = 1 AND ID_Usuario = ?
+                WHERE ID_Usuario = ? AND (? OR Ativo = 1)
                 ORDER BY Nome
             """
-            return self.fetch_all(sql, (id_usuario,))
+            return self.fetch_all(sql, (id_usuario, int(bool(incluir_inativos))))
         except Exception as e:
             logger.error(f"Erro ao listar cartões: {e}")
             return []
@@ -102,28 +106,23 @@ class CreditoModel(Database):
     # ============================================================
     def update_cartao(self, id_cartao: int, dados: dict, id_usuario: int):
         try:
-            sql = """
-                UPDATE credito
-                SET
-                    Nome = ?,
-                    Limite = ?,
-                    Dia_Fechamento = ?,
-                    Dia_Vencimento = ?,
-                    Ativo = ?
-                WHERE ID_Cartao = ? AND ID_Usuario = ?
-            """
-
-            params = (
-                dados.get("Nome"),
-                round(float(dados.get("Limite", 0)), 2),
-                dados.get("Dia_Fechamento"),
-                dados.get("Dia_Vencimento"),
-                dados.get("Ativo", 1),
-                id_cartao,
-                id_usuario,
+            atual = self.get_cartao_by_id(id_cartao, id_usuario)
+            if not atual:
+                return False
+            # Só atualizar os campos enviados: corrigir bandeira não pode
+            # arredondar/regravar limite ou substituir dados de outro editor.
+            campos = ("Nome", "Bandeira", "Limite", "Dia_Fechamento",
+                      "Dia_Vencimento", "Ativo")
+            alterados = [campo for campo in campos if campo in dados]
+            if not alterados:
+                return True
+            valores = [round(float(dados[campo]), 2) if campo == "Limite"
+                       else dados[campo] for campo in alterados]
+            assignments = ", ".join(f"{campo} = ?" for campo in alterados)
+            self.execute_query(
+                f"UPDATE credito SET {assignments} WHERE ID_Cartao = ? AND ID_Usuario = ?",
+                (*valores, id_cartao, id_usuario),
             )
-
-            self.execute_query(sql, params)
             return True
 
         except Exception as e:
@@ -151,3 +150,41 @@ class CreditoModel(Database):
 
     def restore_cartao(self, id_cartao: int, id_usuario: int):
         return self._set_ativo(id_cartao, id_usuario, 1)
+
+    def get_card_dependencies(self, id_cartao, id_usuario):
+        """Inspeciona todas as FKs reais, inclusive compostas/tabelas futuras."""
+        if not self.get_cartao_by_id(id_cartao, id_usuario):
+            raise ValueError("Cartão não encontrado.")
+
+        def identifier(value):
+            return '"' + value.replace('"', '""') + '"'
+
+        dependencies = []
+        for table in self.fetch_all("SELECT name FROM sqlite_master WHERE type='table'"):
+            groups = {}
+            for fk in self.fetch_all(f"PRAGMA foreign_key_list({identifier(table['name'])})"):
+                if fk['table'].casefold() == 'credito':
+                    groups.setdefault(fk['id'], []).append(fk)
+            for key, columns in groups.items():
+                conditions = ' AND '.join(
+                    f"d.{identifier(fk['from'])}=c.{identifier(fk['to'] or 'ID_Cartao')}"
+                    for fk in columns
+                )
+                row = self.fetch_one(
+                    f"SELECT COUNT(*) AS total FROM {identifier(table['name'])} d "
+                    f"JOIN credito c ON {conditions} WHERE c.ID_Cartao=? AND c.ID_Usuario=?",
+                    (id_cartao, id_usuario),
+                )
+                dependencies.append({'tabela': table['name'], 'fk': key, 'total': row['total']})
+        return dependencies
+
+    def delete_card_without_dependencies(self, id_cartao, id_usuario):
+        # Defesa adicional: nunca permitir cascata por este método, mesmo
+        # chamado fora do Service. Lock cobre inspeção e DELETE na mesma UoW.
+        with self.unit_of_work(immediate=True):
+            if any(row['total'] for row in self.get_card_dependencies(id_cartao, id_usuario)):
+                raise ValueError("O cartão possui histórico ou vínculos. Inative-o para preservar os dados.")
+            return self.execute_query(
+                'DELETE FROM credito WHERE ID_Cartao=? AND ID_Usuario=?',
+                (id_cartao, id_usuario),
+            ).rowcount == 1

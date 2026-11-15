@@ -112,7 +112,17 @@ def test_importacao_ignora_pagamento_textual(db, db_path):
     assert db.fetch_one("SELECT COUNT(*) AS n FROM lancamentos")["n"] == 0
 
 
-def test_edicao_move_vinculo_para_fatura_de_destino_sem_duplicar(db, db_path):
+def test_edicao_move_vinculo_para_fatura_de_destino_sem_duplicar(db, db_path, monkeypatch):
+    # O cenário requer novembro ainda ABERTA (fechamento dia 10).
+    # Não depender da data em que a suíte é executada nem relaxar o Service.
+    from datetime import date
+
+    class DataDoCenario(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 11, 1)
+
+    monkeypatch.setattr('services.fatura_service.date', DataDoCenario)
     usuario = criar_usuario(db, "edicao_competencia")
     cartao = criar_cartao(db, usuario)
     service = FaturaService(db_path)

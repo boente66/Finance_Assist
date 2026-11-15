@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QApplication,
     QFrame,
+    QCheckBox,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
@@ -32,6 +33,7 @@ from views.ajustar_saldo_dialog import AjustarSaldoDialog
 from views.painel_account import PainelAccount
 from views.painel_fatura import PainelFatura
 from views.animated_add_button import AnimatedAddButton
+from views.card_network_selector import network_icon
 
 from core.translator_app import TranslatorApp
 from core.config import carregar_config
@@ -110,6 +112,7 @@ class TransacaoView(QWidget):
         self.btn_add_cartao.setToolTip(
             TranslatorApp.get("Novo cartão")
         )
+        self.show_inactive_cards.setText(TranslatorApp.get("Mostrar cartões inativos"))
 
         self.carregar_contas()
         self.carregar_cartoes()
@@ -199,6 +202,9 @@ class TransacaoView(QWidget):
         )
 
         self.left.addLayout(cartoes_box)
+        self.show_inactive_cards = QCheckBox()
+        self.show_inactive_cards.toggled.connect(self.carregar_cartoes)
+        self.left.addWidget(self.show_inactive_cards)
         self.left.addStretch()
 
         self.splitter.addWidget(self.left_widget)
@@ -359,12 +365,15 @@ class TransacaoView(QWidget):
             f"{CurrencyFormatter.format(saldo_total)}"
         )
 
-    def carregar_cartoes(self):
+    def carregar_cartoes(self, *_):
         selecionado = self.lista_cartoes.currentItem()
         id_selecionado = selecionado.data(Qt.UserRole) if selecionado else None
         self.lista_cartoes.clear()
 
-        cartoes = self.fatura_controller.get_all_cartoes() or []
+        if self.show_inactive_cards.isChecked():
+            cartoes = self.fatura_controller.listar_cartoes(incluir_inativos=True) or []
+        else:
+            cartoes = self.fatura_controller.get_all_cartoes() or []
 
         for cartao in cartoes:
             nome = cartao.get("Nome", "")
@@ -372,10 +381,13 @@ class TransacaoView(QWidget):
 
             texto = (
                 f"{nome} "
-                f"({TranslatorApp.get('Vencimento')}: {dia_vencimento})"
+                f"({TranslatorApp.get('Vencimento')}: {dia_vencimento})\n"
+                f"{cartao.get('Bandeira') or TranslatorApp.get('Sem bandeira')} · "
+                f"{TranslatorApp.get('Ativo' if cartao.get('Ativo') == 1 else 'Inativo')}"
             )
 
             item = QListWidgetItem(texto)
+            item.setIcon(network_icon(cartao.get('Bandeira')))
             item.setData(
                 Qt.UserRole,
                 cartao.get("ID_Cartao")
@@ -427,6 +439,15 @@ class TransacaoView(QWidget):
         )
 
     def menu_cartao(self, pos):
+        item = self.lista_cartoes.itemAt(pos)
+        if item is not None:
+            self.lista_cartoes.setCurrentItem(item)
+        item = self.lista_cartoes.currentItem()
+        if item is None:
+            return
+        cartao = self.fatura_controller.buscar_cartao_por_id(item.data(Qt.UserRole))
+        if not cartao:
+            return
         menu = QMenu(self)
 
         menu.addAction(
@@ -439,7 +460,11 @@ class TransacaoView(QWidget):
         )
         menu.addSeparator()
         menu.addAction(
-            TranslatorApp.get("Excluir"),
+            TranslatorApp.get("Inativar" if cartao.get('Ativo') == 1 else "Reativar"),
+            self._alternar_estado_cartao,
+        )
+        menu.addAction(
+            TranslatorApp.get("Excluir definitivamente"),
             self._excluir_cartao
         )
 
@@ -500,7 +525,7 @@ class TransacaoView(QWidget):
             dlg = EditCartaoDialog(self, cartao)
 
             if dlg.exec_():
-                self.carregar_cartoes()
+                self.recarregar_dados()
 
     def _copiar_conta(self):
         item = self.lista_contas.currentItem()
@@ -546,17 +571,53 @@ class TransacaoView(QWidget):
 
         confirm = QMessageBox.question(
             self,
-            TranslatorApp.get("Excluir"),
-            TranslatorApp.get("Deseja realmente excluir este cartão?"),
-            QMessageBox.Yes | QMessageBox.No,
+            TranslatorApp.get("Excluir definitivamente"),
+            TranslatorApp.get("Excluir definitivamente este cartão? Esta ação não pode ser desfeita e só é permitida sem vínculos."),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
 
         if confirm == QMessageBox.Yes:
-            self.fatura_controller.excluir_cartao(
-                item.data(Qt.UserRole)
-            )
-            self.carregar_cartoes()
-            self._trocar_painel(QWidget())
+            key = item.data(Qt.UserRole)
+            try:
+                if not self.fatura_controller.excluir_cartao_definitivamente(key):
+                    raise RuntimeError("Não foi possível excluir o cartão.")
+                self.carregar_cartoes()
+                if isinstance(self.painel_ativo, PainelFatura) and self.painel_ativo.cartao.get('ID_Cartao') == key:
+                    self._trocar_painel(QWidget())
+            except ValueError as exc:
+                if QMessageBox.question(
+                    self, TranslatorApp.get("Excluir definitivamente"),
+                    TranslatorApp.error(exc) + "\n" + TranslatorApp.get("Deseja inativar este cartão?"),
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+                ) == QMessageBox.Yes:
+                    self.fatura_controller.excluir_cartao(key)
+                    self.recarregar_dados()
+            except Exception as exc:
+                QMessageBox.warning(self, TranslatorApp.get("Erro"), TranslatorApp.error(exc))
+
+    def _alternar_estado_cartao(self):
+        item = self.lista_cartoes.currentItem()
+        if item is None:
+            return
+        key = item.data(Qt.UserRole)
+        cartao = self.fatura_controller.buscar_cartao_por_id(key)
+        if not cartao:
+            return
+        active = cartao.get('Ativo') == 1
+        if QMessageBox.question(
+            self, TranslatorApp.get("Inativar" if active else "Reativar"),
+            TranslatorApp.get("Deseja inativar este cartão?" if active else "Deseja reativar este cartão?"),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        ) != QMessageBox.Yes:
+            return
+        try:
+            ok = (self.fatura_controller.excluir_cartao(key) if active
+                  else self.fatura_controller.reativar_cartao(key))
+            if not ok:
+                raise RuntimeError("Não foi possível atualizar o cartão.")
+            self.recarregar_dados()
+        except Exception as exc:
+            QMessageBox.warning(self, TranslatorApp.get("Erro"), TranslatorApp.error(exc))
 
     # ==========================================================
     # CRIADORES

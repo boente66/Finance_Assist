@@ -1,0 +1,246 @@
+[
+  {
+    "capture": "painel-1366x768-pt.png",
+    "window": [
+      1366,
+      768
+    ],
+    "panel": [
+      800,
+      635
+    ],
+    "table_viewport": [
+      735,
+      281
+    ],
+    "horizontal_scroll_max": 0,
+    "vertical_scroll_max": 8,
+    "left_list_horizontal_scroll_max": 153,
+    "columns": [
+      {
+        "title": "Data",
+        "width": 100
+      },
+      {
+        "title": "Descrição",
+        "width": 178
+      },
+      {
+        "title": "Tipo",
+        "width": 178
+      },
+      {
+        "title": "Categoria",
+        "width": 121
+      },
+      {
+        "title": "Valor",
+        "width": 92
+      },
+      {
+        "title": "Status",
+        "width": 66
+      }
+    ],
+    "title": "Itaú Click — Compras do dia a dia - Dezembro 2099",
+    "title_text_width": 719,
+    "title_available_width": 784,
+    "summary_text_width": 1348,
+    "summary_available_width": 784,
+    "summary_word_wrap": true,
+    "table_font_points": 10.0,
+    "table_row_height": 34,
+    "layout_spacing": 7,
+    "layout_margins": [
+      8,
+      6,
+      8,
+      6
+    ],
+    "indicator_spacing": 10,
+    "new_layout_on_invoice": false
+  },
+  {
+    "capture": "painel-1280x720-pt.png",
+    "window": [
+      1280,
+      720
+    ],
+    "panel": [
+      736,
+      587
+    ],
+    "table_viewport": [
+      671,
+      176
+    ],
+    "horizontal_scroll_max": 0,
+    "vertical_scroll_max": 11,
+    "left_list_horizontal_scroll_max": 175,
+    "columns": [
+      {
+        "title": "Data",
+        "width": 100
+      },
+      {
+        "title": "Descrição",
+        "width": 146
+      },
+      {
+        "title": "Tipo",
+        "width": 146
+      },
+      {
+        "title": "Categoria",
+        "width": 121
+      },
+      {
+        "title": "Valor",
+        "width": 92
+      },
+      {
+        "title": "Status",
+        "width": 66
+      }
+    ],
+    "title": "Itaú Click — Compras do dia a dia - Dezembro 2099",
+    "title_text_width": 719,
+    "title_available_width": 720,
+    "summary_text_width": 1348,
+    "summary_available_width": 720,
+    "summary_word_wrap": true,
+    "table_font_points": 10.0,
+    "table_row_height": 34,
+    "layout_spacing": 7,
+    "layout_margins": [
+      8,
+      6,
+      8,
+      6
+    ],
+    "indicator_spacing": 10,
+    "new_layout_on_invoice": false
+  },
+  {
+    "capture": "painel-1920x1080-pt.png",
+    "window": [
+      1920,
+      1080
+    ],
+    "panel": [
+      1354,
+      947
+    ],
+    "table_viewport": [
+      1299,
+      593
+    ],
+    "horizontal_scroll_max": 0,
+    "vertical_scroll_max": 0,
+    "left_list_horizontal_scroll_max": 153,
+    "columns": [
+      {
+        "title": "Data",
+        "width": 100
+      },
+      {
+        "title": "Descrição",
+        "width": 460
+      },
+      {
+        "title": "Tipo",
+        "width": 460
+      },
+      {
+        "title": "Categoria",
+        "width": 121
+      },
+      {
+        "title": "Valor",
+        "width": 92
+      },
+      {
+        "title": "Status",
+        "width": 66
+      }
+    ],
+    "title": "Itaú Click — Compras do dia a dia - Dezembro 2099",
+    "title_text_width": 719,
+    "title_available_width": 1338,
+    "summary_text_width": 1348,
+    "summary_available_width": 1338,
+    "summary_word_wrap": true,
+    "table_font_points": 10.0,
+    "table_row_height": 34,
+    "layout_spacing": 7,
+    "layout_margins": [
+      8,
+      6,
+      8,
+      6
+    ],
+    "indicator_spacing": 10,
+    "new_layout_on_invoice": false
+  },
+  {
+    "capture": "painel-1366x768-en.png",
+    "window": [
+      1366,
+      768
+    ],
+    "panel": [
+      800,
+      635
+    ],
+    "table_viewport": [
+      735,
+      281
+    ],
+    "horizontal_scroll_max": 0,
+    "vertical_scroll_max": 8,
+    "left_list_horizontal_scroll_max": 136,
+    "columns": [
+      {
+        "title": "Date",
+        "width": 100
+      },
+      {
+        "title": "Description",
+        "width": 178
+      },
+      {
+        "title": "Type",
+        "width": 178
+      },
+      {
+        "title": "Category",
+        "width": 121
+      },
+      {
+        "title": "Amount",
+        "width": 92
+      },
+      {
+        "title": "Status",
+        "width": 66
+      }
+    ],
+    "title": "Itaú Click — Compras do dia a dia - Dezembro 2099",
+    "title_text_width": 719,
+    "title_available_width": 784,
+    "summary_text_width": 1348,
+    "summary_available_width": 784,
+    "summary_word_wrap": true,
+    "table_font_points": 10.0,
+    "table_row_height": 34,
+    "layout_spacing": 7,
+    "layout_margins": [
+      8,
+      6,
+      8,
+      6
+    ],
+    "indicator_spacing": 10,
+    "new_layout_on_invoice": false
+  }
+]

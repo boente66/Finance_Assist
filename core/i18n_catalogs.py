@@ -1660,3 +1660,91 @@ CATALOGS = {'en': {'* Campos obrigatórios': '* Required fields',
         'lançamento(s) salvo(s).': 'movimiento(s) guardado(s).',
         '{descricao}\nSaldo devedor: {saldo}': '{descricao}\nSaldo pendiente: {saldo}',
         '＋ Nova dívida': '＋ Nueva deuda'}}
+
+
+# Cadastro contextual de cartões: traduções de UI, nunca de marcas comerciais.
+CATALOGS['en'].update({
+    'Bandeira': 'Card network',
+    'Sem bandeira': 'No card network',
+    'Salvar cartão': 'Save card',
+    'Bandeira inválida.': 'Invalid card network.',
+})
+CATALOGS['es'].update({
+    'Bandeira': 'Red de tarjeta',
+    'Sem bandeira': 'Sin red',
+    'Salvar cartão': 'Guardar tarjeta',
+    'Bandeira inválida.': 'Red de tarjeta no válida.',
+})
+
+CATALOGS['en'].update({'Cartão ativo': 'Active card',
+ 'Ativo': 'Active',
+ 'Inativo': 'Inactive',
+ 'Mostrar cartões inativos': 'Show inactive cards',
+ 'Inativar': 'Deactivate',
+ 'Reativar': 'Reactivate',
+ 'Excluir definitivamente': 'Delete permanently',
+ 'Deseja inativar este cartão?': 'Deactivate this card?',
+ 'Deseja reativar este cartão?': 'Reactivate this card?',
+ 'Excluir definitivamente este cartão? Esta ação não pode ser desfeita e só é permitida sem vínculos.': 'Permanently '
+                                                                                                        'delete '
+                                                                                                        'this '
+                                                                                                        'card? '
+                                                                                                        'This '
+                                                                                                        'cannot '
+                                                                                                        'be '
+                                                                                                        'undone '
+                                                                                                        'and '
+                                                                                                        'is '
+                                                                                                        'only '
+                                                                                                        'allowed '
+                                                                                                        'without '
+                                                                                                        'dependencies.',
+ 'O cartão possui histórico ou vínculos. Inative-o para preservar os dados.': 'The card has '
+                                                                              'history or '
+                                                                              'dependencies. '
+                                                                              'Deactivate it to '
+                                                                              'preserve the data.',
+ 'Cartão inativo. Reative-o antes de registrar novas operações.': 'Inactive card. Reactivate it '
+                                                                  'before recording new '
+                                                                  'operations.',
+ 'Estado do cartão inválido.': 'Invalid card state.',
+ 'Não foi possível excluir o cartão.': 'Could not delete the card.',
+ 'Não foi possível atualizar o cartão.': 'Could not update the card.',
+ 'Cartão não encontrado.': 'Card not found.'})
+
+CATALOGS['es'].update({'Cartão ativo': 'Tarjeta activa',
+ 'Ativo': 'Activo',
+ 'Inativo': 'Inactivo',
+ 'Mostrar cartões inativos': 'Mostrar tarjetas inactivas',
+ 'Inativar': 'Desactivar',
+ 'Reativar': 'Reactivar',
+ 'Excluir definitivamente': 'Eliminar definitivamente',
+ 'Deseja inativar este cartão?': '¿Desactivar esta tarjeta?',
+ 'Deseja reativar este cartão?': '¿Reactivar esta tarjeta?',
+ 'Excluir definitivamente este cartão? Esta ação não pode ser desfeita e só é permitida sem vínculos.': '¿Eliminar '
+                                                                                                        'definitivamente '
+                                                                                                        'esta '
+                                                                                                        'tarjeta? '
+                                                                                                        'Esta '
+                                                                                                        'acción '
+                                                                                                        'es '
+                                                                                                        'irreversible '
+                                                                                                        'y '
+                                                                                                        'solo '
+                                                                                                        'se '
+                                                                                                        'permite '
+                                                                                                        'sin '
+                                                                                                        'vínculos.',
+ 'O cartão possui histórico ou vínculos. Inative-o para preservar os dados.': 'La tarjeta tiene '
+                                                                              'historial o '
+                                                                              'vínculos. '
+                                                                              'Desactívela para '
+                                                                              'conservar los '
+                                                                              'datos.',
+ 'Cartão inativo. Reative-o antes de registrar novas operações.': 'Tarjeta inactiva. Reactívela '
+                                                                  'antes de registrar nuevas '
+                                                                  'operaciones.',
+ 'Estado do cartão inválido.': 'Estado de tarjeta no válido.',
+ 'Não foi possível excluir o cartão.': 'No se pudo eliminar la tarjeta.',
+ 'Não foi possível atualizar o cartão.': 'No se pudo actualizar la tarjeta.',
+ 'Cartão não encontrado.': 'Tarjeta no encontrada.'})

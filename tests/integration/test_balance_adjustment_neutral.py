@@ -177,6 +177,6 @@ def test_no_special_type_or_reclassification_migration(db, db_path):
     before = db.fetch_all('SELECT * FROM transacoes')
     db._run_migrations()
     assert db.fetch_all('SELECT * FROM transacoes') == before
-    assert db.fetch_one('SELECT MAX(Versao) AS n FROM schema_migrations')['n'] == 8
+    assert db.fetch_one('SELECT MAX(Versao) AS n FROM schema_migrations')['n'] == 9
     sql = db.fetch_one("SELECT sql FROM sqlite_master WHERE name='transacoes'")['sql']
     assert "'Ajuste'" not in sql

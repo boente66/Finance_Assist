@@ -12,11 +12,13 @@ from PyQt5.QtWidgets import (
     QDoubleSpinBox,
     QSpinBox,
     QCheckBox,
+    QComboBox,
     QMessageBox,
 )
 
 from controllers.fatura_controller import FaturaController
 from core.translator_app import TranslatorApp
+from views.card_network_selector import populate_network_combo
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class CriarCartaoDialog(QDialog):
 
         self.controller = FaturaController()
 
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(420)
 
         self._init_ui()
 
@@ -43,12 +45,22 @@ class CriarCartaoDialog(QDialog):
     # ======================================================
     def _init_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(10)
 
         self.lbl_nome = QLabel()
         layout.addWidget(self.lbl_nome)
 
         self.nome_edit = QLineEdit()
         layout.addWidget(self.nome_edit)
+
+        self.lbl_bandeira = QLabel()
+        layout.addWidget(self.lbl_bandeira)
+        self.bandeira_combo = QComboBox()
+        self.bandeira_combo.setObjectName("cardNetworkCombo")
+        populate_network_combo(self.bandeira_combo, self.controller.listar_bandeiras())
+        self.lbl_bandeira.setBuddy(self.bandeira_combo)
+        layout.addWidget(self.bandeira_combo)
 
         self.lbl_limite = QLabel()
         layout.addWidget(self.lbl_limite)
@@ -80,13 +92,17 @@ class CriarCartaoDialog(QDialog):
         btns = QHBoxLayout()
 
         self.salvar_btn = QPushButton()
+        self.salvar_btn.setObjectName("primaryButton")
+        self.salvar_btn.setDefault(True)
         self.cancelar_btn = QPushButton()
+        self.cancelar_btn.setObjectName("secondaryButton")
 
         self.salvar_btn.clicked.connect(self._salvar)
         self.cancelar_btn.clicked.connect(self.reject)
 
-        btns.addWidget(self.salvar_btn)
+        btns.addStretch()
         btns.addWidget(self.cancelar_btn)
+        btns.addWidget(self.salvar_btn)
 
         layout.addLayout(btns)
 
@@ -106,6 +122,10 @@ class CriarCartaoDialog(QDialog):
             TranslatorApp.get("Ex: Nubank, Itaú")
         )
 
+        self.lbl_bandeira.setText(TranslatorApp.get("Bandeira"))
+        self.bandeira_combo.setItemText(0, TranslatorApp.get("Sem bandeira"))
+        self.bandeira_combo.setAccessibleName(TranslatorApp.get("Bandeira"))
+
         self.lbl_limite.setText(
             TranslatorApp.get("Limite do cartão")
         )
@@ -123,7 +143,7 @@ class CriarCartaoDialog(QDialog):
         )
 
         self.salvar_btn.setText(
-            TranslatorApp.get("Salvar")
+            TranslatorApp.get("Salvar cartão")
         )
 
         self.cancelar_btn.setText(
@@ -165,6 +185,7 @@ class CriarCartaoDialog(QDialog):
 
         dados = {
             "nome": self.nome_edit.text().strip(),
+            "bandeira": self.bandeira_combo.currentData(),
             "limite": round(self.limite_edit.value(), 2),
             "dia_fechamento": self.fechamento_edit.value(),
             "dia_vencimento": self.vencimento_edit.value(),
@@ -172,7 +193,8 @@ class CriarCartaoDialog(QDialog):
         }
 
         try:
-            self.controller.criar_cartao(dados)
+            if not self.controller.criar_cartao(dados):
+                raise RuntimeError("Falha ao criar cartão.")
 
             QMessageBox.information(
                 self,
@@ -214,7 +236,7 @@ class EditCartaoDialog(QDialog):
         self.cartao = cartao or {}
         self.controller = FaturaController()
 
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(420)
 
         self._init_ui()
         self._preencher_campos()
@@ -227,12 +249,22 @@ class EditCartaoDialog(QDialog):
     # ======================================================
     def _init_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(10)
 
         self.lbl_nome = QLabel()
         layout.addWidget(self.lbl_nome)
 
         self.nome_edit = QLineEdit()
         layout.addWidget(self.nome_edit)
+
+        self.lbl_bandeira = QLabel()
+        layout.addWidget(self.lbl_bandeira)
+        self.bandeira_combo = QComboBox()
+        self.bandeira_combo.setObjectName("cardNetworkCombo")
+        populate_network_combo(self.bandeira_combo, self.controller.listar_bandeiras())
+        self.lbl_bandeira.setBuddy(self.bandeira_combo)
+        layout.addWidget(self.bandeira_combo)
 
         self.lbl_limite = QLabel()
         layout.addWidget(self.lbl_limite)
@@ -263,13 +295,17 @@ class EditCartaoDialog(QDialog):
         btns = QHBoxLayout()
 
         self.salvar_btn = QPushButton()
+        self.salvar_btn.setObjectName("primaryButton")
+        self.salvar_btn.setDefault(True)
         self.cancelar_btn = QPushButton()
+        self.cancelar_btn.setObjectName("secondaryButton")
 
         self.salvar_btn.clicked.connect(self._salvar)
         self.cancelar_btn.clicked.connect(self.reject)
 
-        btns.addWidget(self.salvar_btn)
+        btns.addStretch()
         btns.addWidget(self.cancelar_btn)
+        btns.addWidget(self.salvar_btn)
 
         layout.addLayout(btns)
 
@@ -289,6 +325,10 @@ class EditCartaoDialog(QDialog):
             TranslatorApp.get("Ex: Nubank, Itaú")
         )
 
+        self.lbl_bandeira.setText(TranslatorApp.get("Bandeira"))
+        self.bandeira_combo.setItemText(0, TranslatorApp.get("Sem bandeira"))
+        self.bandeira_combo.setAccessibleName(TranslatorApp.get("Bandeira"))
+
         self.lbl_limite.setText(
             TranslatorApp.get("Limite do cartão")
         )
@@ -306,7 +346,7 @@ class EditCartaoDialog(QDialog):
         )
 
         self.salvar_btn.setText(
-            TranslatorApp.get("Salvar")
+            TranslatorApp.get("Salvar cartão")
         )
 
         self.cancelar_btn.setText(
@@ -317,17 +357,22 @@ class EditCartaoDialog(QDialog):
     # DADOS
     # ======================================================
     def _preencher_campos(self):
+        network = self.cartao.get("Bandeira", self.cartao.get("bandeira"))
+        index = self.bandeira_combo.findData(network)
+        if index < 0 and network:
+            # Não apagar metadado desconhecido de banco externo ao editar outro campo.
+            self.bandeira_combo.addItem(str(network), network)
+            index = self.bandeira_combo.count() - 1
+        self.bandeira_combo.setCurrentIndex(max(0, index))
         self.nome_edit.setText(
             self.cartao.get("Nome")
             or self.cartao.get("nome", "")
         )
 
-        self.limite_edit.setValue(
-            float(
-                self.cartao.get("Limite")
-                or self.cartao.get("limite", 0)
-            )
-        )
+        limite = float(self.cartao.get("Limite", self.cartao.get("limite", 0)))
+        self.limite_edit.setRange(min(self.limite_edit.minimum(), limite),
+                                  max(self.limite_edit.maximum(), limite))
+        self.limite_edit.setValue(limite)
 
         self.fechamento_edit.setValue(
             int(
@@ -351,6 +396,14 @@ class EditCartaoDialog(QDialog):
         self.ativo_checkbox.setChecked(
             bool(ativo)
         )
+        self._initial_values = {
+            "nome": self.nome_edit.text().strip(),
+            "bandeira": self.bandeira_combo.currentData(),
+            "limite": round(self.limite_edit.value(), 2),
+            "dia_fechamento": self.fechamento_edit.value(),
+            "dia_vencimento": self.vencimento_edit.value(),
+            "ativo": 1 if self.ativo_checkbox.isChecked() else 0,
+        }
 
     # ======================================================
     # VALIDAÇÃO
@@ -387,17 +440,18 @@ class EditCartaoDialog(QDialog):
 
         dados = {
             "nome": self.nome_edit.text().strip(),
+            "bandeira": self.bandeira_combo.currentData(),
             "limite": round(self.limite_edit.value(), 2),
             "dia_fechamento": self.fechamento_edit.value(),
             "dia_vencimento": self.vencimento_edit.value(),
             "ativo": 1 if self.ativo_checkbox.isChecked() else 0,
         }
 
+        dados = {key: value for key, value in dados.items()
+                 if value != self._initial_values.get(key)}
         try:
-            self.controller.editar_cartao(
-                self.cartao["ID_Cartao"],
-                dados
-            )
+            if not self.controller.editar_cartao(self.cartao["ID_Cartao"], dados):
+                raise RuntimeError("Falha ao atualizar cartão.")
 
             QMessageBox.information(
                 self,

@@ -396,6 +396,10 @@ class PainelFatura(QWidget):
         self._render_tabela(painel.get("lancamentos", []))
         self._render_resumo(painel.get("fatura", {}))
         self._render_futuras(painel.get("futuras", {}))
+        # Guarda funcional; nenhum layout/coluna/hierarquia foi redesenhado.
+        ativo = self.cartao.get("Ativo", 1) == 1
+        for button in (self.btn_lancar, self.btn_credito, self.btn_importar):
+            button.setEnabled(ativo)
 
         total = painel.get("total_registros", 0)
         total_paginas = max(1, (total + self.limit - 1) // self.limit)
