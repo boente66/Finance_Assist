@@ -1757,3 +1757,6 @@ CATALOGS['es'].update({'Estabelecimento / Favorecido': 'Establecimiento / Benefi
 
 CATALOGS['en'].update({'Fechamento': 'Closing date', 'Sem categoria': 'Uncategorized'})
 CATALOGS['es'].update({'Fechamento': 'Cierre', 'Sem categoria': 'Sin categoría'})
+
+CATALOGS['en'].update({'Faturas PDF (*.pdf)': 'PDF statements (*.pdf)'})
+CATALOGS['es'].update({'Faturas PDF (*.pdf)': 'Facturas PDF (*.pdf)'})

@@ -19,7 +19,7 @@ A versão permanece **2.1.0-test.17**, Debian **2.1.0~test17**.
   acesso ao texto integral, inclusive nos nomes da lista lateral.
 - Tabela ocupa o espaço vertical disponível. Paginação aparece apenas quando
   necessária. Resumo inferior separado em composição e quitação da fatura.
-- Traduções offline PT-BR, EN e ES para os textos da nova apresentação.
+- Traduções offline PT-BR, EN e ES para a apresentação, categorias ausentes, filtros e atualização de idioma. Meses acompanham a configuração da sessão.
 
 Nenhuma alteração de schema, cálculo, ciclo, persistência ou regras de cartão
 ativo/inativo. Consultar e pagar dívida de cartão inativo continua permitido;
@@ -27,15 +27,15 @@ compras, créditos e importações continuam bloqueados pelas regras existentes.
 
 ## Validação e distribuição
 
-Regressão completa local: **462 testes aprovados**, zero falhas/erros/ignorados,
-15 avisos de depreciação de dependências, em 123,27 s.
+Regressão completa local: **464 testes aprovados**, zero falhas/erros/ignorados,
+15 avisos de depreciação de dependências, em 114,65 s.
 
 ```bash
 TMPDIR=/dev/shm/finance-assist-invoice-tests QT_QPA_PLATFORM=offscreen \
   .venv-finance-assist/bin/python -m pytest -q tests
 ```
 
-Rodada focada final: **101 testes aprovados**, um aviso de depreciação, em 10,10 s.
+Rodada focada final: **103 testes aprovados**, um aviso de depreciação, em 10,58 s.
 
 Inclui cálculos e ciclos de fatura, atomicidade, pagamentos parciais, cartão
 ativo/inativo, integridade, backup, catálogos offline e interface. Os nove novos

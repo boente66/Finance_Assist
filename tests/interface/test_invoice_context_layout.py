@@ -3,6 +3,7 @@ import pytest
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QHeaderView
 from core.translator_app import TranslatorApp
+from core.session import Session
 from views.painel_fatura import PainelFatura
 
 
@@ -11,6 +12,7 @@ from views.painel_fatura import PainelFatura
 def test_context_and_flexible_table(monkeypatch, language, screen):
     app = QApplication.instance() or QApplication([])
     monkeypatch.setattr(TranslatorApp, '_current_lang', language)
+    monkeypatch.setattr(Session, 'configuracoes', {**Session.configuracoes, 'idioma': language})
     def no_fallback(*args, **kwargs):
         raise AssertionError(f"Missing offline translation: {args}")
     monkeypatch.setattr('services.argos_service.ArgosService.traduzir', no_fallback)
@@ -40,5 +42,6 @@ def test_context_and_flexible_table(monkeypatch, language, screen):
     assert panel.quitacao_label.geometry().bottom() < panel.height()
     assert 'Mastercard' in panel.card_context_label.text()
     assert '2099' in panel.invoice_context_label.text()
+    assert {'pt': 'Dezembro', 'en': 'December', 'es': 'Diciembre'}[language] in panel.invoice_context_label.text()
     assert panel.btn_pagar.isEnabled()
     panel.close()

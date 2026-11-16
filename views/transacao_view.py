@@ -87,6 +87,8 @@ class TransacaoView(QWidget):
     # TRADUÇÃO
     # ==========================================================
     def _atualizar_textos(self, *_):
+        self.btn_recarregar.setText(TranslatorApp.get("Atualizar"))
+        self.btn_recarregar.setToolTip(TranslatorApp.get("Recarregar contas e cartões do banco"))
         self.setWindowTitle(
             TranslatorApp.get("Contas e Lançamentos")
         )

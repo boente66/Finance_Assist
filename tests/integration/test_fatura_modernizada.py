@@ -1,5 +1,8 @@
 from datetime import date
 
+import pytest
+from core.translator_app import TranslatorApp
+
 from dateutil.relativedelta import relativedelta
 from PyPDF2 import PdfReader
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -141,7 +144,9 @@ def test_exportacoes_pdf_possuem_titulo_tabela_total_e_multiplas_paginas(tmp_pat
     service.lancamento_model.close(); db.close()
 
 
-def test_painel_carrega_favorecido_real_sem_alterar_lancamentos(tmp_path, monkeypatch):
+@pytest.mark.parametrize('language', ['pt', 'en', 'es'])
+def test_painel_carrega_favorecido_real_sem_alterar_lancamentos(tmp_path, monkeypatch, language):
+    monkeypatch.setattr(TranslatorApp, '_current_lang', language)
     db, card, _ = _cenario(tmp_path, monkeypatch)
     favorecido = db.execute_insert(
         "INSERT INTO favorecido (Nome, Tipo, ID_Usuario) VALUES ('Comércio de teste', 'PJ', 1)"
@@ -161,6 +166,7 @@ def test_painel_carrega_favorecido_real_sem_alterar_lancamentos(tmp_path, monkey
     assert view.table.rowCount() == 2
     assert view.table.item(0, 1).text() == 'Comércio de teste'
     assert view.table.item(1, 1).text() == ''
+    assert view.table.item(0, 4).text() == TranslatorApp.get('Sem categoria')
     assert db.fetch_all('SELECT * FROM lancamentos ORDER BY ID_Lancamento') == before
     assert service.get_painel_cartao(card, 12, 2099, 1)['fatura']['compras'] == 160
     view.close(); app.processEvents(); db.close()

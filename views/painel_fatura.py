@@ -593,7 +593,10 @@ class PainelFatura(QWidget):
                 "ENCARGO": "Encargo",
                 "PAGAMENTO": "Pagamento",
             }.get(tipo, tipo))))
-            self.table.setItem(row, 4, QTableWidgetItem(str(item.get("Categoria") or TranslatorApp.get("Sem categoria"))))
+            categoria = item.get("Categoria")
+            if not categoria or (not item.get("ID_Categoria") and categoria == "Sem categoria"):
+                categoria = TranslatorApp.get("Sem categoria")
+            self.table.setItem(row, 4, QTableWidgetItem(str(categoria)))
 
             valor_item = QTableWidgetItem(CurrencyFormatter.format(valor))
             valor_item.setForeground(QColor(cor))
@@ -747,7 +750,7 @@ class PainelFatura(QWidget):
             self,
             TranslatorApp.get("Selecionar fatura"),
             "",
-            "Faturas PDF (*.pdf)",
+            TranslatorApp.get("Faturas PDF (*.pdf)"),
         )
         if not arquivo:
             return
