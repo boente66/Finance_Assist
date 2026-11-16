@@ -442,11 +442,14 @@ class LancamentoModel(Database):
     def get_lancamentos_por_cartao(self, id_cartao, id_usuario):
 
         sql = """
-            SELECT *
-            FROM lancamentos
-            WHERE ID_Cartao = ?
-              AND ID_Usuario = ?
-            ORDER BY Data
+            SELECT l.*, f.Nome AS Favorecido
+            FROM lancamentos l
+            LEFT JOIN favorecido f
+                ON f.ID_Favorecido = l.ID_Favorecido
+               AND f.ID_Usuario = l.ID_Usuario
+            WHERE l.ID_Cartao = ?
+              AND l.ID_Usuario = ?
+            ORDER BY l.Data
         """
 
         return self.fetch_all(sql, (id_cartao, id_usuario))

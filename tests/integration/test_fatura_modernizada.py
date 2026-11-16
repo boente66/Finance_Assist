@@ -139,3 +139,28 @@ def test_exportacoes_pdf_possuem_titulo_tabela_total_e_multiplas_paginas(tmp_pat
     assert "Extrato da Principal" in _texto_pdf(statement)
     assert "Resultado do período" in _texto_pdf(statement) and "Movimento 74" in _texto_pdf(statement)
     service.lancamento_model.close(); db.close()
+
+
+def test_painel_carrega_favorecido_real_sem_alterar_lancamentos(tmp_path, monkeypatch):
+    db, card, _ = _cenario(tmp_path, monkeypatch)
+    favorecido = db.execute_insert(
+        "INSERT INTO favorecido (Nome, Tipo, ID_Usuario) VALUES ('Comércio de teste', 'PJ', 1)"
+    )
+    service = FaturaService(str(tmp_path / 'fatura.db'))
+    for index, payee in enumerate((favorecido, None)):
+        service.registrar_despesa_cartao({
+            'ID_Usuario': 1, 'ID_Cartao': card, 'Descricao': f'Compra {index}',
+            'Valor': 80, 'Data': '2099-12-05', 'Num_Parcelas': 1,
+            'ID_Favorecido': payee,
+        })
+    before = db.fetch_all('SELECT * FROM lancamentos ORDER BY ID_Lancamento')
+    app = QApplication.instance() or QApplication([])
+    view = PainelFatura()
+    view.set_competencia(12, 2099)
+    view.set_cartao(FaturaController().buscar_cartao_por_id(card))
+    assert view.table.rowCount() == 2
+    assert view.table.item(0, 1).text() == 'Comércio de teste'
+    assert view.table.item(1, 1).text() == ''
+    assert db.fetch_all('SELECT * FROM lancamentos ORDER BY ID_Lancamento') == before
+    assert service.get_painel_cartao(card, 12, 2099, 1)['fatura']['compras'] == 160
+    view.close(); app.processEvents(); db.close()
