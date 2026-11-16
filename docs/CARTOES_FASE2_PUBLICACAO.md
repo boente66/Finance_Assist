@@ -86,11 +86,50 @@ mudança definitiva de layout, colunas, fontes, espaçamento ou hierarquia.
 
 As duas normalizações determinísticas homologadas foram validadas em cópia
 consistente, comparando todas as tabelas; somente Nome/Bandeira mudaram.
-O caso ambíguo continua intacto. Aplicação autorizada aos dados locais e seus
-backups/checagens será registrada abaixo sem divulgar dados individuais.
+O caso ambíguo continua intacto. Após os testes, a migration 9 e as duas
+normalizações aprovadas foram aplicadas ao banco instalado com backup consistente
+prévio (privado, acesso restrito). Comparação integral contra o backup confirmou
+que só os dois pares Nome/Bandeira mudaram. Todas as demais células, 3 cartões,
+49 faturas, 189 lançamentos e 14 pagamentos foram preservados.
+PRAGMA integrity_check=ok; PRAGMA foreign_key_check sem violações. Banco legado
+da raiz e sua identificação ambígua não foram renomeados.
 
-Builds multiplataforma e Ubuntu 24.04 serão disparados no commit de implementação
-após push. Resultados, SHA e links atualizados serão registrados após conclusão.
-Pacotes novos receberão identificação cartoes-20261115, preservando arquivos
-anteriores na release de teste existente. O manifesto dos pacotes explicitará
-o SHA real de compilação: a tag histórica da release não será movida.
+Código enviado no commit [8ec21c529d56618335aa27284b1abb15c84e71b6](https://github.com/boente66/Finance_Assist/commit/8ec21c529d56618335aa27284b1abb15c84e71b6).
+Workflows disparados nesse SHA: [multiplataforma](https://github.com/boente66/Finance_Assist/actions/runs/43748694705) e
+[Ubuntu 24.04/Mint 22](https://github.com/boente66/Finance_Assist/actions/runs/43748698817).
+Compilações concluídas com sucesso. Os pacotes identificados por cartoes-20261115
+preservam os arquivos anteriores na release de teste existente. O manifesto
+registra o SHA real de compilação; a tag histórica não foi movida.
+
+## Builds e downloads validados
+
+Os dois workflows concluíram com sucesso no SHA acima: **14 jobs aprovados**.
+DEB geral, DEB Ubuntu 24.04/Mint, Windows x64, macOS Intel e Apple Silicon
+foram gerados. Instalação DEB validada em Ubuntu 22.04/24.04/26.04 e Noble.
+Não foi atribuída homologação visual nativa a Windows/macOS.
+
+**[Download direto do EXE Windows x64](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-cartoes-20261115-windows-x64.exe)**
+· [SHA256 do EXE](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-cartoes-20261115-windows-x64.exe.sha256).
+Executável único de 354.084.668 bytes, extraído sem alteração do ZIP aprovado;
+não é um instalador MSI. SHA256: `db29cff2920ea4dbd636808e89d7e24e4f85da74591987ee214b69620470b073`.
+
+| Plataforma | Pacote | Integridade |
+| --- | --- | --- |
+| Linux Ubuntu 22.04/24.04/26.04 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_cartoes-20261115.deb) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_cartoes-20261115.deb.sha256) |
+| Ubuntu 24.04 / Mint 22 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_cartoes-20261115.deb) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_cartoes-20261115.deb.sha256) |
+| Windows x64 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_cartoes-20261115.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_cartoes-20261115.zip.sha256) |
+| macOS Intel | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_cartoes-20261115.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_cartoes-20261115.zip.sha256) |
+| macOS Apple Silicon | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_cartoes-20261115.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_cartoes-20261115.zip.sha256) |
+
+[Manifesto completo: SHA de origem, builds, tamanhos e checksums](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/cartoes-20261115-manifest.json).
+Todos os pacotes tiveram SHA256 conferido com os checksums do CI; os ZIPs
+também passaram na validação CRC integral. Os DEBs mantêm a versão
+2.1.0~test17 (variante Noble: 2.1.0~test17+ubuntu24.04.1).
+
+Os arquivos novos foram adicionados à pré-release de teste já existente,
+sem criar versão, release ou mover a tag histórica; os arquivos anteriores
+foram preservados. Use `--reinstall` para atualizar um DEB test.17 instalado.
+
+Conferência pós-upload: **13/13 arquivos** (6 binários, 6 checksums e manifesto)
+com tamanho e SHA256 remoto idênticos aos arquivos locais validados. O link
+direto do EXE respondeu HTTP 200 após redirecionamento.
