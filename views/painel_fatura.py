@@ -83,12 +83,16 @@ class PainelFatura(QWidget):
 
         self.table.setHorizontalHeaderLabels([
             TranslatorApp.get("Data"),
+            TranslatorApp.get("Estabelecimento / Favorecido"),
             TranslatorApp.get("Descrição"),
             TranslatorApp.get("Tipo"),
             TranslatorApp.get("Categoria"),
             TranslatorApp.get("Valor"),
             TranslatorApp.get("Status"),
         ])
+        for column in range(self.table.columnCount()):
+            header = self.table.horizontalHeaderItem(column)
+            header.setToolTip(header.text())
 
     # ======================================================
     # EVENTOS SEGUROS
@@ -103,11 +107,11 @@ class PainelFatura(QWidget):
             self._atualizar_textos()
             self._recarregar_meses()
 
-            if self.cartao:
-                self._carregar()
-
         finally:
             self._updating = False
+
+        if self.cartao:
+            self._carregar()
 
     # ======================================================
     # ÍCONES
@@ -131,12 +135,23 @@ class PainelFatura(QWidget):
         layout.setSpacing(7)
 
         self.nome_cartao_label = QLabel("-")
-        self.nome_cartao_label.setObjectName("pageTitle")
+        self.nome_cartao_label.setObjectName("cardTitle")
 
         self.info_label = QLabel("")
         self.info_label.setObjectName("muted")
 
-        layout.addWidget(self.nome_cartao_label)
+        self.nome_cartao_label.setWordWrap(True)
+        self.card_context_label = QLabel()
+        self.card_context_label.setWordWrap(True)
+        self.invoice_context_label = QLabel()
+        self.invoice_context_label.setWordWrap(True)
+        context_layout = QGridLayout()
+        context_layout.addWidget(self.nome_cartao_label, 0, 0)
+        context_layout.addWidget(self.card_context_label, 1, 0)
+        context_layout.addWidget(self.invoice_context_label, 0, 1, 2, 1)
+        context_layout.setColumnStretch(0, 1)
+        context_layout.setColumnStretch(1, 1)
+        layout.addLayout(context_layout)
 
         self.indicators_layout = QGridLayout()
         self.indicators_layout.setSpacing(10)
@@ -237,11 +252,19 @@ class PainelFatura(QWidget):
         layout.addWidget(self.import_progress)
 
         # TABELA
-        self.table = QTableWidget(0, 6)
+        self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels([
-            "Data", "Descrição", "Tipo", "Categoria", "Valor", "Status"
+            "Data", "Estabelecimento / Favorecido", "Descrição", "Tipo", "Categoria", "Valor", "Status"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self._table_width_initialized = False
+        for column, width in enumerate((95, 160, 290, 95, 125, 110, 95)):
+            self.table.setColumnWidth(column, width)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.ElideRight)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -279,9 +302,22 @@ class PainelFatura(QWidget):
         layout.addWidget(self.pagination_widget)
 
         self.resumo_label = QLabel()
-        self.resumo_label.setObjectName("invoiceSummary")
+        self.resumo_label.setObjectName("invoiceBreakdown")
         self.resumo_label.setWordWrap(True)
-        layout.addWidget(self.resumo_label)
+        self.quitacao_label = QLabel()
+        self.quitacao_label.setObjectName("invoiceSettlement")
+        self.quitacao_label.setWordWrap(True)
+        summary_layout = QGridLayout()
+        for column, label in enumerate((self.resumo_label, self.quitacao_label)):
+            card = QFrame()
+            card.setObjectName("card")
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(10, 8, 10, 8)
+            card_layout.addWidget(label)
+            summary_layout.addWidget(card, 0, column)
+        summary_layout.setColumnStretch(0, 1)
+        summary_layout.setColumnStretch(1, 1)
+        layout.addLayout(summary_layout)
 
         self.futuras_label = QLabel()
         self.futuras_label.setObjectName("muted")
@@ -299,11 +335,12 @@ class PainelFatura(QWidget):
             self.indicators_layout.addWidget(widget, index // columns, index % columns)
         for column in range(3):
             self.indicators_layout.setColumnStretch(column, 1 if column < columns else 0)
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        if width >= 760:
-            header.setSectionResizeMode(1, QHeaderView.Stretch)
-            header.setSectionResizeMode(2, QHeaderView.Stretch)
+        if not self._table_width_initialized and self.isVisible():
+            usable = max(660, self.table.viewport().width())
+            widths = (100, 140, max(200, usable - 610), 75, 100, 100, 95)
+            for column, section_width in enumerate(widths):
+                self.table.setColumnWidth(column, section_width)
+            self._table_width_initialized = True
         font_size = 9 if width < 760 else 10
         self.table.setFont(QFont(self.font().family(), font_size))
         self.table.verticalHeader().setDefaultSectionSize(28 if width < 760 else 34)
@@ -313,6 +350,10 @@ class PainelFatura(QWidget):
             button.setToolButtonStyle(
                 Qt.ToolButtonIconOnly if width < 600 else Qt.ToolButtonTextBesideIcon
             )
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.set_compact_mode(self.width() < 850, self.width())
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -396,7 +437,7 @@ class PainelFatura(QWidget):
         self._render_tabela(painel.get("lancamentos", []))
         self._render_resumo(painel.get("fatura", {}))
         self._render_futuras(painel.get("futuras", {}))
-        # Guarda funcional; nenhum layout/coluna/hierarquia foi redesenhado.
+        # Preserva as regras homologadas para cartões inativos.
         ativo = self.cartao.get("Ativo", 1) == 1
         for button in (self.btn_lancar, self.btn_credito, self.btn_importar):
             button.setEnabled(ativo)
@@ -421,9 +462,13 @@ class PainelFatura(QWidget):
     def _render_header(self, resumo, mes, ano):
         nome_mes = DateFormatter.map_nome_mes(mes)
 
-        self.nome_cartao_label.setText(
-            f"{self.cartao.get('Nome', '')} - {nome_mes} {ano}"
+        self.nome_cartao_label.setText(self.cartao.get("Nome", ""))
+        self.nome_cartao_label.setToolTip(self.cartao.get("Nome", ""))
+        self.card_context_label.setText(
+            f"{self.cartao.get('Bandeira') or TranslatorApp.get('Sem bandeira')} · "
+            f"{TranslatorApp.get('Ativo' if self.cartao.get('Ativo', 1) == 1 else 'Inativo')}"
         )
+        self._competencia_text = f"{nome_mes} {ano}"
 
         self.info_label.setText(
             f"{TranslatorApp.get('Limite')}: "
@@ -439,8 +484,7 @@ class PainelFatura(QWidget):
         for key, (caption, value) in self.indicator_labels.items():
             caption.setText(TranslatorApp.get(captions[key]))
             value.setText(CurrencyFormatter.format(resumo.get(key, 0)))
-        self.indicator_labels["saldo_devedor"][1].setObjectName("warning")
-        self.indicator_labels["disponivel"][1].setObjectName("positivo")
+
 
     def _render_resumo(self, fatura):
         status = fatura.get("status", "ABERTA")
@@ -449,21 +493,27 @@ class PainelFatura(QWidget):
             status in {"ABERTA", "FECHADA"} and saldo_pendente > 0
         )
         self.btn_pagar.setText(
-            "Antecipar / pagar" if status == "ABERTA" else "Pagar"
+            TranslatorApp.get("Antecipar / pagar" if status == "ABERTA" else "Pagar")
         )
         self.btn_pagar.setToolTip(
-            "Antecipe na fatura aberta ou pague parcial/totalmente."
+            TranslatorApp.get("Antecipe na fatura aberta ou pague parcial/totalmente.")
         )
-        self.resumo_label.setText(
-            f"{status} | "
-            f"Compras: {CurrencyFormatter.format(fatura.get('compras', 0))} | "
-            f"Créditos: {CurrencyFormatter.format(fatura.get('creditos', 0))} | "
-            f"Estornos: {CurrencyFormatter.format(fatura.get('estornos', 0))} | "
-            f"Ajustes: {CurrencyFormatter.format(fatura.get('ajustes', 0))} | "
-            f"Pagamentos: {CurrencyFormatter.format(fatura.get('pagamentos', 0))} | "
-            f"Saldo a pagar: "
-            f"{CurrencyFormatter.format(fatura.get('saldo_a_pagar', 0))}"
+        status_text = TranslatorApp.get({"ABERTA": "Aberta", "FECHADA": "Fechada", "PAGA": "Paga"}.get(status, status))
+        self.invoice_context_label.setText(
+            f"{TranslatorApp.get('Fatura')}: {getattr(self, '_competencia_text', '')} · {status_text}   |   "
+            f"{TranslatorApp.get('Fechamento')}: {DateFormatter.iso_to_display(fatura.get('data_fechamento', ''))}   |   "
+            f"{TranslatorApp.get('Vencimento')}: {DateFormatter.iso_to_display(fatura.get('data_vencimento', ''))}"
         )
+        def values(keys):
+            return " · ".join(
+                f"{TranslatorApp.get(caption)}: {CurrencyFormatter.format(fatura.get(key, 0))}"
+                for key, caption in keys
+            )
+        self.resumo_label.setText("<b>" + TranslatorApp.get("Composição da fatura") + "</b><br>" + values([
+            ("compras", "Compras"), ("creditos", "Créditos"),
+            ("estornos", "Estornos"), ("ajustes", "Ajustes")]))
+        self.quitacao_label.setText("<b>" + TranslatorApp.get("Quitação da fatura") + "</b><br>" + values([
+            ("pagamentos", "Pagamentos"), ("saldo_a_pagar", "Saldo a pagar")]))
 
     def _render_futuras(self, futuras):
         texto = f"{TranslatorApp.get('Próximas faturas')}: "
@@ -499,11 +549,11 @@ class PainelFatura(QWidget):
 
             status = {
                 "ABERTA": TranslatorApp.get("Aberto"),
-                "FECHADA": "Fechada",
+                "FECHADA": TranslatorApp.get("Fechada"),
                 "PAGA": TranslatorApp.get("Pago"),
             }.get(status_fatura, status_fatura)
             if tipo == "PAGAMENTO":
-                status = "Registrado"
+                status = TranslatorApp.get("Registrado")
 
             descricao = item.get("Descricao", "")
 
@@ -520,24 +570,29 @@ class PainelFatura(QWidget):
                 data_item
             )
 
-            self.table.setItem(row, 1, QTableWidgetItem(descricao))
-            self.table.setItem(row, 2, QTableWidgetItem({
+            self.table.setItem(row, 1, QTableWidgetItem(str(item.get("Favorecido") or "")))
+            self.table.setItem(row, 2, QTableWidgetItem(descricao))
+            self.table.setItem(row, 3, QTableWidgetItem(TranslatorApp.get({
                 "COMPRA": "Compra",
                 "CREDITO": "Crédito",
                 "ESTORNO": "Estorno",
                 "AJUSTE": "Ajuste",
                 "ENCARGO": "Encargo",
                 "PAGAMENTO": "Pagamento",
-            }.get(tipo, tipo)))
-            self.table.setItem(row, 3, QTableWidgetItem(str(item.get("Categoria", ""))))
+            }.get(tipo, tipo))))
+            self.table.setItem(row, 4, QTableWidgetItem(str(item.get("Categoria") or TranslatorApp.get("Sem categoria"))))
 
             valor_item = QTableWidgetItem(CurrencyFormatter.format(valor))
             valor_item.setForeground(QColor(cor))
-            self.table.setItem(row, 4, valor_item)
+            self.table.setItem(row, 5, valor_item)
 
             status_item = QTableWidgetItem(status)
             status_item.setForeground(QColor(cor))
-            self.table.setItem(row, 5, status_item)
+            self.table.setItem(row, 6, status_item)
+            for column in range(self.table.columnCount()):
+                cell = self.table.item(row, column)
+                if cell:
+                    cell.setToolTip(cell.text())
 
     # ======================================================
     # AÇÕES

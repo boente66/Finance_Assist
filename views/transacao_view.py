@@ -387,6 +387,9 @@ class TransacaoView(QWidget):
             )
 
             item = QListWidgetItem(texto)
+            item.setToolTip(texto)
+            self.lista_cartoes.setTextElideMode(Qt.ElideRight)
+            self.lista_cartoes.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             item.setIcon(network_icon(cartao.get('Bandeira')))
             item.setData(
                 Qt.UserRole,

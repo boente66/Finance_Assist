@@ -93,7 +93,7 @@ def test_historico_pago_permanece_visivel_e_tabela_tem_altura_util(tmp_path, mon
     view._carregar()
     assert view.table.minimumHeight() >= 200
     assert view.table.rowCount() == 1
-    assert view.table.item(0, 1).text().startswith("Compra preservada")
+    assert view.table.item(0, 2).text().startswith("Compra preservada")
     assert view.pagination_widget.isHidden()
     view.close(); app.processEvents(); db.close()
 

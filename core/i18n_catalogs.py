@@ -1748,3 +1748,12 @@ CATALOGS['es'].update({'Cartão ativo': 'Tarjeta activa',
  'Não foi possível excluir o cartão.': 'No se pudo eliminar la tarjeta.',
  'Não foi possível atualizar o cartão.': 'No se pudo actualizar la tarjeta.',
  'Cartão não encontrado.': 'Tarjeta no encontrada.'})
+
+# Painel de fatura homologado: textos disponíveis offline.
+CATALOGS['en'].update({'Estabelecimento / Favorecido': 'Merchant / Payee', 'Composição da fatura': 'Statement breakdown', 'Quitação da fatura': 'Statement settlement', 'Antecipar / pagar': 'Pay early / pay', 'Antecipe na fatura aberta ou pague parcial/totalmente.': 'Pay an open statement early or make a partial/full payment.', 'Aberta': 'Open', 'Fechada': 'Closed', 'Paga': 'Paid', 'Registrado': 'Recorded', 'Compras': 'Purchases', 'Créditos': 'Credits', 'Estornos': 'Refunds', 'Ajustes': 'Adjustments', 'Pagamentos': 'Payments', 'Saldo a pagar': 'Amount due', 'Compra': 'Purchase', 'Crédito': 'Credit', 'Estorno': 'Refund', 'Ajuste': 'Adjustment', 'Encargo': 'Fee', 'Pagamento': 'Payment'})
+
+# Painel de fatura homologado: textos disponíveis offline.
+CATALOGS['es'].update({'Estabelecimento / Favorecido': 'Establecimiento / Beneficiario', 'Composição da fatura': 'Composición de la factura', 'Quitação da fatura': 'Liquidación de la factura', 'Antecipar / pagar': 'Anticipar / pagar', 'Antecipe na fatura aberta ou pague parcial/totalmente.': 'Anticipe la factura abierta o pague parcial o totalmente.', 'Aberta': 'Abierta', 'Fechada': 'Cerrada', 'Paga': 'Pagada', 'Registrado': 'Registrado', 'Compras': 'Compras', 'Créditos': 'Créditos', 'Estornos': 'Reembolsos', 'Ajustes': 'Ajustes', 'Pagamentos': 'Pagos', 'Saldo a pagar': 'Saldo por pagar', 'Compra': 'Compra', 'Crédito': 'Crédito', 'Estorno': 'Reembolso', 'Ajuste': 'Ajuste', 'Encargo': 'Cargo', 'Pagamento': 'Pago'})
+
+CATALOGS['en'].update({'Fechamento': 'Closing date', 'Sem categoria': 'Uncategorized'})
+CATALOGS['es'].update({'Fechamento': 'Cierre', 'Sem categoria': 'Sin categoría'})

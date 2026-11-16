@@ -128,3 +128,11 @@ Não há autorização para implementar essas propostas nesta entrega.
   de leitura de descrição longa.
 - Homologar escala/fontes/contraste e plataformas. Até lá, somente o bloqueio
   funcional das ações de cartão inativo faz parte da implementação.
+
+## Atualização de autorização — 16/11/2026
+
+A autorização final do responsável encerrou a pendência de homologação visual.
+O escopo aprovado inclui Estabelecimento/Favorecido, manutenção de Tipo,
+redimensionamento manual e autonomia para ajustes finos de responsividade.
+Este documento permanece como registro da análise anterior. Consulte a
+[implementação e validação](./PAINEL_FATURA_PUBLICACAO.md) para o estado atual.
