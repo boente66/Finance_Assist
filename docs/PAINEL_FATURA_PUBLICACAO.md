@@ -13,7 +13,7 @@ A versão permanece **2.1.0-test.17**, Debian **2.1.0~test17**.
 - Indicadores Limite/Usado/Disponível e ações existentes preservados.
 - Tabela: Data, Estabelecimento/Favorecido, Descrição, Tipo, Categoria, Valor,
   Status. Favorecido utiliza o JOIN existente; ausente permanece vazio.
-- Descrição recebe a maior largura inicial. Colunas podem ser redimensionadas
+- Descrição recebe a maior largura inicial e absorve o espaço adicional da janela até o usuário ajustar as colunas. Colunas podem ser redimensionadas
   manualmente; o ajuste não é sobrescrito ao redimensionar a janela. Rolagem
   horizontal mantém todas as colunas acessíveis. Elipse e tooltip preservam
   acesso ao texto integral, inclusive nos nomes da lista lateral.
@@ -28,12 +28,14 @@ compras, créditos e importações continuam bloqueados pelas regras existentes.
 ## Validação e distribuição
 
 Regressão completa local: **461 testes aprovados**, zero falhas/erros/ignorados,
-15 avisos de depreciação de dependências, em 103,90 s.
+15 avisos de depreciação de dependências, em 117,36 s.
 
 ```bash
 TMPDIR=/dev/shm/finance-assist-invoice-tests QT_QPA_PLATFORM=offscreen \
   .venv-finance-assist/bin/python -m pytest -q tests
 ```
+
+Rodada focada final: **100 testes aprovados**, um aviso de depreciação, em 11,20 s.
 
 Inclui cálculos e ciclos de fatura, atomicidade, pagamentos parciais, cartão
 ativo/inativo, integridade, backup, catálogos offline e interface. Os nove novos
@@ -49,8 +51,8 @@ Capturas sintéticas da janela completa, tema Primavera/Qt offscreen:
 - [1366×768 ES](./evidencias/painel-fatura-homologado/painel-1366x768-es.png)
 - [Medidas dos nove cenários](./evidencias/painel-fatura-homologado/medidas.json)
 
-Em PT: viewport da tabela de 649×156 em 1280×720, 735×204 em 1366×768 e
-1289×531 em 1920×1080. Rolagem horizontal disponível sem ocultar colunas;
+Em PT: viewport da tabela de 649×178 em 1280×720, 735×204 em 1366×768 e
+1299×545 em 1920×1080. Rolagem horizontal disponível sem ocultar colunas;
 resumo e ações acessíveis. As capturas comprovam estes cenários no Linux;
 os builds nativos validam inicialização das telas em cada plataforma.
 

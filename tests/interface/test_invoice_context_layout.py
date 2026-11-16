@@ -29,6 +29,8 @@ def test_context_and_flexible_table(monkeypatch, language, screen):
     assert panel.table.item(0, 1).toolTip() == panel.table.item(0, 1).text()
     assert panel.table.item(0, 2).toolTip() == panel.table.item(0, 2).text()
     assert panel.table.horizontalHeader().sectionResizeMode(2) == QHeaderView.Interactive
+    assert panel.table.horizontalHeader().sectionResizeMode(6) == QHeaderView.Interactive
+    assert panel.table.columnWidth(2) == max(200, panel.table.viewport().width() - 610)
     panel.table.setColumnWidth(2, 245)
     panel.resize(panel.width() + 30, panel.height())
     app.processEvents()

@@ -257,11 +257,13 @@ class PainelFatura(QWidget):
             "Data", "Estabelecimento / Favorecido", "Descrição", "Tipo", "Categoria", "Valor", "Status"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self._table_width_initialized = False
+        self._columns_user_sized = False
+        self._resizing_columns = False
         for column, width in enumerate((95, 160, 290, 95, 125, 110, 95)):
             self.table.setColumnWidth(column, width)
+        self.table.horizontalHeader().sectionResized.connect(self._remember_column_resize)
+        self.table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.table.setWordWrap(False)
         self.table.setTextElideMode(Qt.ElideRight)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -335,12 +337,7 @@ class PainelFatura(QWidget):
             self.indicators_layout.addWidget(widget, index // columns, index % columns)
         for column in range(3):
             self.indicators_layout.setColumnStretch(column, 1 if column < columns else 0)
-        if not self._table_width_initialized and self.isVisible():
-            usable = max(660, self.table.viewport().width())
-            widths = (100, 140, max(200, usable - 610), 75, 100, 100, 95)
-            for column, section_width in enumerate(widths):
-                self.table.setColumnWidth(column, section_width)
-            self._table_width_initialized = True
+        QTimer.singleShot(0, self._fit_table_columns)
         font_size = 9 if width < 760 else 10
         self.table.setFont(QFont(self.font().family(), font_size))
         self.table.verticalHeader().setDefaultSectionSize(28 if width < 760 else 34)
@@ -350,6 +347,22 @@ class PainelFatura(QWidget):
             button.setToolButtonStyle(
                 Qt.ToolButtonIconOnly if width < 600 else Qt.ToolButtonTextBesideIcon
             )
+
+    def _remember_column_resize(self, *_):
+        if not self._resizing_columns:
+            self._columns_user_sized = True
+
+    def _fit_table_columns(self):
+        if self._columns_user_sized or not self.isVisible():
+            return
+        usable = self.table.viewport().width()
+        widths = (100, 140, max(200, usable - 610), 75, 100, 100, 95)
+        self._resizing_columns = True
+        try:
+            for column, section_width in enumerate(widths):
+                self.table.setColumnWidth(column, section_width)
+        finally:
+            self._resizing_columns = False
 
     def showEvent(self, event):
         super().showEvent(event)

@@ -7,17 +7,17 @@
     ],
     "panel": [
       714,
-      565
+      587
     ],
     "table": [
       698,
-      221
+      243
     ],
     "table_viewport": [
       649,
-      156
+      178
     ],
-    "horizontal_scroll": 3,
+    "horizontal_scroll": 161,
     "summary_visible": true
   },
   {
@@ -38,7 +38,7 @@
       735,
       204
     ],
-    "horizontal_scroll": 3,
+    "horizontal_scroll": 75,
     "summary_visible": true
   },
   {
@@ -56,10 +56,10 @@
       596
     ],
     "table_viewport": [
-      1289,
-      531
+      1299,
+      545
     ],
-    "horizontal_scroll": 1,
+    "horizontal_scroll": 0,
     "summary_visible": true
   },
   {
@@ -80,7 +80,7 @@
       649,
       156
     ],
-    "horizontal_scroll": 3,
+    "horizontal_scroll": 161,
     "summary_visible": true
   },
   {
@@ -101,7 +101,7 @@
       735,
       204
     ],
-    "horizontal_scroll": 3,
+    "horizontal_scroll": 75,
     "summary_visible": true
   },
   {
@@ -119,10 +119,10 @@
       596
     ],
     "table_viewport": [
-      1289,
-      531
+      1299,
+      545
     ],
-    "horizontal_scroll": 1,
+    "horizontal_scroll": 0,
     "summary_visible": true
   },
   {
@@ -143,7 +143,7 @@
       649,
       156
     ],
-    "horizontal_scroll": 3,
+    "horizontal_scroll": 161,
     "summary_visible": true
   },
   {
@@ -164,7 +164,7 @@
       735,
       204
     ],
-    "horizontal_scroll": 3,
+    "horizontal_scroll": 75,
     "summary_visible": true
   },
   {
@@ -182,10 +182,10 @@
       596
     ],
     "table_viewport": [
-      1289,
-      531
+      1299,
+      545
     ],
-    "horizontal_scroll": 1,
+    "horizontal_scroll": 0,
     "summary_visible": true
   }
 ]
