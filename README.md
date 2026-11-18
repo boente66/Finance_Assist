@@ -11,7 +11,7 @@
 [![macOS](https://img.shields.io/badge/macOS-Intel%20%7C%20Apple%20Silicon-000000?logo=apple&logoColor=white)](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261107)
 [![Fase 1](https://img.shields.io/badge/auditoria-Fase%201%20encerrada-2ea44f)](docs/HOMOLOGACAO_FASE1.md)
 
-**[Baixar a test.17 recompilada — cadastro e gerenciamento de cartões](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261107)**
+**[Baixar a test.17 recompilada — painel de fatura e cartões](https://github.com/boente66/Finance_Assist/releases/tag/rebuild-v2.1.0-test.17-20261107)**
 · **[Manual do usuário](docs/MANUAL_DO_USUARIO.md)**
 · **[Manual em DOCX](DOCUMENTA%C3%87%C3%83O%20DO%20SISTEMA%20CONTROLE%20FINANCEIRO.docx)**
 · **[Auditoria técnica](docs/AUDITORIA_GERAL_E_INFORME_FISCAL.md)**
@@ -19,9 +19,9 @@
 **Cartões da Fase 2 implementados e homologados para publicação.** Nome e
 Bandeira independentes, estado Ativo/Inativo, ocultação/reativação e exclusão
 segura com preservação do histórico. A migration 9 é aditiva; a versão test.17
-foi mantida. A suíte completa passou com **452 testes aprovados**.
+foi mantida. A suíte completa passou com **464 testes aprovados**.
 Consulte o [relatório técnico e downloads](docs/CARTOES_FASE2_PUBLICACAO.md).
-O painel de fatura permanece em [análise visual para nova homologação](docs/ANALISE_UX_PAINEL_FATURA_FASE2.md).
+O painel de fatura está homologado e implementado, com cabeçalho contextual, tabela flexível e resumo organizado. Consulte a [validação e os downloads do painel](docs/PAINEL_FATURA_PUBLICACAO.md).
 Sincronização em nuvem não integra esta entrega. O [aceite da Fase 1](docs/HOMOLOGACAO_FASE1.md)
 continua registrado.
 
@@ -361,10 +361,10 @@ Downloads diretos da versão de teste recompilada:
 Como o número da versão foi mantido, use `--reinstall` para substituir no Linux
 um pacote test.17 já instalado. Feche o aplicativo antes de reinstalar.
 
-- [Instalador Linux DEB](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_cartoes-20261115.deb)
-- [Checksum Linux](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_cartoes-20261115.deb.sha256)
-- [Pacote Windows ZIP](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_cartoes-20261115.zip)
-- [Checksum Windows](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_cartoes-20261115.zip.sha256)
+- [Instalador Linux DEB](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_painel-fatura-20261116.deb)
+- [Checksum Linux](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_painel-fatura-20261116.deb.sha256)
+- [Pacote Windows ZIP](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_painel-fatura-20261116.zip)
+- [Checksum Windows](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_painel-fatura-20261116.zip.sha256)
 
 A revisão de relatórios e encerramento de acesso está em
 [`docs/RELATORIOS_CONTAS_FAVORECIDOS_TEST6.md`](docs/RELATORIOS_CONTAS_FAVORECIDOS_TEST6.md).
@@ -381,13 +381,13 @@ Baixe o `.deb` e o checksum correspondente no
 Confira a integridade do arquivo:
 
 ```bash
-sha256sum -c finance-assist_2.1.0-test.17_amd64_cartoes-20261115.deb.sha256
+sha256sum -c finance-assist_2.1.0-test.17_amd64_painel-fatura-20261116.deb.sha256
 ```
 
 Instale o pacote:
 
 ```bash
-sudo apt install --reinstall ./finance-assist_2.1.0-test.17_amd64_cartoes-20261115.deb
+sudo apt install --reinstall ./finance-assist_2.1.0-test.17_amd64_painel-fatura-20261116.deb
 ```
 
 Depois da instalação, procure por **Finance Assist (Teste)** no menu de
@@ -409,12 +409,12 @@ Para Ubuntu 24.04 e Mint 22.x, existe também um pacote **recompilado no Ubuntu
 24.04**, identificado no nome do arquivo. O Mint 22.2 utiliza essa base, conforme
 as [notas oficiais do Mint](https://www.linuxmint.com/rel_zara.php).
 
-- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_cartoes-20261115.deb)
-- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_cartoes-20261115.deb.sha256)
+- [DEB Ubuntu 24.04 / Mint 22.x](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_painel-fatura-20261116.deb)
+- [SHA256 da variante](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_painel-fatura-20261116.deb.sha256)
 
 ```bash
-sha256sum -c finance-assist_2.1.0-test.17_ubuntu24.04_amd64_cartoes-20261115.deb.sha256
-sudo apt install --reinstall ./finance-assist_2.1.0-test.17_ubuntu24.04_amd64_cartoes-20261115.deb
+sha256sum -c finance-assist_2.1.0-test.17_ubuntu24.04_amd64_painel-fatura-20261116.deb.sha256
+sudo apt install --reinstall ./finance-assist_2.1.0-test.17_ubuntu24.04_amd64_painel-fatura-20261116.deb
 finance-assist-test
 ```
 
@@ -433,13 +433,13 @@ completa do comando `apt install`, sem dados pessoais. Não force dependências.
 
 ### 9.3 Windows
 
-**[Download direto do executável Windows x64](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-cartoes-20261115-windows-x64.exe)**
-· [SHA256 do executável](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-cartoes-20261115-windows-x64.exe.sha256).
+**[Download direto do executável Windows x64](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-painel-fatura-20261116-windows-x64.exe)**
+· [SHA256 do executável](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-painel-fatura-20261116-windows-x64.exe.sha256).
 O EXE é o mesmo arquivo contido no ZIP, disponibilizado separadamente para
 execução direta; não é um assistente de instalação MSI.
 
 
-Baixe `finance-assist_2.1.0-test.17_windows-x64_cartoes-20261115.zip`, verifique o arquivo
+Baixe `finance-assist_2.1.0-test.17_windows-x64_painel-fatura-20261116.zip`, verifique o arquivo
 `.sha256`, extraia a pasta e execute `FinanceAssist-test.exe`. O artefato é
 compilado em Windows Server 2022 e tem como alvo Windows 11 `x64`. O Windows 10
 encerrou o suporte oficial da Microsoft em 14 de outubro de 2025; por isso,
@@ -448,7 +448,7 @@ eventual funcionamento nesse sistema não representa suporte ou homologação.
 No PowerShell, confira a integridade com:
 
 ```powershell
-Get-FileHash .\finance-assist_2.1.0-test.17_windows-x64_cartoes-20261115.zip -Algorithm SHA256
+Get-FileHash .\finance-assist_2.1.0-test.17_windows-x64_painel-fatura-20261116.zip -Algorithm SHA256
 ```
 
 Compare o resultado com o conteúdo do arquivo de checksum publicado na release.
@@ -468,11 +468,11 @@ antigas e novas no executável.
 
 Escolha o arquivo conforme o processador:
 
-- [finance-assist_2.1.0-test.17_macos-arm64_cartoes-20261115.zip](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_cartoes-20261115.zip): Apple Silicon (M1 ou posterior);
-- [finance-assist_2.1.0-test.17_macos-x64_cartoes-20261115.zip](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_cartoes-20261115.zip): Macs Intel.
+- [finance-assist_2.1.0-test.17_macos-arm64_painel-fatura-20261116.zip](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_painel-fatura-20261116.zip): Apple Silicon (M1 ou posterior);
+- [finance-assist_2.1.0-test.17_macos-x64_painel-fatura-20261116.zip](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_painel-fatura-20261116.zip): Macs Intel.
 
-- [SHA256 macOS Apple Silicon](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_cartoes-20261115.zip.sha256)
-- [SHA256 macOS Intel](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_cartoes-20261115.zip.sha256)
+- [SHA256 macOS Apple Silicon](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_painel-fatura-20261116.zip.sha256)
+- [SHA256 macOS Intel](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_painel-fatura-20261116.zip.sha256)
 
 Confira o `.sha256`, extraia o ZIP e mova **Finance Assist Test.app** para
 Aplicativos. Esta versão de teste não possui assinatura/notarização Apple. Na

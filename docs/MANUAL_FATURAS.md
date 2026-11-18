@@ -2,22 +2,31 @@
 
 ## Abrir uma fatura
 
-1. Acesse **Cartões** e selecione o cartão.
+1. Acesse **Contas e Lançamentos** e selecione o cartão na lista lateral.
 2. Escolha o mês e o ano da fatura.
 3. Use o filtro **Todos**, **Abertos** ou **Pagos**.
 
-O cabeçalho mostra limite, valor usado e limite disponível. O resumo separa
-**Compras**, **Créditos**, **Pagamentos** e **Saldo a pagar**. A tabela apresenta
-data, descrição, categoria, valor e estado da fatura. Em janelas estreitas,
-os indicadores são reorganizados, os botões usam ícones e a fonte da tabela é
-reduzida para manter o conteúdo legível.
+O cabeçalho mostra Nome do cartão, Bandeira, estado Ativo/Inativo, competência,
+status da fatura, fechamento e vencimento. Os indicadores exibem Limite, Usado e
+Disponível. O resumo inferior separa **Composição da fatura** (compras, créditos,
+estornos e ajustes) de **Quitação da fatura** (pagamentos e saldo a pagar).
+
+A tabela apresenta Data, Estabelecimento/Favorecido, Descrição, Tipo, Categoria,
+Valor e Status. Arraste a borda dos cabeçalhos para ajustar qualquer coluna.
+Descrição recebe prioridade de espaço enquanto não houver ajuste manual. Use
+rolagem horizontal quando necessário e passe o ponteiro sobre o texto abreviado
+para ler o conteúdo completo. Nomes longos na lista de cartões também têm tooltip.
+
+Cartão inativo continua permitindo consulta e pagamento de obrigações existentes;
+novas compras, créditos e importações exigem reativação. Idioma e formatos seguem
+as configurações da aplicação em português, inglês e espanhol.
 
 ## Criar e editar lançamentos
 
 - **Lançar** abre o cadastro de uma nova despesa.
 - Um clique seleciona uma linha.
 - Dois cliques abrem **Editar lançamento da fatura**.
-- O botão **Ações**, aberto com o botão esquerdo, oferece **Copiar**, **Colar**,
+- O menu aberto com o botão direito sobre a linha oferece **Copiar**, **Colar**,
   **Editar** e **Excluir**.
 
 **Copiar** guarda os dados do lançamento selecionado. **Colar** cria uma nova

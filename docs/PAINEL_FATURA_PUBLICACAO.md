@@ -56,4 +56,36 @@ Em PT: viewport da tabela de 659×178 em 1280×720, 745×226 em 1366×768 e
 resumo e ações acessíveis. As capturas comprovam estes cenários no Linux;
 os builds nativos validam inicialização das telas em cada plataforma.
 
-Builds e links finais serão registrados após sua conclusão.
+Publicação concluída em **17/11/2026**, usando os builds de 16/11/2026.
+Código compilado: [dc0e3a06e7ec445ba05f1de1491f48d0ecb83681](https://github.com/boente66/Finance_Assist/commit/dc0e3a06e7ec445ba05f1de1491f48d0ecb83681).
+
+Os dois workflows de compilação terminaram com sucesso, com **14 jobs aprovados**:
+
+- [Multiplataforma](https://github.com/boente66/Finance_Assist/actions/runs/43981933339): testes em Ubuntu 24.04/26.04, DEB geral, instalação em Ubuntu 22.04/24.04/26.04, Windows e macOS Intel/ARM.
+- [Ubuntu 24.04/Mint 22](https://github.com/boente66/Finance_Assist/actions/runs/43981937427): testes, compilação, instalação, OCR e inicialização das telas.
+- [Publicação e conferência remota](https://github.com/boente66/Finance_Assist/actions/runs/44209456773): SHA de origem, checksums, CRC dos ZIPs e integridade dos arquivos publicados.
+
+A rotina de publicação também passou por verificação de sintaxe/YAML e pelos
+**7 testes de metadados de empacotamento**. A publicação preservou arquivos
+anteriores e conferiu os checksums idênticos já existentes.
+
+Todos os cinco pacotes foram recompilados a partir do SHA acima. SHA256 de
+origem conferidos; CRC integral dos ZIPs validado. O EXE foi extraído sem
+alterações do ZIP Windows aprovado; não é um instalador MSI. Os DEBs mantêm
+2.1.0~test17; variante Noble mantém 2.1.0~test17+ubuntu24.04.1.
+
+| Plataforma | Pacote | Integridade |
+| --- | --- | --- |
+| Linux Ubuntu 22.04/24.04/26.04 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_painel-fatura-20261116.deb) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_painel-fatura-20261116.deb.sha256) |
+| Ubuntu 24.04 / Mint 22 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_painel-fatura-20261116.deb) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_painel-fatura-20261116.deb.sha256) |
+| Windows x64 — EXE | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-painel-fatura-20261116-windows-x64.exe) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-painel-fatura-20261116-windows-x64.exe.sha256) |
+| Windows x64 — ZIP | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_painel-fatura-20261116.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_painel-fatura-20261116.zip.sha256) |
+| macOS Intel | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_painel-fatura-20261116.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_painel-fatura-20261116.zip.sha256) |
+| macOS Apple Silicon | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_painel-fatura-20261116.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_painel-fatura-20261116.zip.sha256) |
+
+[Manifesto de origem, builds, tamanhos e SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/painel-fatura-20261116-manifest.json).
+Os **13 arquivos publicados** tiveram tamanho e SHA256 remoto conferidos contra
+os arquivos validados. Publicação na pré-release test.17 existente, sem criar
+versão numérica ou mover a tag histórica. Pacotes anteriores preservados.
+
+Para atualizar um DEB test.17 instalado, feche o aplicativo e use `--reinstall`.
