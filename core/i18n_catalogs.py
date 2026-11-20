@@ -1760,3 +1760,64 @@ CATALOGS['es'].update({'Fechamento': 'Cierre', 'Sem categoria': 'Sin categoría'
 
 CATALOGS['en'].update({'Faturas PDF (*.pdf)': 'PDF statements (*.pdf)'})
 CATALOGS['es'].update({'Faturas PDF (*.pdf)': 'Facturas PDF (*.pdf)'})
+
+# IMP-003: manutenção temporária e diferenças financeiras.
+CATALOGS['en'].update({'Modo de ajuste temporário ativo': 'Temporary adjustment mode active',
+ 'Fatura paga com diferença entre total e pagamentos': 'Paid statement with a '
+                                                       'difference between '
+                                                       'total and payments',
+ 'Saldo credor': 'Credit balance',
+ 'Selecione uma fatura fechada ou paga para manutenção.': 'Select a closed or '
+                                                          'paid statement for '
+                                                          'maintenance.',
+ 'Autorização de ajuste temporário inválida ou expirada.': 'Temporary '
+                                                           'adjustment '
+                                                           'authorization is '
+                                                           'invalid or '
+                                                           'expired.',
+ 'O ajuste temporário não permite mudar a estrutura ou competência do lançamento.': 'Temporary '
+                                                                                    'adjustment '
+                                                                                    'cannot '
+                                                                                    'change '
+                                                                                    'the '
+                                                                                    'entry '
+                                                                                    'structure '
+                                                                                    'or '
+                                                                                    'statement '
+                                                                                    'period.',
+ 'Categoria ou favorecido não pertence ao usuário.': 'Category or payee does '
+                                                     'not belong to the user.'})
+CATALOGS['es'].update({'Modo de ajuste temporário ativo': 'Modo de ajuste temporal activo',
+ 'Fatura paga com diferença entre total e pagamentos': 'Factura pagada con '
+                                                       'diferencia entre el '
+                                                       'total y los pagos',
+ 'Saldo credor': 'Saldo a favor',
+ 'Selecione uma fatura fechada ou paga para manutenção.': 'Seleccione una '
+                                                          'factura cerrada o '
+                                                          'pagada para '
+                                                          'mantenimiento.',
+ 'Autorização de ajuste temporário inválida ou expirada.': 'La autorización de '
+                                                           'ajuste temporal no '
+                                                           'es válida o ha '
+                                                           'caducado.',
+ 'O ajuste temporário não permite mudar a estrutura ou competência do lançamento.': 'El '
+                                                                                    'ajuste '
+                                                                                    'temporal '
+                                                                                    'no '
+                                                                                    'permite '
+                                                                                    'cambiar '
+                                                                                    'la '
+                                                                                    'estructura '
+                                                                                    'ni '
+                                                                                    'el '
+                                                                                    'período '
+                                                                                    'del '
+                                                                                    'movimiento.',
+ 'Categoria ou favorecido não pertence ao usuário.': 'La categoría o el '
+                                                     'beneficiario no '
+                                                     'pertenece al usuario.'})
+
+CATALOGS['en'].update({'O lançamento possui movimentos vinculados e não pode ser excluído.': 'The entry has linked movements and cannot be deleted.'})
+CATALOGS['es'].update({'O lançamento possui movimentos vinculados e não pode ser excluído.': 'El movimiento tiene movimientos vinculados y no se puede eliminar.'})
+CATALOGS['en'].update({'Esta fatura possui lançamentos já pagos sem registro de pagamento conciliado.': 'This statement has entries marked as paid without a reconciled payment record.'})
+CATALOGS['es'].update({'Esta fatura possui lançamentos já pagos sem registro de pagamento conciliado.': 'Esta factura tiene movimientos marcados como pagados sin un registro de pago conciliado.'})

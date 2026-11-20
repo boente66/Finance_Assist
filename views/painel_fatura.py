@@ -9,9 +9,9 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QFileDialog, QDialog,
     QToolButton, QMessageBox, QPushButton, QInputDialog,
-    QFrame, QProgressBar, QMenu, QApplication, QLineEdit
+    QFrame, QProgressBar, QMenu, QApplication, QLineEdit, QShortcut
 )
-from PyQt5.QtGui import QColor, QIcon, QFont
+from PyQt5.QtGui import QColor, QIcon, QFont, QKeySequence
 from PyQt5.QtCore import Qt, QSize, QTimer
 
 from controllers.fatura_controller import FaturaController
@@ -41,6 +41,7 @@ class PainelFatura(QWidget):
         self.controller = FaturaController()
         self.account_controller = AccountController()
 
+        self._maintenance_capability = None
         self.cartao = None
         self.page = 0
         self.limit = 50
@@ -55,6 +56,10 @@ class PainelFatura(QWidget):
         self.ano_atual = hoje.year
 
         self._init_ui()
+        self.maintenance_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
+        self.maintenance_shortcut.setContext(Qt.WindowShortcut)
+        self.maintenance_shortcut.setAutoRepeat(False)
+        self.maintenance_shortcut.activated.connect(self._alternar_manutencao)
 
         TranslatorApp.bind(self._atualizar_textos, self)
         self._atualizar_textos()
@@ -66,6 +71,7 @@ class PainelFatura(QWidget):
     # ======================================================
     def _atualizar_textos(self):
         self.setWindowTitle(TranslatorApp.get("Fatura"))
+        self.maintenance_label.setText(TranslatorApp.get("Modo de ajuste temporário ativo") + " · Ctrl+D")
 
         self.btn_lancar.setText(TranslatorApp.get("+ Lançar"))
         self.btn_credito.setText(TranslatorApp.get("Adicionar crédito"))
@@ -133,6 +139,15 @@ class PainelFatura(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(7)
+        self.maintenance_label = QLabel()
+        self.maintenance_label.setObjectName("warning")
+        self.maintenance_label.setWordWrap(True)
+        self.maintenance_label.hide()
+        layout.addWidget(self.maintenance_label)
+        self.payment_difference_label = QLabel()
+        self.payment_difference_label.setWordWrap(True)
+        self.payment_difference_label.hide()
+        layout.addWidget(self.payment_difference_label)
 
         self.nome_cartao_label = QLabel("-")
         self.nome_cartao_label.setObjectName("cardTitle")
@@ -223,7 +238,7 @@ class PainelFatura(QWidget):
             self.mes_combo.addItem(DateFormatter.map_nome_mes(i), i)
 
         self.mes_combo.setCurrentIndex(self.mes_atual - 1)
-        self.mes_combo.currentIndexChanged.connect(self._reset_paginacao)
+        self.mes_combo.currentIndexChanged.connect(self._competencia_changed)
 
         self.ano_combo = QComboBox()
         self.ano_combo.addItems([
@@ -232,7 +247,7 @@ class PainelFatura(QWidget):
             str(self.ano_atual + 1)
         ])
         self.ano_combo.setCurrentText(str(self.ano_atual))
-        self.ano_combo.currentIndexChanged.connect(self._reset_paginacao)
+        self.ano_combo.currentIndexChanged.connect(self._competencia_changed)
 
         self.lbl_mes = QLabel("Mês:")
         self.lbl_ano = QLabel("Ano:")
@@ -395,13 +410,49 @@ class PainelFatura(QWidget):
     # ======================================================
     # CONTROLE
     # ======================================================
+    def _desativar_manutencao(self):
+        if self._maintenance_capability is not None:
+            self.controller.desativar_manutencao(self._maintenance_capability)
+        self._maintenance_capability = None
+        self.maintenance_label.hide()
+
+    def _maintenance_revoked(self, token):
+        if self._maintenance_capability is token:
+            self._maintenance_capability = None
+            self.maintenance_label.hide()
+
+    def _alternar_manutencao(self):
+        if self._maintenance_capability is not None:
+            self._desativar_manutencao()
+            return
+        if not self.cartao:
+            return
+        try:
+            self._maintenance_capability = self.controller.ativar_manutencao(
+                self.cartao["ID_Cartao"], int(self.mes_combo.currentData()),
+                int(self.ano_combo.currentText()), self,
+            )
+            self.maintenance_label.show()
+        except Exception as exc:
+            QMessageBox.warning(self, TranslatorApp.get("Aviso"), TranslatorApp.error(exc))
+
+    def _competencia_changed(self):
+        self._desativar_manutencao()
+        self._reset_paginacao()
+
+    def hideEvent(self, event):
+        self._desativar_manutencao()
+        super().hideEvent(event)
+
     def set_cartao(self, cartao):
+        self._desativar_manutencao()
         self.cartao = cartao
         self.page = 0
         self._carregar()
 
     def set_competencia(self, mes, ano):
         """Seleciona a competência sem depender da ordem de set_cartao."""
+        self._desativar_manutencao()
         self.mes_combo.setCurrentIndex(max(0, min(11, int(mes) - 1)))
         texto_ano = str(int(ano))
         if self.ano_combo.findText(texto_ano) < 0:
@@ -503,13 +554,21 @@ class PainelFatura(QWidget):
         status = fatura.get("status", "ABERTA")
         saldo_pendente = float(fatura.get("saldo_a_pagar", 0) or 0)
         self.btn_pagar.setEnabled(
-            status in {"ABERTA", "FECHADA"} and saldo_pendente > 0
+            status in {"ABERTA", "FECHADA", "PAGA"} and saldo_pendente > 0
         )
         self.btn_pagar.setText(
             TranslatorApp.get("Antecipar / pagar" if status == "ABERTA" else "Pagar")
         )
         self.btn_pagar.setToolTip(
             TranslatorApp.get("Antecipe na fatura aberta ou pague parcial/totalmente.")
+        )
+        diferenca = float(fatura.get("diferenca_total_pago", 0) or 0)
+        self.payment_difference_label.setVisible(status == "PAGA" and diferenca != 0)
+        self.payment_difference_label.setText(
+            TranslatorApp.get("Fatura paga com diferença entre total e pagamentos") + ": "
+            + CurrencyFormatter.format(diferenca) + " · "
+            + TranslatorApp.get("Saldo credor") + ": "
+            + CurrencyFormatter.format(fatura.get("saldo_credor", 0))
         )
         status_text = TranslatorApp.get({"ABERTA": "Aberta", "FECHADA": "Fechada", "PAGA": "Paga"}.get(status, status))
         self.invoice_context_label.setText(
@@ -684,7 +743,10 @@ class PainelFatura(QWidget):
         item = self.controller.obter_lancamento(identificador)
         if not item:
             return False
-        dialog = EditarFaturaDialog(item, self)
+        if self._maintenance_capability is None:
+            dialog = EditarFaturaDialog(item, self)
+        else:
+            dialog = EditarFaturaDialog(item, self, capacidade=self._maintenance_capability)
         if dialog.exec_() == QDialog.Accepted:
             self._carregar()
             return True
@@ -701,7 +763,10 @@ class PainelFatura(QWidget):
         ) != QMessageBox.Yes:
             return False
         try:
-            self.controller.excluir_lancamento(identificador)
+            if self._maintenance_capability is None:
+                self.controller.excluir_lancamento(identificador)
+            else:
+                self.controller.excluir_lancamento(identificador, capacidade=self._maintenance_capability)
             self._carregar()
             return True
         except Exception as exc:
@@ -1012,6 +1077,7 @@ class PainelFatura(QWidget):
             QTimer.singleShot(0, self.close)
 
     def closeEvent(self, event):
+        self._desativar_manutencao()
         worker = self.import_worker
         if worker is not None and worker.isRunning():
             worker.cancel()

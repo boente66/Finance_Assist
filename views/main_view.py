@@ -785,6 +785,7 @@ class MainView(QMainWindow):
     # ==================================================
     def _logout(self):
         self.close()
+        Session.set_usuario(None)
 
         try:
             from views.login_dialog import LoginDialog
@@ -828,6 +829,8 @@ class MainView(QMainWindow):
     # CICLO DE VIDA
     # ==================================================
     def closeEvent(self, event):
+        from core.invoice_maintenance import InvoiceMaintenance
+        InvoiceMaintenance.revoke_all()
         WindowManager.save_main_window(
             self,
             menu_compact=self._menu_compact_preference,

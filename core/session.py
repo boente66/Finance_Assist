@@ -82,6 +82,8 @@ class Session:
     # ---------------------------------------
     @classmethod
     def set_usuario(cls, usuario: dict | None):
+        from core.invoice_maintenance import InvoiceMaintenance
+        InvoiceMaintenance.revoke_all()
         cls.usuario = usuario
 
         if not usuario:

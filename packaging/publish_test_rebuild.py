@@ -3,15 +3,22 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import zipfile
 
 REPO = "boente66/Finance_Assist"
 TAG = "rebuild-v2.1.0-test.17-20261107"
-SHA = "dc0e3a06e7ec445ba05f1de1491f48d0ecb83681"
-SUFFIX = "painel-fatura-20261116"
-RUNS = {"multiplatform": 43981933339, "ubuntu24": 43981937427}
+SHA = os.environ["SOURCE_SHA"]
+SUFFIX = os.environ["ASSET_SUFFIX"]
+RUNS = {"multiplatform": int(os.environ["MULTIPLATFORM_RUN"]),
+        "ubuntu24": int(os.environ["UBUNTU24_RUN"])}
+FULL_PASSED = int(os.environ["FULL_PASSED"])
+FOCUSED_PASSED = int(os.environ["FOCUSED_PASSED"])
+assert re.fullmatch(r"[0-9a-f]{40}", SHA)
+assert re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", SUFFIX)
+assert FULL_PASSED > 0 and FOCUSED_PASSED > 0 and all(value > 0 for value in RUNS.values())
 
 
 def gh(*args):
@@ -86,7 +93,7 @@ def main():
             f"{record['sha256']}  {record['name']}\n")
     manifest = {"version": "2.1.0-test.17", "source_commit": SHA, "release_tag": TAG,
                 "workflows": RUNS,
-                "validation": {"full_suite_passed": 464, "focused_passed": 103,
+                "validation": {"full_suite_passed": FULL_PASSED, "focused_passed": FOCUSED_PASSED,
                                "ci_jobs_passed": 14}, "assets": records}
     (outgoing / f"{SUFFIX}-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     known = {item["name"]: item for item in release["assets"]}

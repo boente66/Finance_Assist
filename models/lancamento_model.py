@@ -145,6 +145,15 @@ class LancamentoModel(Database):
     # ============================================================
     # ATUALIZAR
     # ============================================================
+    def validar_referencias_edicao(self, dados, id_usuario):
+        for campo, tabela in (("ID_Categoria", "categorias"), ("ID_Favorecido", "favorecido")):
+            valor = dados.get(campo)
+            if valor is not None and not self.fetch_one(
+                f"SELECT {campo} FROM {tabela} WHERE {campo} = ? AND ID_Usuario = ?",
+                (valor, id_usuario),
+            ):
+                raise ValueError("Categoria ou favorecido não pertence ao usuário.")
+
     def update_lancamento(self, id_lancamento, dados, id_usuario):
 
         obrigatorios = [
@@ -405,6 +414,12 @@ class LancamentoModel(Database):
     # EXCLUIR
     # ============================================================
     def excluir_lancamento(self, id_lancamento, id_usuario):
+
+        if self.fetch_one(
+            "SELECT ID_Lancamento FROM lancamentos WHERE ID_Lancamento_Origem = ? LIMIT 1",
+            (id_lancamento,),
+        ):
+            raise ValueError("O lançamento possui movimentos vinculados e não pode ser excluído.")
 
         sql = """
             DELETE FROM lancamentos

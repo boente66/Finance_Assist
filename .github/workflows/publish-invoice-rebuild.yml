@@ -1,7 +1,26 @@
-name: Publicar painel de fatura homologado test.17
+name: Publicar rebuild autorizado test.17
 
 on:
   workflow_dispatch:
+    inputs:
+      source_sha:
+        description: SHA completo dos builds aprovados
+        required: true
+      asset_suffix:
+        description: Sufixo dos novos arquivos sem alterar a versão
+        required: true
+      multiplatform_run:
+        description: Run ID multiplataforma aprovado
+        required: true
+      ubuntu24_run:
+        description: Run ID Ubuntu 24 aprovado
+        required: true
+      full_passed:
+        description: Quantidade de testes aprovados na regressão completa
+        required: true
+      focused_passed:
+        description: Quantidade de testes focados aprovados
+        required: true
 
 permissions:
   contents: write
@@ -23,12 +42,18 @@ jobs:
       - name: Validar e publicar os artefatos aprovados
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          ASSET_SUFFIX: ${{ inputs.asset_suffix }}
+          MULTIPLATFORM_RUN: ${{ inputs.multiplatform_run }}
+          UBUNTU24_RUN: ${{ inputs.ubuntu24_run }}
+          FULL_PASSED: ${{ inputs.full_passed }}
+          FOCUSED_PASSED: ${{ inputs.focused_passed }}
         run: python packaging/publish_test_rebuild.py
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: painel-fatura-publicacao-20261116
+          name: publicacao-${{ inputs.asset_suffix }}
           path: |
-            ${{ runner.temp }}/painel-fatura-20261116/verification.json
-            ${{ runner.temp }}/painel-fatura-20261116/publish/painel-fatura-20261116-manifest.json
+            ${{ runner.temp }}/${{ inputs.asset_suffix }}/verification.json
+            ${{ runner.temp }}/${{ inputs.asset_suffix }}/publish/${{ inputs.asset_suffix }}-manifest.json
           if-no-files-found: warn

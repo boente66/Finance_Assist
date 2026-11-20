@@ -1,7 +1,7 @@
 import hashlib
 import calendar
 import logging
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
@@ -503,68 +503,114 @@ class FaturaService:
             if item.get("Tipo_Movimento", "COMPRA") == "COMPRA"
         ]
 
-    def atualizar_lancamento(self, id_lancamento, dados, id_usuario):
+    def _maintenance_context(self, ciclo, id_usuario):
+        return (self.ciclo_model._initialization_key(), id_usuario,
+                ciclo["ID_Cartao"], ciclo["Competencia_Mes"],
+                ciclo["Competencia_Ano"], ciclo["ID_Fatura"])
+
+    @staticmethod
+    def desativar_manutencao(capacidade):
+        from core.invoice_maintenance import InvoiceMaintenance
+        InvoiceMaintenance.revoke(capacidade)
+
+    def ativar_manutencao(self, id_cartao, mes, ano, id_usuario, owner):
+        from core.session import Session
+        from core.invoice_maintenance import InvoiceMaintenance
+        usuario = Session.get_usuario() or {}
+        if not id_usuario or usuario.get("ID_Usuario") != id_usuario:
+            raise PermissionError("Usuário não autenticado.")
+        if not self.buscar_cartao_por_id(id_cartao, id_usuario):
+            raise PermissionError("Cartão não pertence ao usuário.")
+        ciclo = self.ciclo_model.obter(id_cartao, mes, ano, id_usuario)
+        if not ciclo or ciclo["Status"] not in {"FECHADA", "PAGA"}:
+            raise ValueError("Selecione uma fatura fechada ou paga para manutenção.")
+        return InvoiceMaintenance.issue(owner, self._maintenance_context(ciclo, id_usuario))
+
+    def _validar_manutencao(self, capacidade, ciclo, id_usuario):
+        from core.session import Session
+        from core.invoice_maintenance import InvoiceMaintenance
+        if ((Session.get_usuario() or {}).get("ID_Usuario") != id_usuario
+                or not ciclo or not InvoiceMaintenance.valid(
+                    capacidade, self._maintenance_context(ciclo, id_usuario))):
+            raise PermissionError("Autorização de ajuste temporário inválida ou expirada.")
+
+    def _ciclo_para_edicao(self, atual, id_usuario, capacidade):
+        if not self.buscar_cartao_por_id(atual["ID_Cartao"], id_usuario):
+            raise PermissionError("Cartão não pertence ao usuário.")
+        if capacidade is not None:
+            ciclo = self.ciclo_model.obter(atual["ID_Cartao"], atual["Competencia_Mes"],
+                                           atual["Competencia_Ano"], id_usuario)
+            self._validar_manutencao(capacidade, ciclo, id_usuario)
+            return ciclo
+        return self.sincronizar_ciclo(atual["ID_Cartao"], atual["Competencia_Mes"],
+                                     atual["Competencia_Ano"], id_usuario)
+
+    def atualizar_lancamento(self, id_lancamento, dados, id_usuario, capacidade=None):
         with self.lancamento_model.unit_of_work(
-            self.credito_model,
-            self.lancamento_model.credito,
-            self.ciclo_model,
-            immediate=True,
+            self.credito_model, self.lancamento_model.credito,
+            self.ciclo_model, self.pagamento_model, immediate=True,
         ):
             atual = self.obter_lancamento(id_lancamento, id_usuario)
             if not atual:
                 raise ValueError("Lançamento não encontrado.")
-            ciclo_atual = self.sincronizar_ciclo(
-                atual["ID_Cartao"],
-                atual["Competencia_Mes"],
-                atual["Competencia_Ano"],
-                id_usuario,
-            )
-            if ciclo_atual["Status"] != "ABERTA":
-                raise ValueError(
-                    "Somente lançamentos de uma fatura aberta podem ser editados."
-                )
+            ciclo_atual = self._ciclo_para_edicao(atual, id_usuario, capacidade)
+            if ciclo_atual["Status"] != "ABERTA" and capacidade is None:
+                raise ValueError("Somente lançamentos de uma fatura aberta podem ser editados.")
             if atual.get("Tipo_Movimento", "COMPRA") != "COMPRA":
-                raise ValueError(
-                    "Créditos e pagamentos não podem ser editados como compra."
-                )
+                raise ValueError("Créditos e pagamentos não podem ser editados como compra.")
+            if capacidade is not None:
+                permitidos = {"Descricao", "Valor", "Data", "ID_Categoria", "ID_Favorecido", "Notas"}
+                if any(key not in permitidos and value != atual.get(key)
+                       for key, value in dados.items()):
+                    raise ValueError("O ajuste temporário não permite mudar a estrutura ou competência do lançamento.")
             payload = dict(atual)
             payload.update(dados)
             payload["ID_Cartao"] = atual["ID_Cartao"]
-            ciclo_destino = self.sincronizar_ciclo(
-                atual["ID_Cartao"],
-                payload["Competencia_Mes"],
-                payload["Competencia_Ano"],
-                id_usuario,
-                payload.get("Data"),
-            )
-            if ciclo_destino["Status"] != "ABERTA":
-                raise ValueError(
-                    "A compra não pode ser movida para uma fatura fechada ou paga."
+            try:
+                valor = self._money(payload.get("Valor"))
+            except (InvalidOperation, ValueError, TypeError) as exc:
+                raise ValueError("Somente compras positivas podem ser editadas neste formulário.") from exc
+            if not valor.is_finite() or valor <= 0:
+                raise ValueError("Somente compras positivas podem ser editadas neste formulário.")
+            if not str(payload.get("Descricao") or "").strip():
+                raise ValueError("Descrição obrigatória")
+            data_editada = payload["Data"]
+            if isinstance(data_editada, datetime):
+                data_editada = data_editada.date()
+            elif not isinstance(data_editada, date):
+                data_editada = date.fromisoformat(str(data_editada))
+            payload["Data"] = data_editada.isoformat()
+            date(int(payload["Competencia_Ano"]), int(payload["Competencia_Mes"]), 1)
+            self.lancamento_model.validar_referencias_edicao(payload, id_usuario)
+            if capacidade is not None:
+                ciclo_destino = ciclo_atual
+            else:
+                ciclo_destino = self.sincronizar_ciclo(
+                    atual["ID_Cartao"], payload["Competencia_Mes"], payload["Competencia_Ano"],
+                    id_usuario, payload.get("Data"),
                 )
+                if ciclo_destino["Status"] != "ABERTA":
+                    raise ValueError("A compra não pode ser movida para uma fatura fechada ou paga.")
+            payload["Valor"] = float(valor)
             payload["ID_Fatura"] = ciclo_destino["ID_Fatura"]
-            resultado = self.lancamento_model.update_lancamento(
-                id_lancamento, payload, id_usuario
-            )
+            resultado = self.lancamento_model.update_lancamento(id_lancamento, payload, id_usuario)
         self._clear_cache()
         return resultado
 
-    def excluir_lancamento(self, id_lancamento, id_usuario):
-        atual = self.obter_lancamento(id_lancamento, id_usuario)
-        if not atual:
-            raise ValueError("Lançamento não encontrado.")
-        ciclo = self.sincronizar_ciclo(
-            atual["ID_Cartao"],
-            atual["Competencia_Mes"],
-            atual["Competencia_Ano"],
-            id_usuario,
-        )
-        if ciclo["Status"] != "ABERTA":
-            raise ValueError(
-                "Somente lançamentos de uma fatura aberta podem ser excluídos."
-            )
-        if atual.get("Tipo_Movimento") == "PAGAMENTO":
-            raise ValueError("O pagamento da fatura não pode ser excluído.")
-        resultado = self.lancamento_model.excluir_lancamento(id_lancamento, id_usuario)
+    def excluir_lancamento(self, id_lancamento, id_usuario, capacidade=None):
+        with self.lancamento_model.unit_of_work(
+            self.credito_model, self.lancamento_model.credito,
+            self.ciclo_model, self.pagamento_model, immediate=True,
+        ):
+            atual = self.obter_lancamento(id_lancamento, id_usuario)
+            if not atual:
+                raise ValueError("Lançamento não encontrado.")
+            ciclo = self._ciclo_para_edicao(atual, id_usuario, capacidade)
+            if ciclo["Status"] != "ABERTA" and capacidade is None:
+                raise ValueError("Somente lançamentos de uma fatura aberta podem ser excluídos.")
+            if atual.get("Tipo_Movimento") == "PAGAMENTO":
+                raise ValueError("O pagamento da fatura não pode ser excluído.")
+            resultado = self.lancamento_model.excluir_lancamento(id_lancamento, id_usuario)
         self._clear_cache()
         return resultado
 
@@ -706,7 +752,14 @@ class FaturaService:
                     self.pagamento_model.get_total_by_invoice(ciclo["ID_Fatura"])
                 )
 
-                if ciclo["Status"] == "PAGA":
+                total_movimentos = sum(
+                    (self._money(item["Valor"]) for item in movimentos),
+                    Decimal("0.00"),
+                )
+                saldo_antes = max(total_movimentos - total_pago, Decimal("0.00"))
+                if total_pago == 0 and any(item.get("Paga") == 1 for item in movimentos):
+                    raise ValueError("Esta fatura possui lançamentos já pagos sem registro de pagamento conciliado.")
+                if ciclo["Status"] == "PAGA" and saldo_antes <= 0:
                     pagamento = self.pagamento_model.get_last_by_invoice(
                         id_cartao, mes, ano, id_usuario
                     )
@@ -719,11 +772,6 @@ class FaturaService:
                         )
                     raise ValueError("Esta fatura já foi paga.")
 
-                total_movimentos = sum(
-                    (self._money(item["Valor"]) for item in movimentos),
-                    Decimal("0.00"),
-                )
-                saldo_antes = max(total_movimentos - total_pago, Decimal("0.00"))
                 if saldo_antes <= 0:
                     raise ValueError("A fatura não possui saldo pendente.")
 
@@ -799,9 +847,10 @@ class FaturaService:
                 saldo_restante = max(saldo_antes - total, Decimal("0.00"))
                 if saldo_restante == 0 and not antecipado:
                     for lancamento in movimentos:
-                        self.lancamento_model.marcar_como_pago(
-                            lancamento["ID_Lancamento"], transacao_id, id_usuario
-                        )
+                        if lancamento.get("Paga") != 1:
+                            self.lancamento_model.marcar_como_pago(
+                                lancamento["ID_Lancamento"], transacao_id, id_usuario
+                            )
                     self.ciclo_model.definir_status(
                         id_cartao,
                         mes,
@@ -1016,6 +1065,8 @@ class FaturaService:
                 "ajustes": float(ajustes),
                 "pagamentos": float(pagamentos),
                 "saldo_a_pagar": float(saldo),
+                "saldo_credor": float(max(pagamentos - total_movimentos, Decimal("0.00"))),
+                "diferenca_total_pago": float(total_movimentos - pagamentos),
                 "status": ciclo["Status"],
                 "data_fechamento": ciclo["Data_Fechamento"],
                 "data_vencimento": ciclo["Data_Vencimento"],
@@ -1102,7 +1153,9 @@ class FaturaService:
             limite_passado = referencia + relativedelta(months=-120)
             limite_futuro = referencia + relativedelta(months=quantidade_meses - 1)
 
-            for lancamento in self.lancamento_model.get_lancamentos_nao_pagos(
+            # Paga é histórico do lançamento; manutenção pode produzir novo
+            # saldo mesmo preservando essa marca e o status real do ciclo.
+            for lancamento in self.lancamento_model.get_lancamentos_por_cartao(
                 id_cartao, id_usuario
             ):
                 try:
@@ -1127,10 +1180,6 @@ class FaturaService:
 
                 # Consulta o ciclo real, sem criar ou alterar faturas.
                 fatura = self.ciclo_model.obter(id_cartao, mes, ano, id_usuario)
-
-                # Fatura quitada não constitui compromisso pendente.
-                if fatura and (fatura.get("Status") or "").upper() == "PAGA":
-                    continue
 
                 movimentos = self.lancamento_model.get_lancamentos_por_fatura(
                     id_cartao, mes, ano, id_usuario

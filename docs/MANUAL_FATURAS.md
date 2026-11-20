@@ -74,6 +74,27 @@ O sistema confere possíveis duplicidades antes da gravação. Um PDF desconheci
 é recusado e não é interpretado por regras genéricas. A senha do PDF é usada
 somente durante a leitura e não é salva no banco ou nas configurações.
 
+## Manutenção excepcional de fatura fechada ou paga (IMP-003)
+
+Selecione o cartão e a competência desejados. Com o painel da fatura aberto,
+pressione **Ctrl+D**. O texto **Modo de ajuste temporário ativo** confirma a
+autorização para editar compras existentes ou excluir movimentos permitidos.
+Pressione **Ctrl+D** novamente para voltar ao bloqueio normal.
+
+A autorização termina ao trocar cartão ou competência, sair do painel, fazer
+logout ou fechar o aplicativo. Não é gravada no banco nem restaurada ao abrir
+o programa. A fatura continua com seu status real **Fechada** ou **Paga**.
+
+O ajuste não permite mudar cartão, competência, parcelamento ou proprietário.
+Pagamentos não podem ser editados ou excluídos por esse modo. Compras com
+estornos vinculados não podem ser apagadas enquanto houver esse vínculo.
+
+Em uma fatura paga, alterar o total preserva os pagamentos e seus vínculos
+originais. O painel informa a diferença entre total e pagamentos, o saldo a
+pagar ou o saldo credor. Uma diferença positiva pode receber um pagamento
+complementar real pela ação **Pagar**, inclusive após encerrar o ajuste.
+Nenhum pagamento é criado automaticamente para manter a aparência de quitação.
+
 ## Exportar a fatura
 
 Clique em **PDF** e escolha o destino. O documento contém identidade visual do

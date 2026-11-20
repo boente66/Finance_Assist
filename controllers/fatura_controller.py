@@ -186,13 +186,23 @@ class FaturaController:
     def obter_lancamento(self, id_lancamento):
         return self.service.obter_lancamento(id_lancamento, self.get_id_usuario())
 
-    def atualizar_lancamento(self, id_lancamento, dados):
+    def ativar_manutencao(self, id_cartao, mes, ano, owner):
+        return self.service.ativar_manutencao(id_cartao, mes, ano, self.get_id_usuario(), owner)
+
+    def desativar_manutencao(self, capacidade):
+        self.service.desativar_manutencao(capacidade)
+
+    def atualizar_lancamento(self, id_lancamento, dados, capacidade=None):
+        if capacidade is None:
+            return self.service.atualizar_lancamento(id_lancamento, dados, self.get_id_usuario())
         return self.service.atualizar_lancamento(
-            id_lancamento, dados, self.get_id_usuario()
+            id_lancamento, dados, self.get_id_usuario(), capacidade=capacidade
         )
 
-    def excluir_lancamento(self, id_lancamento):
-        return self.service.excluir_lancamento(id_lancamento, self.get_id_usuario())
+    def excluir_lancamento(self, id_lancamento, capacidade=None):
+        if capacidade is None:
+            return self.service.excluir_lancamento(id_lancamento, self.get_id_usuario())
+        return self.service.excluir_lancamento(id_lancamento, self.get_id_usuario(), capacidade=capacidade)
 
     # ==================================================
     # VALORES
