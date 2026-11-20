@@ -65,9 +65,10 @@ rollback, vínculos financeiros, pagamento complementar, diálogo desatualizado,
 PT-BR/EN/ES e painel nas dimensões disponíveis para 1280×720, 1366×768 e
 1920×1080.
 
-Regressão completa local: **505 testes aprovados**, zero falhas/erros,
-15 avisos de depreciação de dependências, em 432,98 s. O teste adicional de
-atalho com foco na lateral integra a rodada focada final e a regressão de CI.
+Regressão completa final do código enviado: **506 testes aprovados**, zero
+falhas/erros, 15 avisos de depreciação de dependências, em 409,20 s. Inclui
+o atalho com foco na lateral. A rodada completa anterior passou em 505 testes;
+a rodada final inclui o cenário adicional.
 
 ```bash
 TMPDIR=/dev/shm/finance-maintenance-tests QT_QPA_PLATFORM=offscreen \
@@ -79,5 +80,45 @@ zero falhas/erros, um aviso de depreciação, em 46,32 s. Inclui o atalho com fo
 na lateral e a inatividade do atalho quando o painel está oculto.
 
 Sintaxe da rotina Python de publicação e YAML do workflow aprovadas.
-Os resultados dos builds e publicação serão registrados após conclusão,
-mantendo os instaladores anteriores disponíveis.
+
+## Builds
+
+**14 jobs aprovados**, zero falhas: suíte dividida em Ubuntu 24.04/26.04/Noble,
+DEB geral, DEB Noble, instalação Ubuntu 22.04/24.04/26.04, OCR e inicialização
+das telas, Windows x64, macOS Intel e Apple Silicon. Todos os cinco pacotes
+foram compilados a partir do mesmo código, mantendo a versão numérica.
+
+Código enviado/compilado:
+[`5a31d8878a9f21ee46fd874e03c50d4e8117e872`](https://github.com/boente66/Finance_Assist/commit/5a31d8878a9f21ee46fd874e03c50d4e8117e872).
+
+- [Build multiplataforma e instalação](https://github.com/boente66/Finance_Assist/actions/runs/44810476426).
+- [Build Ubuntu 24.04/Mint 22](https://github.com/boente66/Finance_Assist/actions/runs/44810481513).
+
+## Publicação concluída — 20/11/2026
+
+[Publicação e conferência remota](https://github.com/boente66/Finance_Assist/actions/runs/44812372458)
+aprovadas. Foram publicados e conferidos **13 arquivos**: cinco pacotes, o EXE
+extraído sem alteração do ZIP Windows, seis arquivos SHA256 e um manifesto.
+SHA256 de origem, CRC dos ZIPs, versão dos DEBs, tamanho e SHA256 remoto
+conferidos. Os 36 arquivos anteriores foram preservados. A tag histórica
+permaneceu inalterada; nenhuma nova versão numérica foi criada.
+
+O EXE Windows é o aplicativo empacotado, não um instalador MSI. O DEB geral
+mantém 2.1.0~test17; a variante Noble mantém 2.1.0~test17+ubuntu24.04.1.
+Feche o aplicativo antes de substituir a instalação; no Linux, use
+`apt install --reinstall` quando a mesma versão já estiver instalada.
+
+| Plataforma | Pacote | Integridade |
+| --- | --- | --- |
+| Linux Ubuntu 22.04/24.04/26.04 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_imp003-20261120.deb) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_amd64_imp003-20261120.deb.sha256) |
+| Ubuntu 24.04 / Mint 22 | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_imp003-20261120.deb) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_ubuntu24.04_amd64_imp003-20261120.deb.sha256) |
+| Windows x64 — EXE | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-imp003-20261120-windows-x64.exe) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/FinanceAssist-test.17-imp003-20261120-windows-x64.exe.sha256) |
+| Windows x64 — ZIP | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_imp003-20261120.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_windows-x64_imp003-20261120.zip.sha256) |
+| macOS Intel | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_imp003-20261120.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-x64_imp003-20261120.zip.sha256) |
+| macOS Apple Silicon | [Download](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_imp003-20261120.zip) | [SHA256](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/finance-assist_2.1.0-test.17_macos-arm64_imp003-20261120.zip.sha256) |
+
+[Manifesto SHA256 e origem dos builds](https://github.com/boente66/Finance_Assist/releases/download/rebuild-v2.1.0-test.17-20261107/imp003-20261120-manifest.json).
+
+Os seis links binários retornaram HTTP 200 após a publicação. README e notas
+da distribuição apontam para os novos arquivos; documentos históricos mantêm
+os links das publicações anteriores.
